@@ -97,10 +97,21 @@ def _chay_cong_nhanh(thu_muc, sha, tam):
             "xanh" if xanh else "đỏ")
 
 
+def _ve_mau_goc(thu_muc):
+    """PR nghiệm thu thật áp lỗi tiêm lên chính app mẫu trong repo: gỡ ra để bài này luôn thử trên bản gốc, CI không đỏ vì áp trùng."""
+    for ban_va in sorted(LOI.glob("*.patch")):
+        try:
+            _git(thu_muc, "apply", "-R", "--check", str(ban_va))
+        except subprocess.CalledProcessError:
+            continue
+        _git(thu_muc, "apply", "-R", str(ban_va))
+
+
 def _dung_pr(tam, ban_va, ai_duyet):
     thu_muc = Path(tam) / "repo"
     shutil.copytree(MAU, thu_muc, ignore=shutil.ignore_patterns("__pycache__"))
     _git(thu_muc, "init", "-q", "-b", ten.NHANH_GOC)
+    _ve_mau_goc(thu_muc)
     _git(thu_muc, "add", "-A")
     _git(thu_muc, "commit", "-qm", "goc")
     goc = _git(thu_muc, "rev-parse", "HEAD").strip()
