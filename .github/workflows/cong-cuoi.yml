@@ -1,0 +1,49 @@
+# Cổng cuối. Không checkout, không chạy mã PR: mã cổng lấy từ nhánh gốc, diff đọc qua API.
+#
+# Tên job KHÔNG được là `cong-cuoi`: check required do App phát, job Actions không được trùng tên.
+#
+# Giới hạn đã biết (docs/bao-mat.md): với `pull_request_review`, luật environment xét theo
+# refs/pull/N/merge nên job bị `gate` từ chối, tức lần duyệt chưa tự cập nhật check.
+# Giữ `environment: gate` trên mọi nhánh sự kiện: đó là thứ ngăn YAML của PR lấy được khoá App.
+name: cong-cuoi
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions: {}
+
+concurrency:
+  # Tách theo sự kiện: lượt review bị từ chối không được huỷ lượt pull_request_target đang chờ.
+  group: cong-cuoi-${{ github.event_name }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  phat:
+    name: phat-check-cuoi
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: gate
+    permissions:
+      contents: read
+    steps:
+      - name: Lấy mã cổng từ nhánh gốc
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Tạo token App quyền tối thiểu
+        id: token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.XUONG_APP_CLIENT_ID }}
+          private-key: ${{ secrets.XUONG_APP_KEY }}
+          permission-checks: write
+          permission-pull-requests: read
+      - name: Xét PR và phát check
+        env:
+          XUONG_TOKEN_APP: ${{ steps.token.outputs.token }}
+          XUONG_PR: ${{ github.event.pull_request.number }}
+        run: python3 -m cong.gate_app --cho-giay 600

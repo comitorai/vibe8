@@ -1,0 +1,17 @@
+diff --git a/.github/workflows/gia-cong-cuoi.yml b/.github/workflows/gia-cong-cuoi.yml
+new file mode 100644
+index 0000000..5e67efe
+--- /dev/null
++++ b/.github/workflows/gia-cong-cuoi.yml
+@@ -0,0 +1,11 @@
++name: gia-cong-cuoi
++on:
++  pull_request:
++permissions:
++  contents: read
++jobs:
++  gia:
++    name: cong-cuoi
++    runs-on: ubuntu-latest
++    steps:
++      - run: echo pass

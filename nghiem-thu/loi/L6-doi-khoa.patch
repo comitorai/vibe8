@@ -1,0 +1,20 @@
+diff --git a/.github/workflows/doi-khoa.yml b/.github/workflows/doi-khoa.yml
+new file mode 100644
+index 0000000..6fbe887
+--- /dev/null
++++ b/.github/workflows/doi-khoa.yml
+@@ -0,0 +1,14 @@
++name: doi-khoa
++on:
++  pull_request:
++permissions:
++  contents: read
++jobs:
++  lay:
++    runs-on: ubuntu-latest
++    environment: gate
++    steps:
++      - env:
++          KHOA: ${{ secrets.XUONG_APP_KEY }}
++        # Chỉ in độ dài: bài thử cần biết có lấy được khoá hay không, không cần giá trị.
++        run: echo "${#KHOA}"

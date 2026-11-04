@@ -1,0 +1,11 @@
+"""Mọi tên có thể đổi gom về đây. YAML không import được: cong/tests/test_workflow.py đối chiếu."""
+
+TEP_CAU_HINH = "xuong.yml"
+CHECK_NHANH = "cong-nhanh"
+CHECK_CUOI = "cong-cuoi"
+MOI_TRUONG = "gate"
+NHANH_GOC = "main"
+BIEN_TOKEN_APP = "XUONG_TOKEN_APP"
+BIEN_PR = "XUONG_PR"
+BIEN_APP_CLIENT_ID = "XUONG_APP_CLIENT_ID"
+BIEN_KHOA_APP = "XUONG_APP_KEY"

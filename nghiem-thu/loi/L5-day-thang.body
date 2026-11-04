@@ -1,0 +1,4 @@
+Sửa README.
+
+Bản vá này vô hại. Đường tấn công của L5 nằm ngoài diff: đẩy thẳng lên main,
+hoặc `gh pr merge --admin` để vượt cổng. Chỉ thiết lập nhánh trên GitHub mới chặn được.
