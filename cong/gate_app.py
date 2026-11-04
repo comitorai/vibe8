@@ -9,6 +9,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from . import kiem_pr, ten
@@ -25,7 +26,6 @@ class LoiApi(Exception):
 
 class _KhongChuyenHuong(urllib.request.HTTPRedirectHandler):
     """urllib giữ nguyên Authorization khi chuyển hướng: không đi theo, để khỏi lộ token."""
-
     def redirect_request(self, *a, **k):
         return None
 
@@ -111,23 +111,31 @@ def _pr_vao_goc(gh, sha):
     return [str(p["number"]) for p in (noi_bo or ds)]
 
 
+def _luot_cua_pr(gh, so_pr, pr, lan_chay):
+    """Lượt chắc chắn đã test PR này với base hiện tại. Không dùng `pull_requests[]`: trường đó tính lúc đọc, ghi base hiện tại
+    và mọi PR mở cùng nhánh, nên lượt test với base khác vẫn mang tên PR này. Bỏ lượt của repo hay nhánh đầu khác, lượt tạo
+    trước khi PR mở hoặc trước lần đổi base cuối, lượt tạo lúc PR khác cùng nhánh đầu còn mở. Thiếu dữ liệu là 0 lượt, đóng cổng."""
+    dau = pr["head"]
+    if not (dau.get("repo") and dau.get("label")):
+        return []
+    doi_base = [e.get("created_at") or "~" for e in _trang(gh, "/issues/%s/events" % so_pr) if e.get("event") == "base_ref_changed"]
+    moc = max([pr.get("created_at") or "~"] + doi_base)
+    khac = [(p.get("created_at") or "", p.get("closed_at") or "~") for p in _trang(
+        gh, "/pulls?state=all&head=" + urllib.parse.quote(dau["label"], safe=":/")) if str(p.get("number")) != so_pr]
+    return [r for r in lan_chay if (r.get("head_repository") or {}).get("full_name") == _repo(pr, "head")
+            and r.get("head_branch") == dau.get("ref") and (r.get("created_at") or "") >= moc
+            and not any(a <= r["created_at"] <= b for a, b in khac)]
+
+
 def _doc_theo_sha(gh, so_pr, pr, nguoi_tin):
-    sha, repo_dau = pr["head"]["sha"], _repo(pr, "head")
+    sha = pr["head"]["sha"]
     commit = _trang(gh, "/pulls/%s/commits" % so_pr)
     # Commit merge từ nhánh gốc (chủ bấm Update branch) không làm họ thành đồng tác giả.
     nguoi_commit = {(c.get(k) or {}).get("login") for c in commit if len(c.get("parents") or []) < 2
                     for k in ("author", "committer")}
     # Theo TỆP workflow và sự kiện: workflow tệp khác đặt cùng tên, hay chạy on: push, không vào đây.
-    lan_chay = _trang(gh, "/actions/workflows/%s.yml/runs?head_sha=%s&event=pull_request" % (ten.CHECK_NHANH, sha),
-                      "workflow_runs")
-    # Lọc theo SHA gom cả lượt của PR khác cùng SHA, kể cả PR vào base lạ có workflow in pass.
-    # Lượt của PR trong repo ghi rõ PR và base; lượt PR fork không ghi nên lọc theo repo đầu. Thiếu dữ liệu là 0 lượt, đóng cổng.
-    if repo_dau is not None and repo_dau == _repo(pr, "base"):
-        lan_chay = [r for r in lan_chay if any(str(p.get("number")) == so_pr
-                                               and (p.get("base") or {}).get("ref") == ten.NHANH_GOC
-                                               for p in r.get("pull_requests") or [])]
-    elif repo_dau is not None:
-        lan_chay = [r for r in lan_chay if (r.get("head_repository") or {}).get("full_name") == repo_dau]
+    lan_chay = _luot_cua_pr(gh, so_pr, pr, _trang(
+        gh, "/actions/workflows/%s.yml/runs?head_sha=%s&event=pull_request" % (ten.CHECK_NHANH, sha), "workflow_runs"))
     return {
         "sha_dau": sha, "trang_thai_pr": pr.get("state"), "nhanh_dich": (pr.get("base") or {}).get("ref"),
         "so_pr_vao_goc": len(_pr_vao_goc(gh, sha)), "so_tep_khai": pr.get("changed_files"),
@@ -139,8 +147,7 @@ def _doc_theo_sha(gh, so_pr, pr, nguoi_tin):
                             "conclusion": r.get("conclusion")} for r in lan_chay],
         "duyet": [{
             "user": (r.get("user") or {}).get("login"), "user_type": (r.get("user") or {}).get("type"),
-            "state": r.get("state"), "commit_id": r.get("commit_id"), "submitted_at": r.get("submitted_at"),
-            "body": r.get("body"),
+            "state": r.get("state"), "commit_id": r.get("commit_id"), "submitted_at": r.get("submitted_at"), "body": r.get("body"),
         } for r in _trang(gh, "/pulls/%s/reviews" % so_pr)],
     }
 
@@ -178,13 +185,10 @@ def chay(gh, nguoi_tin, sha):
     try:
         ds = _pr_vao_goc(gh, sha)
         du_lieu = thu_thap(gh, ds[0], sha, nguoi_tin) if ds else None
-        if du_lieu is None:
-            # `success` cũ không được ở lại: đổi base đi rồi đổi lại là dùng được ngay nếu không thu hồi.
-            q = {"ket_luan": "khong_xet", "rui_ro": "chua_ro", "so_dong": 0, "chi_tiet": [],
-                 "ly_do": ["SHA này không còn là head của PR mở vào nhánh gốc"]}
-            print("%s: %s" % (ten.CHECK_CUOI, phat_check(gh, sha, q)))
-            return 0
-        q = kiem_pr.quyet_dinh(du_lieu)
+        # Không còn PR: vẫn phát, `success` cũ không được ở lại vì đổi base đi rồi đổi lại là dùng được ngay nếu không thu hồi.
+        q = kiem_pr.quyet_dinh(du_lieu) if du_lieu else {
+            "ket_luan": "khong_xet", "rui_ro": "chua_ro", "so_dong": 0, "chi_tiet": [],
+            "ly_do": ["SHA này không còn là head của PR mở vào nhánh gốc"]}
         print("%s: %s" % (ten.CHECK_CUOI, phat_check(gh, sha, q)))
         print(tom_tat(q))
         return 0

@@ -32,10 +32,6 @@ def lan_chay(d):
     return d["/actions/workflows/cong-nhanh.yml/runs?head_sha=%s&event=pull_request" % SHA]["workflow_runs"]
 
 
-def thuoc_pr(so=7, base="main"):
-    return [{"number": so, "base": {"ref": base}, "head": {"sha": SHA}}]
-
-
 def can_duyet(d, login="khac", **khac):
     d["/pulls/7/files"][0]["filename"] = "CODEOWNERS"
     d["/pulls/7/reviews"] = [dict({"user": {"login": login, "type": "User"}, "state": "APPROVED", "commit_id": SHA,
@@ -79,8 +75,7 @@ class TestChay(unittest.TestCase):
 
     def test_luot_do_khong_duoc_luot_xanh_che(self):
         d = du_lieu()
-        lan_chay(d).append({"head_sha": SHA, "status": "completed", "conclusion": "failure",
-                            "head_repository": {"full_name": "chu/repo"}, "pull_requests": thuoc_pr()})
+        lan_chay(d).append(dict(lan_chay(d)[0], conclusion="failure"))
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
@@ -192,7 +187,9 @@ class TestTimPr(unittest.TestCase):
         la = {"full_name": "la/repo"}
         d["/pulls?state=open&base=main"][0]["head"]["repo"] = la
         d["/pulls/7"]["head"]["repo"] = la
-        lan_chay(d)[0].update(head_repository=la, pull_requests=[])  # Lượt PR fork không ghi PR nào.
+        d["/pulls/7"]["head"]["label"] = "la:nhanh"
+        d["/pulls?state=all&head=la:nhanh"] = d.pop("/pulls?state=all&head=chu:nhanh")
+        lan_chay(d)[0].update(head_repository=la)
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
@@ -209,46 +206,102 @@ class TestLocLuotCi(unittest.TestCase):
 
     def test_luot_xanh_cua_fork_khong_thay_duoc_luot_trong_repo(self):
         d = du_lieu()
-        lan_chay(d)[0].update(head_repository={"full_name": "la/repo"}, pull_requests=[])
+        lan_chay(d)[0].update(head_repository={"full_name": "la/repo"})
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertTrue(gh.da_phat[0][2]["output"]["title"].startswith("cho "))
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
 
-    def _xet_mot_luot_khac_pr(self, *luot):
+    def _xet(self, *luot, doi_base=(), pr_khac=()):
         d = du_lieu()
         lan_chay(d)[:] = [dict(lan_chay(d)[0], **x) for x in luot]
+        d["/issues/7/events"] += [{"event": "base_ref_changed", "created_at": luc} for luc in doi_base]
+        d["/pulls?state=all&head=chu:nhanh"] += [{"number": 9, "created_at": a, "closed_at": b} for a, b in pr_khac]
         gh = gate_app.GiaLap(d)
         chay(gh)
         return gh.da_phat[0][2]
 
-    def test_luot_xanh_cua_pr_vao_base_la_khong_tinh(self):
-        # PR vào nhánh khác mang workflow in pass, cùng SHA: lượt xanh đó không phải của PR này.
-        q = self._xet_mot_luot_khac_pr({"pull_requests": thuoc_pr(9, "x")})
+    def _cho(self, q):
         self.assertEqual(q["conclusion"], "failure")
-        self.assertTrue(q["output"]["title"].startswith("cho "))
+        self.assertTrue(q["output"]["title"].startswith("cho "), q["output"]["title"])
 
-    def test_luot_cua_chinh_pr_luc_con_base_khac_khong_tinh(self):
-        self.assertEqual(self._xet_mot_luot_khac_pr({"pull_requests": thuoc_pr(7, "x")})["conclusion"], "failure")
+    def test_luot_truoc_lan_doi_base_cuoi_khong_tinh(self):
+        # Lượt test với base cũ, kể cả base có workflow in pass: API vẫn ghi base hiện tại nên chỉ thời điểm mới phân biệt được.
+        self._cho(self._xet({}, doi_base=("2026-11-01T00:00:10Z",)))
 
-    def test_luot_do_cua_pr_khac_cung_sha_khong_lam_ket(self):
-        q = self._xet_mot_luot_khac_pr({}, {"conclusion": "failure", "pull_requests": thuoc_pr(9, "x")})
+    def test_luot_do_truoc_lan_doi_base_khong_lam_ket(self):
+        q = self._xet({"created_at": "2026-11-01T00:00:02Z", "conclusion": "failure"}, {"created_at": "2026-11-01T00:00:20Z"},
+                      doi_base=("2026-11-01T00:00:10Z",))
         self.assertEqual(q["conclusion"], "success")
 
-    def test_luot_xanh_cua_pr_khac_cung_vao_goc_khong_tinh(self):
-        # PR đã đóng có cùng SHA: lượt của nó không thay được lượt của PR này.
-        self.assertEqual(self._xet_mot_luot_khac_pr({"pull_requests": thuoc_pr(9)})["conclusion"], "failure")
+    def test_luot_sau_lan_doi_base_cuoi_moi_tinh(self):
+        q = self._xet({"created_at": "2026-11-01T00:00:20Z"}, doi_base=("2026-11-01T00:00:03Z", "2026-11-01T00:00:10Z"))
+        self.assertEqual(q["conclusion"], "success")
 
-    def test_luot_khong_ghi_pr_thi_dong(self):
-        for la in ({"pull_requests": []}, {"pull_requests": None}, {"pull_requests": [{"number": 7}]}):
-            with self.subTest(la):
-                self.assertEqual(self._xet_mot_luot_khac_pr(la)["conclusion"], "failure")
+    def test_luot_truoc_khi_mo_pr_khong_tinh(self):
+        self._cho(self._xet({"created_at": "2026-10-31T23:59:59Z"}))
+
+    def test_luot_trung_luc_pr_khac_cung_nhanh_mo_khong_tinh(self):
+        # PR 9 cùng nhánh đầu vào base lạ: `pull_requests[]` ghi cả hai PR, lượt có thể test với base của PR 9.
+        self._cho(self._xet({}, pr_khac=(("2026-11-01T00:00:01Z", None),)))
+
+    def test_pr_khac_da_dong_van_loai_luot_luc_no_mo(self):
+        # Đóng PR 9 rồi chạy lại lượt của nó: API chỉ còn ghi PR 7, base main.
+        self._cho(self._xet({}, pr_khac=(("2026-11-01T00:00:01Z", "2026-11-01T00:00:09Z"),)))
+
+    def test_pr_cu_cung_nhanh_da_dong_truoc_do_khong_can(self):
+        q = self._xet({}, pr_khac=(("2026-10-01T00:00:00Z", "2026-10-02T00:00:00Z"),))
+        self.assertEqual(q["conclusion"], "success")
+
+    def test_pr_cung_nhanh_mo_sau_luot_khong_can(self):
+        self.assertEqual(self._xet({}, pr_khac=(("2026-11-01T00:00:30Z", None),))["conclusion"], "success")
+
+    def test_luot_cung_sha_tu_nhanh_khac_khong_tinh(self):
+        self._cho(self._xet({"head_branch": "nhanh-khac"}))
+        self.assertEqual(self._xet({}, {"head_branch": "nhanh-khac", "conclusion": "failure"})["conclusion"], "success")
+
+    def test_thieu_du_lieu_thoi_gian_thi_dong(self):
+        # Thiếu mốc nào cũng ra 0 lượt: không có dữ liệu thì không được tính là xanh.
+        self._cho(self._xet({"created_at": None}))
+        self._cho(self._xet({"head_branch": None}))
+        self._cho(self._xet({}, doi_base=(None,)))
+        self._cho(self._xet({}, pr_khac=((None, None),)))
+
+    def test_truong_pull_requests_khong_con_tac_dung(self):
+        la = [{"number": 9, "base": {"ref": "x"}}]
+        self.assertEqual(self._xet({"pull_requests": la})["conclusion"], "success")
+        self.assertEqual(self._xet({"pull_requests": []})["conclusion"], "success")
+
+    def test_thieu_created_at_cua_pr_thi_dong(self):
+        d = du_lieu()
+        del d["/pulls/7"]["created_at"]
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self._cho(gh.da_phat[0][2])
+
+    def test_nhanh_co_ky_tu_dac_biet_duoc_ma_hoa(self):
+        d = du_lieu()
+        d["/pulls/7"]["head"].update(label="chu:a&state=open", ref="a&state=open")
+        lan_chay(d)[0]["head_branch"] = "a&state=open"
+        d["/pulls?state=all&head=chu:a%26state%3Dopen"] = d.pop("/pulls?state=all&head=chu:nhanh")
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
+
+    def test_khong_doc_duoc_su_kien_thi_bao_loi(self):
+        d = du_lieu()
+        del d["/issues/7/events"]
+        gh = gate_app.GiaLap(d)
+        ma, _ = chay(gh)
+        self.assertEqual((ma, gh.da_phat[0][2]["conclusion"]), (1, "failure"))
 
     def test_pr_fork_thieu_head_repository_thi_dong(self):
         d = du_lieu()
         la = {"full_name": "la/repo"}
         d["/pulls?state=open&base=main"][0]["head"]["repo"] = la
         d["/pulls/7"]["head"]["repo"] = la
+        d["/pulls/7"]["head"]["label"] = "la:nhanh"
+        d["/pulls?state=all&head=la:nhanh"] = d.pop("/pulls?state=all&head=chu:nhanh")
         del lan_chay(d)[0]["head_repository"]
         gh = gate_app.GiaLap(d)
         chay(gh)
@@ -268,21 +321,14 @@ class TestLocLuotCi(unittest.TestCase):
         with self.assertRaises(gate_app.LoiApi):
             gate_app._trang(Day({}), "/pulls/7/files", toi_da=3)
 
-    def test_fork_da_xoa_lan_xanh_van_tinh(self):
+    def test_fork_da_xoa_thi_khong_co_luot_nao_tinh_duoc(self):
+        # Không còn repo đầu để so: PR này chỉ qua được khi mở lại từ nhánh còn tồn tại.
         d = du_lieu()
         d["/pulls/7"]["head"]["repo"] = None
+        lan_chay(d)[0]["head_repository"] = None  # GitHub cũng để trống ở lượt: None == None không được tính là khớp.
         gh = gate_app.GiaLap(d)
         chay(gh)
-        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
-
-    def test_fork_da_xoa_khong_loc_duoc_thi_tinh_het(self):
-        d = du_lieu()
-        d["/pulls/7"]["head"]["repo"] = None
-        lan_chay(d).append({"head_sha": SHA, "status": "completed", "conclusion": "failure"})
-        gh = gate_app.GiaLap(d)
-        chay(gh)
-        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
-        self.assertFalse(gh.da_phat[0][2]["output"]["title"].startswith("cho "))
+        self._cho(gh.da_phat[0][2])
 
 
 class TestGiaLap(unittest.TestCase):

@@ -31,16 +31,21 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
 ## Luật
 
 - PR phải nhắm `main`, và là PR mở duy nhất vào `main` ở SHA đó.
-- Mọi lượt của tệp workflow `cong-nhanh`, sự kiện `pull_request`, trên đúng head SHA, của chính PR này khi nhắm `main`, phải `success`.
-  Lượt đỏ không bị lượt xanh che. Đỏ vì lỗi thoáng qua thì bấm chạy lại lượt đó; đỏ vì `main` lúc đó còn hỏng thì chạy lại không chữa
-  được, vì lượt chạy lại dùng commit merge cũ: đẩy một commit mới.
+- Mọi lượt của tệp workflow `cong-nhanh`, sự kiện `pull_request`, trên đúng head SHA và nhánh đầu, tạo sau khi PR mở và sau lần đổi base
+  cuối, phải `success`. Lượt đỏ không bị lượt xanh che. Đỏ vì lỗi thoáng qua thì bấm chạy lại lượt đó; đỏ vì `main` lúc đó còn hỏng thì chạy
+  lại không chữa được, vì lượt chạy lại dùng commit merge cũ: đẩy một commit mới.
+- Lượt tạo lúc còn PR khác cùng nhánh đầu đang mở không được tính, vì không biết nó test với base nào. Đóng PR kia rồi sửa tiêu đề để chạy lại.
 - Đổi `.github/`, `xuong.yml`, luật, CODEOWNERS, script check, tệp khai phụ thuộc, lockfile: rủi ro cao, cần duyệt.
 - **Test có sẵn là điều kiện nghiệm thu:** sửa, đổi tên, xoá đều là rủi ro cao, cần duyệt. Muốn thêm test thì tạo tệp mới, tự qua.
   Thêm `__init__.py` trong vùng test cũng cần duyệt, vì nó quyết định test nào được nạp.
 - Thêm tệp trùng tên mô-đun chuẩn của Python (`pprint.py`, `app/json.py`) cũng cần duyệt, vì đủ làm CI xanh giả. Có thể báo oan
   với tệp vô hại như `app/calendar.py`; người duyệt bấm qua.
+- Tệp không có diff dạng chữ cần duyệt, vì không ai đọc được bên trong: tệp nhị phân, tệp rỗng, và mọi mã máy như `.pyc`, `.so`, `.wasm`.
+  Trừ ảnh, PDF, phông chữ: rủi ro trung bình. Thêm `__init__.py` thì ghi một dòng chú thích để khỏi phải duyệt.
+- Một số tệp vô hại có thể bị báo oan vì trùng tên tệp nhạy cảm (`docs/check.md`, `docs/requirements-q4.txt`, thư mục `docs/specs/`); người duyệt bấm qua.
 - Rủi ro thấp và trung bình tự qua khi đủ các điều kiện khác.
 - Quá 400 dòng (không tính lockfile): chặn, trừ khi người duyệt hợp lệ ghi dòng `ngoai-le-co: <lý do>` trong lượt duyệt.
+  Dòng đó phải đứng đầu dòng, đúng chữ thường, không gạch đầu dòng hay in đậm; sai định dạng thì cổng coi như chưa ghi.
 - Duyệt hợp lệ: người trong biến `XUONG_NGUOI_DUYET` của environment `gate`, không phải tác giả hay người có commit
   trong PR (không tính commit merge, ví dụ bấm Update branch), không phải bot, đúng SHA. Danh sách rỗng thì mọi PR đều bị chặn.
 - PR quá 250 commit bị chặn, vì API chỉ trả tới đó nên không đọc đủ được người có commit.

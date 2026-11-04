@@ -79,8 +79,26 @@ class TestMuc(unittest.TestCase):
     def test_lockfile_khong_ha_muc_cao(self):
         self.assertEqual(phan_loai([tep("yarn.lock"), tep("CODEOWNERS")])["muc"], CAO)
 
-    def test_tep_nhi_phan_la_trung_binh(self):
-        self.assertEqual(phan_loai([tep("a.png", "added", 0, 0, None)])["muc"], TRUNG_BINH)
+    def test_anh_va_phong_chu_la_trung_binh(self):
+        for ten in ("a.png", "b.JPG", "c.woff2", "d.pdf"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "added", 0, 0, None)])["muc"], TRUNG_BINH)
+
+    def test_tep_khong_co_diff_chu_la_cao(self):
+        # Không đọc được thì người phải xem: gồm tệp nhị phân lạ và tệp rỗng che mô-đun.
+        for ten, trang_thai in (("du_lieu.bin", "added"), ("hoa_don/tinh/__init__.py", "added"), ("du_lieu.bin", "modified")):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, trang_thai, 0, 0, None)])["muc"], CAO)
+
+    def test_ma_may_la_cao_o_moi_trang_thai_tru_xoa(self):
+        # `.pyc` hash-based đứng thay `.py` mà không so với mã nguồn. Đổi tên từ tệp ảnh cũng không có patch.
+        for ten in ("hoa_don/__pycache__/tinh.cpython-314.pyc", "tests/__pycache__/__init__.cpython-314.pyc",
+                    "hoa_don/tinh.abi3.so", "HOA_DON/TINH.PYD", "a.wasm"):
+            for trang_thai, them_truong in (("added", {}), ("modified", {}), ("copied", {}),
+                                            ("renamed", {"previous_filename": "a.png"})):
+                with self.subTest(ten=ten, trang_thai=trang_thai):
+                    self.assertEqual(phan_loai([tep(ten, trang_thai, 0, 0, None, **them_truong)])["muc"], CAO)
+        self.assertEqual(phan_loai([tep("cu.pyc", "removed", 0, 0, None)])["muc"], THAP)
 
     def test_doi_ten_thuan_ma_thuong_la_thap(self):
         t = tep("b.py", "renamed", 0, 0, None, previous_filename="a.py")
@@ -178,9 +196,9 @@ class TestTestCoSan(unittest.TestCase):
             with self.subTest(ten):
                 self.assertEqual(phan_loai([tep(ten, "added", 2, 0, p)])["muc"], THAP)
 
-    def test_tep_test_rong_moi_khong_oan(self):
-        # Không có diff nên xếp như tệp nhị phân: trung bình, không phải rủi ro cao.
-        self.assertEqual(phan_loai([tep("tests/test_moi.py", "added", 0, 0, None)])["muc"], TRUNG_BINH)
+    def test_tep_test_rong_moi_can_duyet(self):
+        # Không có diff nên không biết bên trong là gì; muốn tự qua thì tệp phải có nội dung đọc được.
+        self.assertEqual(phan_loai([tep("tests/test_moi.py", "added", 0, 0, None)])["muc"], CAO)
 
     def test_init_trong_vung_test_la_cao(self):
         # `load_tests` trong `__init__.py` quyết định test nào được nạp, thêm mới cũng đủ tắt cả gói test.
@@ -231,3 +249,26 @@ class TestCo(unittest.TestCase):
 
     def test_phan_tu_khong_phai_tu_dien_la_cao(self):
         self.assertEqual(phan_loai(["a.py"])["muc"], CAO)
+
+
+class TestVungTestRong(unittest.TestCase):
+    def _sua(self, duong):
+        return rui_ro.phan_loai([{"filename": duong, "status": "modified", "additions": 1, "deletions": 1, "patch": "@@"}])["muc"]
+
+    def test_du_lieu_ky_vong_va_test_cac_ngon_ngu_can_duyet(self):
+        for duong in ("src/__snapshots__/a.test.js.snap", "pkg/testdata/golden.json", "__fixtures__/a.json", "fixtures/a.json", "a/__snapshots__/b.txt",
+                      "integration_tests/helpers.py", "foo_test.dart", "x.bats", "test_x.sh", "a_test.exs", "a_test.cpp",
+                      "TestFoo.java", "src/TestBar.kt", "cypress/integration/x.cy.js", "spec/models/user_spec.rb", "specs/a.py"):
+            with self.subTest(duong):
+                self.assertEqual(self._sua(duong), rui_ro.CAO)
+
+    def test_ten_gan_giong_khong_phai_test(self):
+        for duong in ("src/latest.sh", "contest.c", "src/Testing.ts", "Testimonial.txt", "hoa_don/snapshot.py"):
+            with self.subTest(duong):
+                self.assertEqual(self._sua(duong), rui_ro.THAP)
+
+    def test_goi_trung_ten_trinh_chay_test_can_duyet(self):
+        for duong in ("pytest.py", "pytest/__init__.py", "_pytest/__init__.py"):
+            with self.subTest(duong):
+                tep = {"filename": duong, "status": "added", "additions": 1, "deletions": 0, "patch": "@@"}
+                self.assertEqual(rui_ro.phan_loai([tep])["muc"], rui_ro.CAO)

@@ -15,28 +15,28 @@ NGUONG_CO_DONG = 400
 
 _THU_TU = {THAP: 0, TRUNG_BINH: 1, CAO: 2}
 _GOC_BAO_VE = ("cong/", "luat/", "nghiem-thu/kiem_cuc_bo.py", "nghiem-thu/bat_cong.py", "nghiem-thu/loi/")
-_TEP_BAO_VE = {
-    ten.TEP_CAU_HINH, "codeowners", "makefile", "justfile", "noxfile.py", "tox.ini",
-    "pytest.ini", "conftest.py", ".gitattributes", ".gitmodules",
-    "sitecustomize.py", "usercustomize.py",
-}
-# Thêm tệp trùng tên mô-đun chuẩn là che được thư viện chuẩn khi chạy test, CI xanh giả chỉ bằng một tệp.
-# Python 3.9 không có danh sách này nên dùng các mô-đun mà unittest nạp.
-_MO_DUN_CHUAN = getattr(sys, "stdlib_module_names", frozenset((
+_TEP_BAO_VE = {ten.TEP_CAU_HINH, "codeowners", "makefile", "justfile", "noxfile.py", "tox.ini", "pytest.ini", "conftest.py",
+               ".gitattributes", ".gitmodules", "sitecustomize.py", "usercustomize.py"}
+# Mã máy chạy được mà diff không đọc được: Python nạp `.pyc` hash-based thay cho `.py` mà không so với mã nguồn.
+_MA_MAY = (".pyc", ".pyo", ".pyd", ".so", ".dylib", ".dll", ".node", ".wasm", ".jar", ".class")
+_KHONG_CHAY = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".woff", ".woff2", ".ttf")  # Tệp không chữ nhưng không tự chạy.
+# Tệp trùng tên mô-đun chuẩn che được thư viện chuẩn khi chạy test. Python 3.9 không có danh sách: dùng các mô-đun unittest nạp.
+_MO_DUN_CHUAN = {"pytest", "_pytest"}.union(getattr(sys, "stdlib_module_names", (
     "unittest", "argparse", "difflib", "json", "logging", "pprint", "shutil", "signal", "traceback", "warnings")))
 _MAU_SCRIPT_CHECK = re.compile(r"^(check|kiem-tra)(\.[a-z0-9]+)?$|^(vitest|jest|playwright|karma)\.config\.")
-_LOCKFILE = {
-    "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock",
-    "bun.lockb", "poetry.lock", "uv.lock", "pipfile.lock", "cargo.lock", "go.sum",
-    "gemfile.lock", "composer.lock", "pdm.lock",
-}
+_LOCKFILE = {"package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb", "poetry.lock", "uv.lock",
+             "pipfile.lock", "cargo.lock", "go.sum", "gemfile.lock", "composer.lock", "pdm.lock"}
 _MANIFEST = re.compile(r"(^|/)(package\.json|pyproject\.toml|go\.mod|requirements[^/]*\.(txt|in)|requirements/[^/]*\.(txt|in)"
                        r"|constraints[^/]*\.txt|setup\.py|setup\.cfg|cargo\.toml|gemfile|composer\.json|pipfile|\.npmrc"
                        r"|pnpm-workspace\.yaml|dockerfile[^/]*|\.python-version|\.tool-versions|\.pre-commit-config\.yaml"
                        r"|\.nvmrc|pom\.xml|(build|settings)\.gradle(\.kts)?)$")
-_THU_MUC_TEST = {"test", "tests", "testing", "__tests__", "spec", "specs", "e2e"}
-_TEN_TEST = re.compile(r"(^|[._-])(tests?|spec)([._-][^/]*)?\.(py|go|rb|rs|java|kt|cs|php|swift|scala|[cm]?[jt]sx?)$|^test[^/]*\.py$")
-_TEN_TEST_HOA = re.compile(r"[a-z0-9](Tests?|Spec)\.(java|kt|cs|rb|php|swift|scala|go|py|[cm]?[jt]sx?)$")  # FooTest.java, FooTests.cs, UserSpec.rb: xét trên tên gốc.
+# Dữ liệu kỳ vọng (golden, snapshot, fixture) cũng là điều kiện nghiệm thu: đổi nó là đổi test.
+_THU_MUC_TEST = {"test", "tests", "testing", "__tests__", "spec", "specs", "e2e", "cypress", "integration_tests",
+                 "testdata", "__snapshots__", "__fixtures__", "fixtures"}
+_TEN_TEST = re.compile(r"(^|[._-])(tests?|spec)([._-][^/]*)?\.(py|go|rb|rs|java|kt|cs|php|swift|scala|dart|exs?|c|cc|cpp|sh|[cm]?[jt]sx?)$"
+                       r"|^test[^/]*\.py$|\.(bats|snap)$")
+_TEN_TEST_HOA = re.compile(r"[a-z0-9](Tests?|Spec)\.(java|kt|cs|rb|php|swift|scala|go|py|[cm]?[jt]sx?)$"  # FooTest.java, UserSpec.rb, TestFoo.java: xét trên tên gốc.
+                           r"|(^|/)Tests?[A-Z][^/]*\.(java|kt|cs)$")
 
 
 def hien_thi(duong):
@@ -68,7 +68,7 @@ def _la_bao_ve(duong):
 def _che_thu_vien(duong, trang_thai):
     doan = duong.split("/")
     mo_dun = doan[-2] if doan[-1] == "__init__.py" and len(doan) > 1 else doan[-1].split(".")[0]
-    return trang_thai not in ("modified", "removed") and doan[-1].endswith((".py", ".pyc", ".so")) and mo_dun in _MO_DUN_CHUAN
+    return trang_thai not in ("modified", "removed") and doan[-1].endswith(".py") and mo_dun in _MO_DUN_CHUAN
 
 
 def _la_test(duong, goc):
@@ -103,11 +103,8 @@ def _xet_tep(tep):
         return [(CAO, "tên tệp lạ " + ", ".join(hien_thi(d) for d in cac_ten))]
     moi = _chuan_hoa(ten_moi)
     cu = None if ten_cu is None else _chuan_hoa(ten_cu)
-    ket = []
-    trang_thai = tep.get("status")
-    for duong, goc in ((moi, ten_moi), (cu, ten_cu)):
-        if duong is None:
-            continue
+    ket, trang_thai = [], tep.get("status")
+    for duong, goc in [(moi, ten_moi)] + ([] if cu is None else [(cu, ten_cu)]):
         if _la_bao_ve(duong):
             ket.append((CAO, "đổi tệp của cổng " + hien_thi(goc)))
         # Phụ thuộc mới chạy trong CI và app, diff không nói được gói đó làm gì: phải có người xem.
@@ -115,6 +112,8 @@ def _xet_tep(tep):
             ket.append((CAO, "đổi lockfile " + hien_thi(goc)))
         if _MANIFEST.search(duong):
             ket.append((CAO, "đổi tệp khai phụ thuộc " + hien_thi(goc)))
+    if trang_thai != "removed" and moi.endswith(_MA_MAY):
+        ket.append((CAO, "có mã máy, diff không đọc được " + hien_thi(ten_moi)))
     if _che_thu_vien(moi, trang_thai):
         ket.append((CAO, "thêm tệp trùng tên mô-đun chuẩn " + hien_thi(ten_moi)))
     so = _so_dong(tep)
@@ -126,7 +125,7 @@ def _xet_tep(tep):
     if trang_thai not in ("added", "modified", "removed", "renamed"):
         ket.append((TRUNG_BINH, "loại thay đổi khác thường " + hien_thi(ten_moi)))
     elif trang_thai in ("added", "modified") and not (them + xoa and tep.get("patch")):
-        ket.append((TRUNG_BINH, "không có diff dạng chữ " + hien_thi(ten_moi)))
+        ket.append((TRUNG_BINH if moi.endswith(_KHONG_CHAY) else CAO, "không có diff dạng chữ " + hien_thi(ten_moi)))
     return ket
 
 

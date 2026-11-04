@@ -19,7 +19,7 @@ def _xet_nhanh(lan_chay, sha):
     """Trả (xanh | do | cho, lý do). Mọi lượt của đúng SHA phải xanh: lượt xanh không che được lượt đỏ."""
     dung_sha = [c for c in (lan_chay or []) if c.get("head_sha") == sha]
     if not dung_sha:
-        return CHO, "chưa có lượt cong-nhanh của đúng SHA"
+        return CHO, "chưa có lượt cong-nhanh tính được: CI chưa bắt đầu, PR xung đột, vừa đổi base, hoặc có PR khác cùng nhánh"
     if any(c.get("status") != "completed" for c in dung_sha):
         return CHO, "cong-nhanh chưa chạy xong"
     if all(c.get("conclusion") == "success" for c in dung_sha):
@@ -46,8 +46,7 @@ def _xet_duyet(du_lieu, sha):
     tac_gia = {str(x).casefold() for x in goc if x} if du_lieu.get("tac_gia") else set()
     tin = {str(x).casefold() for x in du_lieu.get("nguoi_tin") or [] if x}
     moi_nhat = {}
-    ds = sorted(du_lieu.get("duyet") or [], key=lambda r: str(r.get("submitted_at") or ""))
-    for r in ds:
+    for r in sorted(du_lieu.get("duyet") or [], key=lambda r: str(r.get("submitted_at") or "")):
         if r.get("state") in _TRANG_THAI_XET:
             moi_nhat[str(r.get("user") or "").casefold()] = r
     hop_le, bo, dang_chan = [], [], []
@@ -96,8 +95,7 @@ def quyet_dinh(du_lieu):
     if rr["qua_co"]:
         ly_do_le = [m.group(1) for m in (_NGOAI_LE.search(str(r.get("body") or "")) for r in hop_le) if m]
         if not ly_do_le:
-            chan.append("quá %d dòng (%d): cần người duyệt ghi `ngoai-le-co: <lý do>`"
-                        % (rui_ro.NGUONG_CO_DONG, rr["so_dong"]))
+            chan.append("quá %d dòng (%d): cần người duyệt ghi `ngoai-le-co: <lý do>`" % (rui_ro.NGUONG_CO_DONG, rr["so_dong"]))
         bo += ["ngoại lệ cỡ: " + rui_ro.hien_thi(x) for x in ly_do_le]
     nhanh, ly_do_nhanh = _xet_nhanh(du_lieu.get("lan_chay_nhanh"), sha)
     if nhanh == "do":

@@ -99,11 +99,12 @@ class TestCongCuoi(unittest.TestCase):
     def test_quyen_toi_thieu(self):
         self.assertIn("\npermissions: {}\n", CUOI)
         self.assertIn("permissions:\n      contents: read\n", CUOI)
-        self.assertNotRegex(CUOI, r"(?<!permission-)(contents|checks|pull-requests|actions|statuses): write")
+        self.assertNotRegex(CUOI, r"(?<!permission-)(contents|checks|pull-requests|actions|issues|statuses): write")
         self.assertIn("permission-checks: write", CUOI)
         self.assertIn("permission-pull-requests: read", CUOI)
         self.assertIn("permission-actions: read", CUOI)
-        self.assertEqual(len(re.findall(r"permission-[\w-]+:", CUOI)), 3)
+        self.assertIn("permission-issues: read", CUOI)
+        self.assertEqual(len(re.findall(r"permission-[\w-]+:", CUOI)), 4)
 
     def test_khoa_chi_qua_environment(self):
         self.assertIn("environment: %s\n" % ten.MOI_TRUONG, CUOI)

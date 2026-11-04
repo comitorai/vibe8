@@ -21,8 +21,9 @@ Bằng unittest và `nghiem-thu/kiem_cuc_bo.py`, dữ liệu mô phỏng. Bộ t
   với `required_contexts: []`) và `deployment_status` không. Phải thử bằng secret giả trước khi đặt khoá thật.
 - Trường `head_repository` của lượt chạy có đúng như cách cổng dùng để lọc PR fork không.
 - Environment có nhận cấm admin vượt không (`can_admins_bypass` chưa thấy trong tài liệu, giao diện có ô tương ứng).
-- `pull_requests[]` của lượt chạy: `base.ref` là base lúc chạy hay base hiện tại, còn đúng sau đổi base không. Đã thấy có `number`, `base.ref`
-  ở PR trong repo, rỗng ở PR fork, trên lượt thật của repo công khai khác. Sai thì cổng đóng, không mở.
+- `created_at` của lượt có giữ nguyên khi bấm chạy lại không. Cổng lọc lượt theo mốc này; nếu nó đổi thì lượt của PR đã đóng cùng nhánh có thể
+  được tính. Mốc `base_ref_changed` so với lượt do chính lần đổi base tạo ra có lệch giây không.
+- Token App quyền `issues: read` đọc được `/issues/N/events` trên PR không, hay chỉ cần `pull_requests: read`.
 - API có trễ không ngay sau `workflow_run`. `tin-hieu-duyet` trên PR fork có cần phê duyệt mới chạy không.
 - Status API và check run do token thường tạo cùng tên `cong-cuoi` có qua được required check gắn App không. Hai check cùng tên, một `failure`
   một `success`, GitHub chọn cái nào.
@@ -34,7 +35,8 @@ Bằng unittest và `nghiem-thu/kiem_cuc_bo.py`, dữ liệu mô phỏng. Bộ t
 
 1. **Cổng chống đi tắt, không chống cộng tác viên cố ý ác.** Trên repo cá nhân, cộng tác viên có quyền ghi và xoá được lượt
    CI đỏ. Repo cá nhân cũng không có danh sách giới hạn người push. PR đã lỡ được duyệt sai có thể làm hỏng cổng cho PR sau.
-   Lượt chạy lọc theo PR và base nên PR vào base lạ có workflow in pass không làm giả xanh được; lượt CI của PR fork thì chỉ lọc được theo repo đầu.
+   Lượt chạy lọc theo repo đầu, nhánh đầu và thời điểm, không dùng `pull_requests[]` của API vì trường đó tính lúc đọc: ghi base hiện tại và mọi
+   PR mở cùng nhánh, kể cả khi lượt đã test với base khác. Nên PR vào base lạ có workflow in pass không làm giả xanh được.
 2. **PR rủi ro thấp tự merge, không có người đọc.** Đây là chính sách, người dùng quyết. Trung bình cũng được đối xử như thấp về
    điều kiện qua. Muốn mọi PR phải có người duyệt thì phải đổi `kiem_pr.py`.
 3. **Khoảng hở nhỏ giữa yêu cầu sửa và lượt xét mới.** Check cũ còn `success` cho tới khi `tin-hieu-duyet` và `cong-cuoi` chạy xong.
@@ -45,17 +47,19 @@ Bằng unittest và `nghiem-thu/kiem_cuc_bo.py`, dữ liệu mô phỏng. Bộ t
 6. **Admin có thể vượt environment,** trừ khi bỏ tick «Allow administrators to bypass» trên giao diện. `enforce_admins` chỉ áp cho nhánh.
 7. **Force push A, B, rồi về A** làm lượt duyệt cũ trên A còn tính, và thu hồi trên A bị lượt xét mới ghi đè. Cây mã giống thứ đã duyệt,
    nhưng `main` có thể đã khác, nên kết quả merge có thể khác thứ đã đọc. Đổi base đi rồi đổi lại cũng vậy, kể cả với stacked PR hợp lệ.
-8. **Symlink và đổi quyền tệp** không thấy qua API files, chỉ được xếp trung bình.
+8. **Symlink và đổi quyền tệp** không thấy qua API files, chỉ được xếp trung bình. Tệp không có diff dạng chữ thì cần duyệt, trừ ảnh, PDF và phông chữ.
 9. **Cổng không chứng minh phần mềm đúng.** Tệp test mới hoặc mã thường vẫn có thể gọi `os._exit(0)`, hay gán đè `unittest.TestCase.run`, và
-   CI xanh giả mà không có gì báo rủi ro cao. Luật test chỉ bịt các đường đi tắt qua test có sẵn. Bước sau có thể đếm số test chạy so với nhánh gốc.
+   CI xanh giả mà không có gì báo rủi ro cao. Luật test chỉ bịt các đường đi tắt qua test có sẵn, và nhận test theo tên nên không bao giờ đủ:
+   thư mục hay đuôi lạ lọt, còn `docs/specs/x.md`, `test_utils.py` thì bị báo oan. Bước sau có thể đếm số test chạy so với nhánh gốc.
 10. **Agent lỡ dùng email của người duyệt để commit** thì người đó thành «tự duyệt». Cổng đóng và ghi lý do, không mở sai.
 11. **Xoá hoặc đổi tên `cong-nhanh.yml` không qua được:** cổng không có lượt CI để đọc, nên mọi PR kẹt. Đường thoát: chủ repo tạm gỡ bảo vệ nhánh.
-12. **PR xung đột với nhánh gốc không có CI** nên cổng báo chờ. Giải xung đột, hoặc sửa tiêu đề hay đóng rồi mở lại để đánh thức.
+12. **Cổng báo chờ, không qua, khi không có lượt tính được:** PR xung đột với nhánh gốc, PR khác cùng nhánh đầu đang mở (hai PR cùng nhánh vào hai base
+    là PR lành vẫn kẹt), hoặc vừa đổi base mà lượt mới chưa có. Giải xung đột hay đóng PR kia, rồi sửa tiêu đề hoặc đóng mở lại để chạy CI và đánh thức.
 13. **Yêu cầu sửa gắn theo PR.** Mở PR mới cùng nội dung thì yêu cầu sửa cũ không theo; nếu là rủi ro thấp thì tự qua.
 14. **Hai PR trong repo cùng SHA vào `main` làm cả hai kẹt.** PR thứ hai mở có chủ ý thì giữ được SHA đó không qua được, đến khi đóng.
 15. **PR quá 3000 tệp bị chặn:** API không trả đủ, cổng đóng. Commit có author không gắn tài khoản, và commit merge, không tính vào «người có commit».
 16. **`workflow_run` trễ sau khi PR đã merge** có thể ghi `failure` lên commit đã vào `main`. Chỉ là hiển thị, không ảnh hưởng PR khác có SHA khác.
-17. **PR fork đã xoá** không lọc được lượt theo repo đầu, nên tính mọi lượt của SHA đó.
+17. **PR từ fork đã xoá** không có repo đầu để so nên không lượt nào được tính, PR kẹt. Mở lại từ nhánh còn tồn tại.
 
 ## Vì sao dùng hai sự kiện đặc quyền
 

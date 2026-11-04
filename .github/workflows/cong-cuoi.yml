@@ -48,6 +48,7 @@ jobs:
           client-id: ${{ vars.XUONG_APP_CLIENT_ID }}
           private-key: ${{ secrets.XUONG_APP_KEY }}
           permission-actions: read
+          permission-issues: read
           permission-checks: write
           permission-pull-requests: read
       - name: Xét PR và phát check
