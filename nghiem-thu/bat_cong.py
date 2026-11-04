@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Chủ repo chạy để bật cổng: bảo vệ nhánh gốc, check có expected source là App, environment chỉ cho nhánh gốc.
 
+Tạo GitHub App trước (Checks: write, Pull requests: read, Actions: read) vì lệnh này cần --app-id.
 Dùng token của CHỦ REPO qua biến GH_TOKEN (không in ra). --kho chỉ in các lệnh gọi, không cần token, không có mạng.
 """
 import argparse
@@ -26,6 +27,9 @@ def ke_hoach(app_id):
             "deployment_branch_policy": {"protected_branches": False, "custom_branch_policies": True}}},
         {"phuong_thuc": "POST", "duong": moi_truong + "/deployment-branch-policies",
          "body": {"name": ten.NHANH_GOC, "type": "branch"}},
+        # GITHUB_TOKEN của workflow trong PR không được ghi, không được duyệt PR.
+        {"phuong_thuc": "PUT", "duong": "/actions/permissions/workflow",
+         "body": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": False}},
         {"phuong_thuc": "PUT", "duong": "/branches/%s/protection" % ten.NHANH_GOC, "body": {
             "required_status_checks": {"strict": False, "checks": [{"context": ten.CHECK_CUOI, "app_id": app_id}]},
             "enforce_admins": True,
@@ -38,7 +42,7 @@ def ke_hoach(app_id):
     ]
 
 
-def kiem_lai(bao_ve, moi_truong, chinh_sach, app_id):
+def kiem_lai(bao_ve, moi_truong, chinh_sach, quyen, app_id):
     """Hàm thuần: đọc lại rồi so, trả danh sách chỗ sai. Ghi được chưa có nghĩa là đã có hiệu lực."""
     sai = []
     checks = (bao_ve.get("required_status_checks") or {}).get("checks")
@@ -57,6 +61,8 @@ def kiem_lai(bao_ve, moi_truong, chinh_sach, app_id):
     ds = [(x.get("name"), x.get("type")) for x in chinh_sach.get("branch_policies") or []]
     if ds != [(ten.NHANH_GOC, "branch")]:
         sai.append("environment phải chỉ cho đúng nhánh %s" % ten.NHANH_GOC)
+    if quyen.get("default_workflow_permissions") != "read" or quyen.get("can_approve_pull_request_reviews") is not False:
+        sai.append("GITHUB_TOKEN mặc định phải chỉ đọc và không được duyệt PR")
     return sai
 
 
@@ -69,18 +75,19 @@ def ap_dung(gh, app_id):
                 raise
     moi_truong = "/environments/" + ten.MOI_TRUONG
     return kiem_lai(gh.goi("GET", "/branches/%s/protection" % ten.NHANH_GOC), gh.goi("GET", moi_truong),
-                    gh.goi("GET", moi_truong + "/deployment-branch-policies"), app_id)
+                    gh.goi("GET", moi_truong + "/deployment-branch-policies"),
+                    gh.goi("GET", "/actions/permissions/workflow"), app_id)
 
 
 def in_buoc_tay(repo):
     print("""
-Việc script không làm thay được:
-1. Tạo GitHub App quyền Checks: write và Pull requests: read, cài vào %(repo)s.
-2. gh secret set %(khoa)s --env %(mt)s --repo %(repo)s
-3. gh variable set %(id)s --env %(mt)s --repo %(repo)s
+Việc script không làm thay được (App đã tạo trước, cài vào %(repo)s):
+1. gh secret set %(khoa)s --env %(mt)s --repo %(repo)s
+2. gh variable set %(id)s --env %(mt)s --repo %(repo)s
+3. gh variable set %(duyet)s --env %(mt)s --repo %(repo)s --body "<login người duyệt, cách nhau dấu phẩy>"
 4. Chạy thử một PR rồi xem check `%(check)s` có nguồn là App.""" % {
         "repo": repo, "khoa": ten.BIEN_KHOA_APP, "id": ten.BIEN_APP_CLIENT_ID, "mt": ten.MOI_TRUONG,
-        "check": ten.CHECK_CUOI})
+        "duyet": ten.BIEN_NGUOI_DUYET, "check": ten.CHECK_CUOI})
 
 
 def main(argv=None):
@@ -111,8 +118,11 @@ def main(argv=None):
         sai = ap_dung(GitHub(a.repo, token), a.app_id)
     except LoiApi as loi:
         print("lỗi: %s" % loi)
+        if loi.than:
+            print(loi.than)
         if loi.ma in (403, 404):
-            print("Có thể thiếu quyền chủ repo, hoặc là repo private gói Free: gói đó KHÔNG có cổng chặn được.")
+            print("Có thể thiếu quyền chủ repo, `%s` chưa có mã, hoặc repo private gói Free "
+                  "(gói đó KHÔNG có cổng chặn được)." % ten.NHANH_GOC)
         return 1
     if sai:
         print("CHƯA BẬT ĐỦ:\n- " + "\n- ".join(sai))

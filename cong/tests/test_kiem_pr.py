@@ -5,18 +5,17 @@ from cong.kiem_pr import CHAN, CHO, CHO_QUA, quyet_dinh
 
 SHA = "a" * 40
 SHA_CU = "b" * 40
-PUSH = "2026-11-01T10:00:00Z"
 SAU = "2026-11-01T11:00:00Z"
-TRUOC = "2026-11-01T09:00:00Z"
+MUON_HON = "2026-11-01T12:00:00Z"
+NGUOI_TIN = ["nguoi-duyet", "tac-gia", "dong-tac"]
 
 
-def check(sha=SHA, status="completed", conclusion="success", app="github-actions"):
-    return {"head_sha": sha, "status": status, "conclusion": conclusion, "app_slug": app}
+def check(sha=SHA, status="completed", conclusion="success"):
+    return {"head_sha": sha, "status": status, "conclusion": conclusion}
 
 
-def duyet(user="nguoi-duyet", commit=SHA, gio=SAU, state="APPROVED", vai="MEMBER", loai="User", body=""):
-    return {"user": user, "user_type": loai, "association": vai, "state": state,
-            "commit_id": commit, "submitted_at": gio, "body": body}
+def duyet(user="nguoi-duyet", commit=SHA, gio=SAU, state="APPROVED", loai="User", body=""):
+    return {"user": user, "user_type": loai, "state": state, "commit_id": commit, "submitted_at": gio, "body": body}
 
 
 def tep(ten="a.py", them=1, xoa=0, status="modified", patch="@@ -1 +1 @@\n+x"):
@@ -25,9 +24,10 @@ def tep(ten="a.py", them=1, xoa=0, status="modified", patch="@@ -1 +1 @@\n+x"):
 
 def pr(ds_tep=None, checks=None, ds_duyet=None, **khac):
     ds_tep = [tep()] if ds_tep is None else ds_tep
-    d = {"sha_dau": SHA, "trang_thai_pr": "open", "tac_gia": "tac-gia", "nguoi_commit": ["tac-gia"],
-         "so_tep_khai": len(ds_tep), "tep": ds_tep, "check_nhanh": [check()] if checks is None else checks,
-         "duyet": ds_duyet or [], "push_cuoi": PUSH}
+    d = {"sha_dau": SHA, "trang_thai_pr": "open", "nhanh_dich": "main", "so_pr_vao_goc": 1, "tac_gia": "tac-gia",
+         "nguoi_commit": ["tac-gia"], "so_commit_khai": 1, "so_commit_doc": 1, "so_tep_khai": len(ds_tep),
+         "tep": ds_tep, "lan_chay_nhanh": [check()] if checks is None else checks, "nguoi_tin": NGUOI_TIN,
+         "duyet": ds_duyet or []}
     d.update(khac)
     return d
 
@@ -58,12 +58,16 @@ class TestCongNhanh(unittest.TestCase):
         c = check(status="in_progress", conclusion=None)
         self.assertEqual(quyet_dinh(pr(checks=[c]))["ket_luan"], CHO)
 
-    def test_nguon_la_thi_chan(self):
-        self.assertEqual(quyet_dinh(pr(checks=[check(app="app-la")]))["ket_luan"], CHAN)
-
     def test_mot_xanh_mot_do_thi_chan(self):
-        q = quyet_dinh(pr(checks=[check(), check(conclusion="failure")]))
-        self.assertEqual(q["ket_luan"], CHAN)
+        for ds in ([check(), check(conclusion="failure")], [check(conclusion="cancelled"), check()]):
+            self.assertEqual(quyet_dinh(pr(checks=ds))["ket_luan"], CHAN)
+
+    def test_mot_xanh_mot_dang_chay_thi_cho(self):
+        q = quyet_dinh(pr(checks=[check(), check(status="queued", conclusion=None)]))
+        self.assertEqual(q["ket_luan"], CHO)
+
+    def test_luot_cua_sha_khac_khong_anh_huong(self):
+        self.assertEqual(quyet_dinh(pr(checks=[check(), check(SHA_CU, conclusion="failure")]))["ket_luan"], CHO_QUA)
 
     def test_rui_ro_cao_khong_can_cho_check(self):
         self.assertEqual(quyet_dinh(pr(CAO, checks=[]))["ket_luan"], CHAN)
@@ -89,20 +93,6 @@ class TestDuyet(unittest.TestCase):
         q = quyet_dinh(pr(CAO, ds_duyet=[duyet(user="dong-tac")], nguoi_commit=["tac-gia", "dong-tac"]))
         self.assertEqual(q["ket_luan"], CHAN)
 
-    def test_duyet_truoc_push_cuoi(self):
-        q = quyet_dinh(pr(CAO, ds_duyet=[duyet(gio=TRUOC)]))
-        self.assertEqual(q["ket_luan"], CHAN)
-        self.assertIn("push cuối", " ".join(q["chi_tiet"]))
-
-    def test_duyet_dung_luc_push_khong_tinh(self):
-        self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=[duyet(gio=PUSH)]))["ket_luan"], CHAN)
-
-    def test_khong_biet_gio_push_khong_tinh(self):
-        self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=[duyet()], push_cuoi=None))["ket_luan"], CHAN)
-
-    def test_gio_sai_dang_khong_tinh(self):
-        self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=[duyet(gio="hom qua")]))["ket_luan"], CHAN)
-
     def test_duyet_sha_khac(self):
         q = quyet_dinh(pr(CAO, ds_duyet=[duyet(commit=SHA_CU)]))
         self.assertEqual(q["ket_luan"], CHAN)
@@ -113,36 +103,67 @@ class TestDuyet(unittest.TestCase):
             with self.subTest(kw):
                 self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=[duyet(**kw)]))["ket_luan"], CHAN)
 
-    def test_nguoi_ngoai_repo_cong_khai_khong_duyet_duoc(self):
-        for vai in ("NONE", "CONTRIBUTOR", "FIRST_TIME_CONTRIBUTOR", None):
-            with self.subTest(vai):
-                self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=[duyet(vai=vai)]))["ket_luan"], CHAN)
+    def test_ten_bot_khong_duyet_duoc_du_khai_la_nguoi(self):
+        q = quyet_dinh(pr(CAO, ds_duyet=[duyet(user="may[bot]", loai="User")], nguoi_tin=["may[bot]"]))
+        self.assertEqual(q["ket_luan"], CHAN)
+
+    def test_ngoai_danh_sach_khong_duyet_duoc(self):
+        q = quyet_dinh(pr(CAO, ds_duyet=[duyet(user="agent-khac")]))
+        self.assertEqual(q["ket_luan"], CHAN)
+        self.assertIn("không có trong danh sách", " ".join(q["chi_tiet"]))
+
+    def test_ngoai_danh_sach_khong_mo_duoc_ngoai_le_co(self):
+        ds = [duyet(user="agent-khac", body="ngoai-le-co: máy sinh, tôi đã đọc rồi")]
+        self.assertEqual(quyet_dinh(pr([tep(them=900)], ds_duyet=ds))["ket_luan"], CHAN)
+
+    def test_danh_sach_rong_chan_moi_pr(self):
+        for rong in ([], None):
+            q = quyet_dinh(pr(nguoi_tin=rong))
+            self.assertEqual(q["ket_luan"], CHAN)
+            self.assertIn("chưa khai", " ".join(q["ly_do"]))
+
+    def test_danh_sach_khong_phan_biet_hoa_thuong(self):
+        self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=[duyet(user="Nguoi-Duyet")]))["ket_luan"], CHO_QUA)
 
     def test_duyet_bi_huy_khong_tinh(self):
-        ds = [duyet(), duyet(state="DISMISSED", gio="2026-11-01T12:00:00Z")]
+        ds = [duyet(), duyet(state="DISMISSED", gio=MUON_HON)]
         self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=ds))["ket_luan"], CHAN)
 
     def test_trang_thai_dismissed_tu_dau(self):
         self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=[duyet(state="DISMISSED")]))["ket_luan"], CHAN)
 
     def test_binh_luan_sau_duyet_khong_huy_duyet(self):
-        ds = [duyet(), duyet(state="COMMENTED", gio="2026-11-01T12:00:00Z")]
+        ds = [duyet(), duyet(state="COMMENTED", gio=MUON_HON)]
         self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=ds))["ket_luan"], CHO_QUA)
 
     def test_yeu_cau_sua_sau_duyet_cung_nguoi_thi_chan(self):
-        ds = [duyet(), duyet(state="CHANGES_REQUESTED", gio="2026-11-01T12:00:00Z")]
+        ds = [duyet(), duyet(state="CHANGES_REQUESTED", gio=MUON_HON)]
         self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=ds))["ket_luan"], CHAN)
 
     def test_yeu_cau_sua_dung_sha_chan_ca_rui_ro_thap(self):
         q = quyet_dinh(pr(ds_duyet=[duyet(state="CHANGES_REQUESTED")]))
         self.assertEqual(q["ket_luan"], CHAN)
 
-    def test_yeu_cau_sua_cua_sha_cu_khong_chan_rui_ro_thap(self):
+    def test_yeu_cau_sua_cua_sha_cu_van_chan(self):
+        # Commit rỗng không được xoá yêu cầu sửa.
         q = quyet_dinh(pr(ds_duyet=[duyet(state="CHANGES_REQUESTED", commit=SHA_CU)]))
-        self.assertEqual(q["ket_luan"], CHO_QUA)
+        self.assertEqual(q["ket_luan"], CHAN)
 
-    def test_nguoi_ngoai_yeu_cau_sua_khong_chan(self):
-        q = quyet_dinh(pr(ds_duyet=[duyet(state="CHANGES_REQUESTED", vai="NONE")]))
+    def test_yeu_cau_sua_bi_go_van_chan_den_khi_duyet_lai(self):
+        go = duyet(state="DISMISSED")
+        self.assertEqual(quyet_dinh(pr(ds_duyet=[go]))["ket_luan"], CHAN)
+        self.assertEqual(quyet_dinh(pr(ds_duyet=[go, duyet(gio=MUON_HON)]))["ket_luan"], CHO_QUA)
+
+    def test_duyet_lai_sau_yeu_cau_sua_thi_qua(self):
+        ds = [duyet(state="CHANGES_REQUESTED", commit=SHA_CU, gio=SAU), duyet(gio=MUON_HON)]
+        self.assertEqual(quyet_dinh(pr(ds_duyet=ds))["ket_luan"], CHO_QUA)
+
+    def test_thu_tu_theo_gio_khong_theo_danh_sach(self):
+        ds = [duyet(state="CHANGES_REQUESTED", gio=MUON_HON), duyet(gio=SAU)]
+        self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=ds))["ket_luan"], CHAN)
+
+    def test_ngoai_danh_sach_yeu_cau_sua_khong_chan(self):
+        q = quyet_dinh(pr(ds_duyet=[duyet(user="nguoi-la", state="CHANGES_REQUESTED")]))
         self.assertEqual(q["ket_luan"], CHO_QUA)
 
     def test_khong_ro_tac_gia_thi_khong_tinh_duyet(self):
@@ -206,6 +227,20 @@ class TestDuLieuHong(unittest.TestCase):
 
     def test_danh_sach_tep_bi_cat(self):
         self.assertEqual(quyet_dinh(pr(so_tep_khai=3001))["ket_luan"], CHAN)
+
+    def test_danh_sach_commit_bi_cat(self):
+        # /pulls/N/commits trả tối đa 250: người có commit sau đó sẽ không bị coi là tác giả.
+        self.assertEqual(quyet_dinh(pr(so_commit_khai=300, so_commit_doc=250))["ket_luan"], CHAN)
+
+    def test_base_khac_goc(self):
+        for base in ("x", "", None):
+            with self.subTest(base):
+                self.assertEqual(quyet_dinh(pr(nhanh_dich=base))["ket_luan"], CHAN)
+
+    def test_phai_dung_mot_pr_vao_goc(self):
+        for so in (0, 2, None):
+            with self.subTest(so):
+                self.assertEqual(quyet_dinh(pr(so_pr_vao_goc=so))["ket_luan"], CHAN)
 
     def test_thieu_khoa_thi_khong_qua(self):
         self.assertEqual(quyet_dinh({})["ket_luan"], CHAN)

@@ -17,13 +17,13 @@ sys.path.insert(0, str(GOC))
 from cong import kiem_pr, ten  # noqa: E402
 
 MAU, LOI = GOC / "nghiem-thu/app-mau", GOC / "nghiem-thu/loi"
-PUSH, SAU = "2026-11-01T10:00:00Z", "2026-11-01T11:00:00Z"
+SAU = "2026-11-01T11:00:00Z"
 TAC_GIA = "tac-gia"
 TRANG_THAI = {"A": "added", "M": "modified", "D": "removed", "R": "renamed", "C": "copied", "T": "changed"}
 
 
 def _duyet(nguoi):
-    return lambda sha: [{"user": nguoi, "user_type": "User", "association": "MEMBER", "state": "APPROVED",
+    return lambda sha: [{"user": nguoi, "user_type": "User", "state": "APPROVED",
                          "commit_id": sha, "submitted_at": SAU, "body": ""}]
 
 
@@ -37,6 +37,7 @@ CAC_CA = [
     ("L6", "L6-doi-khoa", None, kiem_pr.CHAN, "KHÔNG: quyết định này không dừng được job; chỉ environment giữ khoá."),
     ("ĐC-duyet", "L2-xoa-test", _duyet("nguoi-khac"), kiem_pr.CHO_QUA, "CÓ: duyệt hợp lệ mở được rủi ro cao."),
     ("ĐC-tu-duyet", "L2-xoa-test", _duyet(TAC_GIA), kiem_pr.CHAN, "CÓ: tác giả tự duyệt không tính."),
+    ("ĐC-agent-duyet", "L2-xoa-test", _duyet("agent-khac"), kiem_pr.CHAN, "CÓ: người ngoài danh sách không duyệt được."),
 ]
 
 
@@ -92,8 +93,8 @@ def _chay_cong_nhanh(thu_muc, sha, tam):
                                                  capture_output=True).returncode == 0
     except subprocess.TimeoutExpired:
         xanh = False
-    return ([{"head_sha": sha, "status": "completed", "conclusion": "success" if xanh else "failure",
-              "app_slug": kiem_pr.APP_CHECK_NHANH}], "xanh" if xanh else "đỏ")
+    return ([{"head_sha": sha, "status": "completed", "conclusion": "success" if xanh else "failure"}],
+            "xanh" if xanh else "đỏ")
 
 
 def _dung_pr(tam, ban_va, ai_duyet):
@@ -108,10 +109,11 @@ def _dung_pr(tam, ban_va, ai_duyet):
         _git(thu_muc, "commit", "-qm", ban_va)
     sha = _git(thu_muc, "rev-parse", "HEAD").strip()
     ds_tep = _phan_tep_api(thu_muc, goc, sha)
-    checks, nhanh = _chay_cong_nhanh(thu_muc, sha, tam)
-    return {"sha_dau": sha, "trang_thai_pr": "open", "tac_gia": TAC_GIA, "nguoi_commit": [TAC_GIA],
-            "so_tep_khai": len(ds_tep), "tep": ds_tep, "check_nhanh": checks, "push_cuoi": PUSH,
-            "duyet": ai_duyet(sha) if ai_duyet else []}, nhanh
+    lan_chay, nhanh = _chay_cong_nhanh(thu_muc, sha, tam)
+    return {"sha_dau": sha, "trang_thai_pr": "open", "nhanh_dich": ten.NHANH_GOC, "so_pr_vao_goc": 1,
+            "tac_gia": TAC_GIA, "nguoi_commit": [TAC_GIA], "so_commit_khai": 1, "so_commit_doc": 1,
+            "so_tep_khai": len(ds_tep), "tep": ds_tep, "lan_chay_nhanh": lan_chay,
+            "nguoi_tin": ["nguoi-khac", TAC_GIA], "duyet": ai_duyet(sha) if ai_duyet else []}, nhanh
 
 
 def _xet(ban_va, ai_duyet=None):

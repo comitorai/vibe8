@@ -8,6 +8,7 @@ from cong import ten
 GOC = Path(__file__).resolve().parents[2]
 NHANH = (GOC / ".github/workflows/cong-nhanh.yml").read_text(encoding="utf-8")
 CUOI = (GOC / ".github/workflows/cong-cuoi.yml").read_text(encoding="utf-8")
+TIN_HIEU = (GOC / ".github/workflows/tin-hieu-duyet.yml").read_text(encoding="utf-8")
 
 
 def khoi_run(yml):
@@ -27,7 +28,7 @@ def khoi_run(yml):
     return ket
 
 
-class TestChungHaiWorkflow(unittest.TestCase):
+class TestChungCacWorkflow(unittest.TestCase):
     def test_khoi_run_doc_duoc_chu(self):
         self.assertEqual(len(khoi_run(CUOI)), 1)
         self.assertEqual(khoi_run("a:\n  - run: |\n      x\n      y\n  - b: c"), ["|\n      x\n      y"])
@@ -40,7 +41,7 @@ class TestChungHaiWorkflow(unittest.TestCase):
                 self.assertRegex(x, r"^[\w./-]+@[0-9a-f]{40}$")
 
     def test_khong_noi_suy_vao_run(self):
-        for yml in (NHANH, CUOI):
+        for yml in (NHANH, CUOI, TIN_HIEU):
             for khoi in khoi_run(yml):
                 self.assertNotIn("${{", khoi)
 
@@ -52,6 +53,7 @@ class TestChungHaiWorkflow(unittest.TestCase):
 class TestCongNhanh(unittest.TestCase):
     def test_su_kien_va_quyen(self):
         self.assertIn("\n  pull_request:\n", NHANH)
+        self.assertRegex(NHANH, r"types: \[[^\]]*\bedited\b")  # đổi base phải sinh lượt mới
         self.assertNotIn("pull_request_target", NHANH)
         self.assertIn("permissions:\n  contents: read\n", NHANH)
 
@@ -63,6 +65,10 @@ class TestCongNhanh(unittest.TestCase):
     def test_ten_check(self):
         self.assertIn("name: %s\n" % ten.CHECK_NHANH, NHANH)
 
+    def test_khong_huy_luot_dang_chay(self):
+        # Lượt bị huỷ thành `cancelled`, mà cổng đòi mọi lượt của SHA đều xanh.
+        self.assertNotIn("concurrency", NHANH)
+
     def test_app_mau_cung_ban(self):
         mau = (GOC / "nghiem-thu/app-mau/.github/workflows/cong-nhanh.yml").read_text(encoding="utf-8")
         self.assertEqual(mau, NHANH)
@@ -70,13 +76,15 @@ class TestCongNhanh(unittest.TestCase):
 
 class TestCongCuoi(unittest.TestCase):
     def test_su_kien(self):
-        self.assertIn("\n  pull_request_target:\n", CUOI)
-        self.assertIn("\n  pull_request_review:\n", CUOI)
-        self.assertNotRegex(CUOI, r"\n  pull_request:")
+        self.assertRegex(CUOI, r"\n  pull_request_target:[^\n]*\n    branches: \[%s\]\n" % ten.NHANH_GOC)
+        self.assertRegex(CUOI, r"\n  workflow_run:[^\n]*\n    workflows: \[%s, tin-hieu-duyet\]\n" % ten.CHECK_NHANH)
+        self.assertNotRegex(CUOI, r"\n  pull_request(_review)?:")
 
     def test_khong_cham_ma_pr(self):
+        # Khoá concurrency được dùng SHA của PR; phần job thì không.
+        job = re.sub(r"(?m)^\s*#.*$", "", CUOI.split("\njobs:")[1])
         for cam in ("pull_request.head", "head_ref", "github.event.pull_request.merge", "refs/pull", "github.sha"):
-            self.assertNotIn(cam, re.sub(r"(?m)^\s*#.*$", "", CUOI))
+            self.assertNotIn(cam, job)
 
     def test_checkout_nhanh_goc(self):
         self.assertEqual(CUOI.count("actions/checkout@"), 1)
@@ -88,7 +96,8 @@ class TestCongCuoi(unittest.TestCase):
         self.assertNotRegex(CUOI, r"(?<!permission-)(contents|checks|pull-requests|actions|statuses): write")
         self.assertIn("permission-checks: write", CUOI)
         self.assertIn("permission-pull-requests: read", CUOI)
-        self.assertEqual(len(re.findall(r"permission-[\w-]+:", CUOI)), 2)
+        self.assertIn("permission-actions: read", CUOI)
+        self.assertEqual(len(re.findall(r"permission-[\w-]+:", CUOI)), 3)
 
     def test_khoa_chi_qua_environment(self):
         self.assertIn("environment: %s\n" % ten.MOI_TRUONG, CUOI)
@@ -101,13 +110,29 @@ class TestCongCuoi(unittest.TestCase):
         self.assertEqual(len(ten_job), 1)
         self.assertNotEqual(ten_job[0], ten.CHECK_CUOI)
 
-    def test_luot_review_khong_huy_luot_target(self):
-        self.assertIn("${{ github.event_name }}", CUOI.split("cancel-in-progress")[0])
+    def test_luot_xet_gom_theo_sha_khong_huy(self):
+        self.assertIn("group: cong-cuoi-${{ github.event.workflow_run.head_sha ||", CUOI)
+        self.assertIn("cancel-in-progress: false", CUOI)
 
     def test_goi_dung_bien(self):
         self.assertIn("%s: ${{ steps.token.outputs.token }}" % ten.BIEN_TOKEN_APP, CUOI)
         self.assertIn("%s: ${{ github.event.pull_request.number }}" % ten.BIEN_PR, CUOI)
+        self.assertIn("%s: ${{ github.event.workflow_run.head_sha }}" % ten.BIEN_SHA, CUOI)
+        self.assertIn("%s: ${{ vars.%s }}" % (ten.BIEN_NGUOI_DUYET, ten.BIEN_NGUOI_DUYET), CUOI)
         self.assertIn("python3 -m cong.gate_app", CUOI)
+
+
+class TestTinHieuDuyet(unittest.TestCase):
+    def test_chi_danh_thuc_khong_co_gi_de_lay(self):
+        self.assertIn("\npermissions: {}\n", TIN_HIEU)
+        for cam in ("secrets.", "uses:", "environment:", "vars.", "${{"):
+            self.assertNotIn(cam, TIN_HIEU)
+
+    def test_nghe_du_loai_lan_xet(self):
+        self.assertIn("\n  pull_request_review:\n    types: [submitted, edited, dismissed]\n", TIN_HIEU)
+
+    def test_ten_khop_cong_cuoi(self):
+        self.assertIn("name: tin-hieu-duyet\n", TIN_HIEU)
 
 
 class TestAppMau(unittest.TestCase):

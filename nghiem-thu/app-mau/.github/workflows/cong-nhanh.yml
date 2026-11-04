@@ -2,13 +2,11 @@ name: cong-nhanh
 
 on:
   pull_request:
+    # edited: đổi base phải sinh lượt mới, không được dùng lại lượt của base cũ.
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
-
-concurrency:
-  group: cong-nhanh-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
 
 jobs:
   cong-nhanh:

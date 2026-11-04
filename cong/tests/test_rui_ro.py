@@ -23,7 +23,8 @@ class TestMuc(unittest.TestCase):
     def test_tep_cong_la_cao(self):
         for ten in (".github/workflows/a.yml", ".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS",
                     "xuong.yml", "luat/luat.yml", "cong/kiem_pr.py", "kiem-tra.sh", "scripts/check.sh",
-                    "Makefile", "conftest.py", "vitest.config.ts", "nghiem-thu/app-mau/.github/workflows/x.yml"):
+                    "Makefile", "conftest.py", "vitest.config.ts", "nghiem-thu/app-mau/.github/workflows/x.yml",
+                    "nghiem-thu/kiem_cuc_bo.py", "nghiem-thu/bat_cong.py", "nghiem-thu/loi/L1-logic.patch"):
             with self.subTest(ten):
                 self.assertEqual(phan_loai([tep(ten)])["muc"], CAO)
 
@@ -45,8 +46,11 @@ class TestMuc(unittest.TestCase):
         t = tep(".github/workflows/x.yml", "renamed", 0, 0, None, previous_filename="docs/x.yml")
         self.assertEqual(phan_loai([t])["muc"], CAO)
 
-    def test_lockfile_toi_thieu_trung_binh(self):
-        self.assertEqual(phan_loai([tep("web/pnpm-lock.yaml")])["muc"], TRUNG_BINH)
+    def test_app_mau_van_co_ca_rui_ro_thap(self):
+        self.assertEqual(phan_loai([tep("nghiem-thu/app-mau/hoa_don/tinh.py")])["muc"], THAP)
+
+    def test_lockfile_la_cao(self):
+        self.assertEqual(phan_loai([tep("web/pnpm-lock.yaml")])["muc"], CAO)
 
     def test_lockfile_khong_ha_muc_cao(self):
         self.assertEqual(phan_loai([tep("yarn.lock"), tep("CODEOWNERS")])["muc"], CAO)
@@ -62,27 +66,40 @@ class TestMuc(unittest.TestCase):
         self.assertEqual(phan_loai([tep("a.py", "changed", 0, 0, None)])["muc"], TRUNG_BINH)
 
 
-class TestPackageJson(unittest.TestCase):
-    def test_doi_script_check_la_cao(self):
-        p = '@@ -1 +1 @@\n-  "check": "pnpm test"\n+  "check": "echo ok"'
-        self.assertEqual(phan_loai([tep("package.json", them=1, xoa=1, patch=p)])["muc"], CAO)
+class TestPhuThuoc(unittest.TestCase):
+    def test_moi_tep_khai_phu_thuoc_la_cao(self):
+        for ten in ("package.json", "web/package.json", "pyproject.toml", "go.mod", "requirements.txt",
+                    "requirements-dev.txt", "setup.py", "setup.cfg", "Cargo.toml", "Gemfile", "composer.json",
+                    "Pipfile", ".npmrc", "pnpm-workspace.yaml"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten)])["muc"], CAO)
 
-    def test_chi_doi_phu_thuoc_la_trung_binh(self):
-        p = '@@ -1 +1 @@\n-  "left-pad": "1.0.0"\n+  "left-pad": "1.0.1"'
-        self.assertEqual(phan_loai([tep("package.json", them=1, xoa=1, patch=p)])["muc"], TRUNG_BINH)
+    def test_lockfile_khong_tinh_vao_co(self):
+        r = phan_loai([tep("web/Yarn.lock", them=5000, xoa=5000), tep("a.py", them=3)])
+        self.assertEqual(r["so_dong"], 3)
+        self.assertFalse(r["qua_co"])
 
-    def test_khong_doc_duoc_diff_la_cao(self):
-        self.assertEqual(phan_loai([tep("package.json", patch=None)])["muc"], CAO)
+    def test_tep_thuong_trung_ten_gan_giong_lockfile_van_tinh_co(self):
+        self.assertTrue(phan_loai([tep("yarn.lock.txt", them=500)])["qua_co"])
+
+    def test_ten_khong_phai_chuoi_khong_lam_hong_cach_dem(self):
+        self.assertEqual(phan_loai([tep(7, them=5)])["so_dong"], 5)
 
 
 class TestGiamTest(unittest.TestCase):
     def test_xoa_tep_test(self):
-        for ten in ("tests/test_a.py", "a_test.go", "web/a.spec.ts", "src/__tests__/a.js"):
+        for ten in ("tests/test_a.py", "a_test.go", "web/a.spec.ts", "src/__tests__/a.js", "app/tests.py",
+                    "testing/x.py", "test.py", "a.test.js", "a-test.rs"):
             with self.subTest(ten):
                 t = tep(ten, "removed", 0, 5, "@@ -1,5 +0,0 @@\n-x")
                 r = phan_loai([t])
                 self.assertEqual(r["muc"], CAO)
                 self.assertIn("xoá test", r["ly_do"][0])
+
+    def test_ten_gan_giong_khong_phai_test(self):
+        for ten in ("latest.py", "contest.py", "docs/spec.md", "inspect.py", "testdata.csv"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "removed", 0, 5, "@@ -1,5 +0,0 @@\n-x")])["muc"], THAP)
 
     def test_doi_ten_test_ra_ngoai(self):
         t = tep("docs/a.txt", "renamed", 0, 0, None, previous_filename="tests/test_a.py")
@@ -102,6 +119,16 @@ class TestGiamTest(unittest.TestCase):
         r = phan_loai([t])
         self.assertEqual(r["muc"], CAO)
         self.assertIn("khẳng định", r["ly_do"][0])
+
+    def test_chu_thich_hoa_khang_dinh_la_giam(self):
+        for moi in ("# assert g()", "    // expect(a)", "x = 1  # assert g()"):
+            with self.subTest(moi):
+                p = "@@ -1 +1 @@\n-    assert g()\n+" + moi
+                self.assertEqual(phan_loai([tep("tests/test_a.py", them=1, xoa=1, patch=p)])["muc"], CAO)
+
+    def test_bo_chu_thich_co_chu_assert_khong_phai_giam(self):
+        p = "@@ -1 +1 @@\n-    # assert g()\n+    x = 1"
+        self.assertEqual(phan_loai([tep("tests/test_a.py", them=1, xoa=1, patch=p)])["muc"], THAP)
 
     def test_them_bo_qua_test(self):
         for dong in ("@unittest.skip('x')", "self.skipTest('x')", "it.only('a', f)", "xit('a', f)",

@@ -13,7 +13,7 @@ THAP, TRUNG_BINH, CAO = "thap", "trung_binh", "cao"
 NGUONG_CO_DONG = 400
 
 _THU_TU = {THAP: 0, TRUNG_BINH: 1, CAO: 2}
-_GOC_BAO_VE = ("cong/", "luat/")
+_GOC_BAO_VE = ("cong/", "luat/", "nghiem-thu/kiem_cuc_bo.py", "nghiem-thu/bat_cong.py", "nghiem-thu/loi/")
 _TEP_BAO_VE = {
     ten.TEP_CAU_HINH, "codeowners", "makefile", "justfile", "noxfile.py", "tox.ini",
     "pytest.ini", "conftest.py", ".gitattributes", ".gitmodules",
@@ -24,10 +24,11 @@ _LOCKFILE = {
     "bun.lockb", "poetry.lock", "uv.lock", "pipfile.lock", "cargo.lock", "go.sum",
     "gemfile.lock", "composer.lock",
 }
-_MANIFEST = re.compile(r"^(package\.json|pyproject\.toml|go\.mod|requirements[^/]*\.txt)$")
-_KHOA_SCRIPT = re.compile(r'"(scripts|(pre|post)?(check|test|lint|typecheck|build)[^"]*)"\s*:')
-_THU_MUC_TEST = {"test", "tests", "__tests__", "spec", "specs", "e2e"}
-_TEN_TEST = re.compile(r"^test_.*\.py$|_test\.(py|go|rb)$|\.(test|spec)\.[cm]?[jt]sx?$")
+_MANIFEST = re.compile(r"^(package\.json|pyproject\.toml|go\.mod|requirements[^/]*\.txt|setup\.py|setup\.cfg|cargo\.toml"
+                       r"|gemfile|composer\.json|pipfile|\.npmrc|pnpm-workspace\.yaml)$")
+_THU_MUC_TEST = {"test", "tests", "testing", "__tests__", "spec", "specs", "e2e"}
+_TEN_TEST = re.compile(r"(^|[._-])(tests?|spec)([._-][^/]*)?\.(py|go|rb|rs|java|kt|php|[cm]?[jt]sx?)$")
+_CHU_THICH = re.compile(r"\s*(#|//).*$")
 _KHANG_DINH = re.compile(r"\bassert\w*\b|\bexpect\(|\bdef test\w*|\b(it|test)\(")
 _BO_QUA_TEST = re.compile(r"unittest\.skip|skipTest|mark\.(skip|xfail)|\.(skip|only)\(|\b(xit|xdescribe|xtest)\(")
 
@@ -69,13 +70,13 @@ def _so_dong(tep):
 
 
 def _dong_doi(patch):
-    them, xoa = [], []
-    for dong in patch.splitlines():
-        if dong.startswith("+"):
-            them.append(dong[1:])
-        elif dong.startswith("-"):
-            xoa.append(dong[1:])
-    return them, xoa
+    dong = patch.splitlines()
+    return [d[1:] for d in dong if d.startswith("+")], [d[1:] for d in dong if d.startswith("-")]
+
+
+def _dem_khang_dinh(dong):
+    """Không tính phần chú thích: đổi `assert` thành `# assert` là mất một khẳng định."""
+    return sum(len(_KHANG_DINH.findall(_CHU_THICH.sub("", d))) for d in dong)
 
 
 def _xet_test(tep, moi, cu, them, xoa):
@@ -93,24 +94,16 @@ def _xet_test(tep, moi, cu, them, xoa):
     dong_them, dong_xoa = _dong_doi(patch)
     if xoa > them:
         ket.append((CAO, "giảm dòng test (-%d/+%d) %s" % (xoa, them, ky_hieu)))
-    mat = sum(len(_KHANG_DINH.findall(d)) for d in dong_xoa)
-    if mat > sum(len(_KHANG_DINH.findall(d)) for d in dong_them):
+    if _dem_khang_dinh(dong_xoa) > _dem_khang_dinh(dong_them):
         ket.append((CAO, "giảm số khẳng định trong test " + ky_hieu))
     if any(_BO_QUA_TEST.search(d) for d in dong_them):
         ket.append((CAO, "thêm bỏ qua test " + ky_hieu))
     return ket
 
 
-def _xet_manifest(tep, ten_tep, them, xoa):
-    ky_hieu = hien_thi(tep["filename"])
-    ket = [(TRUNG_BINH, "đổi tệp khai phụ thuộc " + ky_hieu)]
-    if ten_tep == "package.json" and them + xoa > 0:
-        patch = tep.get("patch")
-        if not isinstance(patch, str):
-            ket.append((CAO, "không đọc được diff của " + ky_hieu))
-        elif any(_KHOA_SCRIPT.search(d) for phan in _dong_doi(patch) for d in phan):
-            ket.append((CAO, "đổi script check trong " + ky_hieu))
-    return ket
+def _la_lockfile(tep):
+    ten_tep = tep.get("filename")
+    return isinstance(ten_tep, str) and _chuan_hoa(ten_tep).split("/")[-1] in _LOCKFILE
 
 
 def _xet_tep(tep):
@@ -132,11 +125,11 @@ def _xet_tep(tep):
     them, xoa = so
     if _la_test(moi) or (cu is not None and _la_test(cu)):
         ket += _xet_test(tep, moi, cu, them, xoa)
-    ten_tep = moi.split("/")[-1]
-    if ten_tep in _LOCKFILE:
-        ket.append((TRUNG_BINH, "đổi lockfile " + hien_thi(ten_moi)))
-    if _MANIFEST.search(ten_tep):
-        ket += _xet_manifest(tep, ten_tep, them, xoa)
+    # Phụ thuộc mới chạy trong CI và app, diff không nói được gói đó làm gì: phải có người xem.
+    if _la_lockfile(tep):
+        ket.append((CAO, "đổi lockfile " + hien_thi(ten_moi)))
+    if _MANIFEST.search(moi.split("/")[-1]):
+        ket.append((CAO, "đổi tệp khai phụ thuộc " + hien_thi(ten_moi)))
     trang_thai = tep.get("status")
     if trang_thai not in ("added", "modified", "removed", "renamed"):
         ket.append((TRUNG_BINH, "loại thay đổi khác thường " + hien_thi(ten_moi)))
@@ -156,5 +149,6 @@ def phan_loai(ds_tep):
             if _THU_TU[muc_tep] > _THU_TU[muc]:
                 muc = muc_tep
         so = _so_dong(tep) if isinstance(tep, dict) else None
-        tong += sum(so) if so else 0
+        # Lockfile do máy sinh, không tính vào cỡ: đã là rủi ro cao, không cần thêm `ngoai-le-co`.
+        tong += sum(so) if so and not _la_lockfile(tep) else 0
     return {"muc": muc, "ly_do": ly_do, "so_dong": tong, "qua_co": tong > NGUONG_CO_DONG}

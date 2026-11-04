@@ -1,0 +1,18 @@
+# Chỉ báo «có lượt duyệt» để workflow_run đánh thức cổng. Không secret, không quyền, không checkout.
+# Chạy theo bản của PR, nên PR sửa hay xoá được: khi đó diff đổi .github là rủi ro cao, và không có
+# tín hiệu thì check cũ ở lại. Cổng không đọc gì từ đây, chỉ đọc lại lượt duyệt qua API.
+name: tin-hieu-duyet
+
+on:
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions: {}
+
+jobs:
+  bao:
+    name: bao-co-luot-duyet
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - run: echo "có lượt duyệt"

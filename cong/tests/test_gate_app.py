@@ -3,6 +3,7 @@ import http.server
 import io
 import json
 import os
+import re
 import threading
 import unittest
 import urllib.error
@@ -21,13 +22,22 @@ def du_lieu():
     return json.loads(MAU.read_text(encoding="utf-8"))
 
 
-def chay(gh, **kw):
+def chay(gh, so_pr="7", sha=None, nguoi_tin=("khac", "tac-gia")):
     ra = io.StringIO()
     with contextlib.redirect_stdout(ra):
-        kw.setdefault("cho_giay", 0)
-        kw.setdefault("ngu", lambda s: None)
-        ma = gate_app.chay(gh, "7", **kw)
+        ma = gate_app.chay(gh, list(nguoi_tin), so_pr, sha)
     return ma, ra.getvalue()
+
+
+def lan_chay(d):
+    return d["/actions/workflows/cong-nhanh.yml/runs?head_sha=%s&event=pull_request" % SHA]["workflow_runs"]
+
+
+def can_duyet(d, login="khac", **khac):
+    d["/pulls/7/files"][0]["filename"] = "CODEOWNERS"
+    d["/pulls/7/reviews"] = [dict({"user": {"login": login, "type": "User"}, "state": "APPROVED", "commit_id": SHA,
+                                   "submitted_at": "2026-11-02T00:00:00Z", "body": ""}, **khac)]
+    return d
 
 
 class TestChay(unittest.TestCase):
@@ -55,68 +65,120 @@ class TestChay(unittest.TestCase):
         self.assertEqual(ma, 0)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
 
-    def test_het_gio_cho_phat_failure_khong_neutral(self):
+    def test_ci_chua_xong_phat_failure_ghi_ro_dang_cho(self):
         d = du_lieu()
-        d["/commits/%s/check-runs" % SHA]["check_runs"][0].update(status="in_progress", conclusion=None)
+        lan_chay(d)[0].update(status="in_progress", conclusion=None)
         gh = gate_app.GiaLap(d)
         ma, _ = chay(gh)
         self.assertEqual(ma, 0)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
-        self.assertIn("hết 0 giây", gh.da_phat[0][2]["output"]["summary"])
+        self.assertTrue(gh.da_phat[0][2]["output"]["title"].startswith("cho "))
 
-    def test_cho_toi_khi_cong_nhanh_xong(self):
+    def test_luot_do_khong_duoc_luot_xanh_che(self):
         d = du_lieu()
-        ds = d["/commits/%s/check-runs" % SHA]["check_runs"]
-        ds[0].update(status="in_progress", conclusion=None)
-        gh = gate_app.GiaLap(d)
-        lan_ngu = []
-
-        def ngu(giay):
-            lan_ngu.append(giay)
-            ds[0].update(status="completed", conclusion="success")
-
-        ma, _ = chay(gh, cho_giay=600, nghi=15, ngu=ngu)
-        self.assertEqual((ma, lan_ngu), (0, [15]))
-        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
-
-    def test_check_ten_khac_khong_tinh(self):
-        d = du_lieu()
-        d["/commits/%s/check-runs" % SHA]["check_runs"][0]["name"] = "cong-nhanh-gia"
-        gh = gate_app.GiaLap(d)
-        chay(gh)
-        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
-
-    def test_khong_co_gio_suite_thi_duyet_khong_tinh(self):
-        d = du_lieu()
-        d["/pulls/7/files"][0]["filename"] = "CODEOWNERS"
-        d["/commits/%s/check-suites" % SHA]["check_suites"] = []
-        d["/pulls/7/reviews"] = [{
-            "user": {"login": "khac", "type": "User"}, "author_association": "MEMBER", "state": "APPROVED",
-            "commit_id": SHA, "submitted_at": "2026-11-02T00:00:00Z", "body": ""}]
+        lan_chay(d).append({"head_sha": SHA, "status": "completed", "conclusion": "failure"})
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
 
     def test_duyet_hop_le_qua_duong_api(self):
-        d = du_lieu()
-        d["/pulls/7/files"][0]["filename"] = "CODEOWNERS"
-        d["/pulls/7/reviews"] = [{
-            "user": {"login": "khac", "type": "User"}, "author_association": "MEMBER", "state": "APPROVED",
-            "commit_id": SHA, "submitted_at": "2026-11-02T00:00:00Z", "body": ""}]
+        gh = gate_app.GiaLap(can_duyet(du_lieu()))
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
+
+    def test_nguoi_ngoai_danh_sach_khong_duyet_duoc(self):
+        gh = gate_app.GiaLap(can_duyet(du_lieu()))
+        chay(gh, nguoi_tin=("nguoi-khac",))
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_author_commit_khong_duyet_duoc(self):
+        d = can_duyet(du_lieu())
+        d["/pulls/7/commits"][0]["author"] = {"login": "khac"}
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_committer_khong_duyet_duoc(self):
+        d = can_duyet(du_lieu())
+        d["/pulls/7/commits"][0]["committer"] = {"login": "khac"}
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_commit_merge_cua_chu_khong_thanh_tu_duyet(self):
+        d = can_duyet(du_lieu())
+        d["/pulls/7"]["commits"] = 2
+        d["/pulls/7/commits"].append({"author": {"login": "khac"}, "committer": {"login": "khac"},
+                                      "parents": [{"sha": "1" * 40}, {"sha": "2" * 40}]})
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
 
-    def test_nguoi_commit_lay_tu_api_khong_duyet_duoc(self):
-        d = du_lieu()
-        d["/pulls/7/files"][0]["filename"] = "CODEOWNERS"
+    def test_commit_khong_ro_cha_van_tinh_la_commit_thuong(self):
+        d = can_duyet(du_lieu())
+        del d["/pulls/7/commits"][0]["parents"]
         d["/pulls/7/commits"][0]["author"] = {"login": "khac"}
-        d["/pulls/7/reviews"] = [{
-            "user": {"login": "khac", "type": "User"}, "author_association": "MEMBER", "state": "APPROVED",
-            "commit_id": SHA, "submitted_at": "2026-11-02T00:00:00Z", "body": ""}]
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_doc_thieu_commit_phat_failure(self):
+        d = du_lieu()
+        d["/pulls/7"]["commits"] = 300
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_base_khac_goc_phat_failure(self):
+        d = du_lieu()
+        d["/pulls/7"]["base"]["ref"] = "x"
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+
+class TestTheoSha(unittest.TestCase):
+    """Đường workflow_run: chỉ có SHA, phải tự tìm PR."""
+
+    def test_tim_duoc_pr_va_phat(self):
+        gh = gate_app.GiaLap(du_lieu())
+        ma, _ = chay(gh, None, SHA)
+        self.assertEqual(ma, 0)
+        self.assertEqual(gh.da_phat[0][2]["head_sha"], SHA)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
+
+    def test_khong_co_pr_thi_khong_phat(self):
+        d = du_lieu()
+        d["/pulls?state=open&base=main"][0]["head"]["sha"] = SHA_MOI
+        gh = gate_app.GiaLap(d)
+        ma, ra = chay(gh, None, SHA)
+        self.assertEqual((ma, gh.da_phat), (0, []))
+        self.assertIn("không có PR", ra)
+
+    def test_hai_pr_cung_sha_phat_failure(self):
+        d = du_lieu()
+        d["/pulls?state=open&base=main"].append({"number": 8, "head": {"sha": SHA}})
+        gh = gate_app.GiaLap(d)
+        chay(gh, None, SHA)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_khong_doc_duoc_pr_van_phat_failure_tren_sha(self):
+        gh = GitHubHong(du_lieu(), "/pulls?state", gate_app.LoiApi("hỏng", 500))
+        ma, _ = chay(gh, None, SHA)
+        self.assertEqual(ma, 1)
+        self.assertEqual([(x[2]["head_sha"], x[2]["conclusion"]) for x in gh.da_phat], [(SHA, "failure")])
+
+
+class TestGiaLap(unittest.TestCase):
+    def test_sai_query_la_loi(self):
+        gh = gate_app.GiaLap(du_lieu())
+        with self.assertRaises(gate_app.LoiApi):
+            gh.goi("GET", "/actions/workflows/cong-nhanh.yml/runs?head_sha=%s" % SHA)
+
+    def test_chi_trang_dau_co_du_lieu(self):
+        gh = gate_app.GiaLap(du_lieu())
+        self.assertTrue(gh.goi("GET", "/pulls/7/files?per_page=100&page=1"))
+        self.assertEqual(gh.goi("GET", "/pulls/7/files?per_page=100&page=2"), [])
 
 
 class GitHubDoiSha(gate_app.GiaLap):
@@ -127,21 +189,20 @@ class GitHubDoiSha(gate_app.GiaLap):
         self.lan = 0
         self.so_lan_doi = so_lan_doi
 
+    def _sha(self):
+        if self.so_lan_doi > 1:
+            return "%040x" % self.lan
+        return SHA if self.lan <= 1 else SHA_MOI
+
     def goi(self, phuong, duong, body=None):
         if duong == "/pulls/7":
             self.lan += 1
-            sha = SHA if self.lan <= 1 else SHA_MOI
-            if self.so_lan_doi > 1:
-                sha = "%040x" % self.lan
-            return dict(self.du_lieu[duong], head={"sha": sha})
-        if "/commits/" in duong and "/commits/%s/" % SHA not in duong:
-            khoa = "check_runs" if "check-runs" in duong else "check_suites"
-            sha_doc = duong.split("/")[2]
-            mau = json.loads(json.dumps(self.du_lieu["/commits/%s/%s" % (SHA, khoa.replace("_", "-"))]))
-            for x in mau[khoa]:
-                if "head_sha" in x:
-                    x["head_sha"] = sha_doc
-            return mau if "page=1" in duong else {khoa: []}
+            return dict(self.du_lieu[duong], head={"sha": self._sha()})
+        if duong.startswith("/pulls?state="):
+            return [{"number": 7, "head": {"sha": self._sha()}}]
+        if duong.startswith("/actions/workflows/"):
+            sha = re.search(r"head_sha=(\w+)", duong).group(1)
+            return {"workflow_runs": [{"head_sha": sha, "status": "completed", "conclusion": "success"}]}
         return super().goi(phuong, duong, body)
 
 
@@ -194,8 +255,7 @@ class TestHong(unittest.TestCase):
     def test_sha_rac_tu_api_khong_phat(self):
         d = du_lieu()
         d["/pulls/7"]["head"]["sha"] = "main"
-        d["/commits/main/check-runs"] = {"check_runs": []}
-        d["/commits/main/check-suites"] = {"check_suites": []}
+        d["/actions/workflows/cong-nhanh.yml/runs?head_sha=main&event=pull_request"] = {"workflow_runs": []}
         gh = gate_app.GiaLap(d)
         ma, _ = chay(gh)
         self.assertEqual(ma, 1)
@@ -231,9 +291,6 @@ class TestGitHub(unittest.TestCase):
         with self.assertRaises(gate_app.LoiApi):
             gate_app.GitHub("chu/repo", TOKEN, "http://api.github.com")
 
-    def test_khong_di_theo_chuyen_huong(self):
-        self.assertIsNone(gate_app._KhongChuyenHuong().redirect_request())
-
     def test_loi_http_khong_mang_than_phan_hoi(self):
         def mo(yeu_cau, timeout):
             raise urllib.error.HTTPError(yeu_cau.full_url, 403, "x", {}, io.BytesIO(b"bi mat phan chieu"))
@@ -243,6 +300,7 @@ class TestGitHub(unittest.TestCase):
         self.assertEqual(ng.exception.ma, 403)
         self.assertNotIn("bi mat", str(ng.exception))
         self.assertNotIn(TOKEN, str(ng.exception))
+        self.assertIn("bi mat", ng.exception.than)
 
     def test_doc_het_cac_trang(self):
         trang = {1: [{"n": i} for i in range(100)], 2: [{"n": 100}]}
@@ -320,6 +378,31 @@ class TestMain(unittest.TestCase):
         for pr in ("", "0", "-1", "7/../../x", "7\n"):
             with self.subTest(repr(pr)):
                 self.assertEqual(self._main(["--pr", pr])[0], 2)
+
+    def test_sha_rac_bi_tu_choi(self):
+        for sha in ("main", "a" * 39, "A" * 40):
+            with self.subTest(sha):
+                self.assertEqual(self._main(["--kho", str(MAU), "--sha", sha])[0], 2)
+
+    def test_phai_dung_mot_trong_hai(self):
+        self.assertEqual(self._main(["--kho", str(MAU), "--pr", "7", "--sha", SHA])[0], 2)
+        self.assertEqual(self._main(["--kho", str(MAU)])[0], 2)
+
+    def test_tach_danh_sach_nguoi_duyet(self):
+        with mock.patch.object(gate_app, "chay", return_value=0) as gia:
+            self._main(["--kho", str(MAU), "--pr", "7"], {ten.BIEN_NGUOI_DUYET: "a, b  c,d\ne"})
+        self.assertEqual(gia.call_args[0][1], ["a", "b", "c", "d", "e"])
+
+    def test_doc_bien_moi_truong_theo_sha(self):
+        env = {ten.BIEN_SHA: SHA, ten.BIEN_NGUOI_DUYET: "a, b  c"}
+        ma, ra = self._main(["--kho", str(MAU)], env)
+        self.assertEqual(ma, 0)
+        self.assertIn("%s: success" % ten.CHECK_CUOI, ra)
+
+    def test_khong_khai_nguoi_duyet_thi_failure(self):
+        ma, ra = self._main(["--kho", str(MAU), "--pr", "7"])
+        self.assertEqual(ma, 0)
+        self.assertIn("%s: failure" % ten.CHECK_CUOI, ra)
 
     def test_thieu_token_khong_chay(self):
         ma, _ = self._main(["--pr", "7"], {"GITHUB_REPOSITORY": "chu/repo"})
