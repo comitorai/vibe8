@@ -34,7 +34,8 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
 - Mọi lượt của tệp workflow `cong-nhanh`, sự kiện `pull_request`, trên đúng head SHA và nhánh đầu, tạo sau khi PR mở và sau lần đổi base
   cuối, phải `success`. Lượt đỏ không bị lượt xanh che. Đỏ vì lỗi thoáng qua thì bấm chạy lại lượt đó; đỏ vì `main` lúc đó còn hỏng thì chạy
   lại không chữa được, vì lượt chạy lại dùng commit merge cũ: đẩy một commit mới.
-- Lượt tạo lúc còn PR khác cùng nhánh đầu đang mở không được tính, vì không biết nó test với base nào. Đóng PR kia rồi sửa tiêu đề để chạy lại.
+- **Một nhánh đầu một PR:** nhánh từng có PR khác, kể cả đã đóng, thì không lượt nào được tính, vì PR đã đóng vẫn sinh lượt mới mà không biết
+  lượt đó test với base nào. Cổng báo chờ. Đẩy sang nhánh tên mới rồi mở PR mới.
 - Đổi `.github/`, `xuong.yml`, luật, CODEOWNERS, script check, tệp khai phụ thuộc, lockfile: rủi ro cao, cần duyệt.
 - **Test có sẵn là điều kiện nghiệm thu:** sửa, đổi tên, xoá đều là rủi ro cao, cần duyệt. Muốn thêm test thì tạo tệp mới, tự qua.
   Thêm `__init__.py` trong vùng test cũng cần duyệt, vì nó quyết định test nào được nạp.

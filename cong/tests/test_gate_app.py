@@ -212,10 +212,11 @@ class TestLocLuotCi(unittest.TestCase):
         self.assertTrue(gh.da_phat[0][2]["output"]["title"].startswith("cho "))
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
 
-    def _xet(self, *luot, doi_base=(), pr_khac=()):
+    def _xet(self, *luot, doi_base=(), doi_tu_dong=(), pr_khac=()):
         d = du_lieu()
         lan_chay(d)[:] = [dict(lan_chay(d)[0], **x) for x in luot]
         d["/issues/7/events"] += [{"event": "base_ref_changed", "created_at": luc} for luc in doi_base]
+        d["/issues/7/events"] += [{"event": "automatic_base_change_succeeded", "created_at": luc} for luc in doi_tu_dong]
         d["/pulls?state=all&head=chu:nhanh"] += [{"number": 9, "created_at": a, "closed_at": b} for a, b in pr_khac]
         gh = gate_app.GiaLap(d)
         chay(gh)
@@ -241,20 +242,30 @@ class TestLocLuotCi(unittest.TestCase):
     def test_luot_truoc_khi_mo_pr_khong_tinh(self):
         self._cho(self._xet({"created_at": "2026-10-31T23:59:59Z"}))
 
-    def test_luot_trung_luc_pr_khac_cung_nhanh_mo_khong_tinh(self):
-        # PR 9 cùng nhánh đầu vào base lạ: `pull_requests[]` ghi cả hai PR, lượt có thể test với base của PR 9.
-        self._cho(self._xet({}, pr_khac=(("2026-11-01T00:00:01Z", None),)))
-
-    def test_pr_khac_da_dong_van_loai_luot_luc_no_mo(self):
-        # Đóng PR 9 rồi chạy lại lượt của nó: API chỉ còn ghi PR 7, base main.
-        self._cho(self._xet({}, pr_khac=(("2026-11-01T00:00:01Z", "2026-11-01T00:00:09Z"),)))
-
-    def test_pr_cu_cung_nhanh_da_dong_truoc_do_khong_can(self):
-        q = self._xet({}, pr_khac=(("2026-10-01T00:00:00Z", "2026-10-02T00:00:00Z"),))
+    def test_github_tu_doi_base_cung_la_moc(self):
+        # Nhánh cha merge và xoá: GitHub không ghi base_ref_changed. Lượt của nhánh cha không được tính, đỏ của nó không làm kẹt.
+        self._cho(self._xet({}, doi_tu_dong=("2026-11-01T00:00:10Z",)))
+        q = self._xet({"created_at": "2026-11-01T00:00:02Z", "conclusion": "failure"}, {"created_at": "2026-11-01T00:00:20Z"},
+                      doi_tu_dong=("2026-11-01T00:00:10Z",))
         self.assertEqual(q["conclusion"], "success")
 
-    def test_pr_cung_nhanh_mo_sau_luot_khong_can(self):
-        self.assertEqual(self._xet({}, pr_khac=(("2026-11-01T00:00:30Z", None),))["conclusion"], "success")
+    def test_nhanh_tung_co_pr_khac_thi_khong_luot_nao_tinh(self):
+        # PR đóng rồi vẫn sinh lượt: sửa tiêu đề, hoặc lượt tạo trễ hơn lúc đóng. Thời điểm không phân biệt được, nên mọi PR khác đều chặn.
+        for pr in (("2026-11-01T00:00:01Z", None), ("2026-11-01T00:00:01Z", "2026-11-01T00:00:09Z"),
+                   ("2026-10-01T00:00:00Z", "2026-10-02T00:00:00Z"), ("2026-11-01T00:00:30Z", None), (None, None)):
+            self._cho(self._xet({}, pr_khac=(pr,)))
+
+    def test_luot_do_tren_main_khong_bi_luot_cua_pr_khac_giau(self):
+        # Lượt đỏ trên main, lượt xanh sau của PR đã đóng vào base lạ: không ra success, cũng không phát chữ sai là lỗi test.
+        self._cho(self._xet({"conclusion": "failure"}, {"created_at": "2026-11-02T00:00:00Z"},
+                            pr_khac=(("2026-11-01T00:00:01Z", "2026-11-01T00:00:03Z"),)))
+
+    def test_tim_nhanh_khong_ra_chinh_pr_thi_dong(self):
+        d = du_lieu()
+        d["/pulls?state=all&head=chu:nhanh"][:] = []
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self._cho(gh.da_phat[0][2])
 
     def test_luot_cung_sha_tu_nhanh_khac_khong_tinh(self):
         self._cho(self._xet({"head_branch": "nhanh-khac"}))
@@ -265,7 +276,6 @@ class TestLocLuotCi(unittest.TestCase):
         self._cho(self._xet({"created_at": None}))
         self._cho(self._xet({"head_branch": None}))
         self._cho(self._xet({}, doi_base=(None,)))
-        self._cho(self._xet({}, pr_khac=((None, None),)))
 
     def test_truong_pull_requests_khong_con_tac_dung(self):
         la = [{"number": 9, "base": {"ref": "x"}}]
@@ -306,6 +316,15 @@ class TestLocLuotCi(unittest.TestCase):
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_trang_vuot_tran_ghi_total_count_0_van_bao_loi(self):
+        # API thật: quá 1000 lượt thì trang 11 trả rỗng và total_count 0.
+        class Tran(gate_app.GiaLap):
+            def goi(self, phuong, duong, body=None):
+                so = int(duong.rsplit("=", 1)[1])
+                return {"total_count": 1001, "workflow_runs": [{}] * 100} if so <= 10 else {"total_count": 0, "workflow_runs": []}
+        with self.assertRaises(gate_app.LoiApi):
+            gate_app._trang(Tran({}), "/runs?x=1", "workflow_runs")
 
     def test_khong_doc_du_luot_thi_dong(self):
         d = du_lieu()

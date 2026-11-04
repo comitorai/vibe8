@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Chủ repo chạy để bật cổng: bảo vệ nhánh gốc, check có expected source là App, environment chỉ cho nhánh gốc.
 
-Tạo GitHub App trước (Checks: write, Pull requests: read, Actions: read) vì lệnh này cần --app-id.
+Tạo GitHub App trước (Checks: write, Pull requests: read, Actions: read, Issues: read) vì lệnh này cần --app-id.
 Dùng token của CHỦ REPO qua biến GH_TOKEN (không in ra). --kho chỉ in các lệnh gọi, không cần token, không có mạng.
 """
 import argparse

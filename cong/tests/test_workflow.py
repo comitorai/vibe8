@@ -105,6 +105,10 @@ class TestCongCuoi(unittest.TestCase):
         self.assertIn("permission-actions: read", CUOI)
         self.assertIn("permission-issues: read", CUOI)
         self.assertEqual(len(re.findall(r"permission-[\w-]+:", CUOI)), 4)
+        # Hướng dẫn tạo App phải khớp quyền workflow xin: thiếu một quyền là mọi PR hỏng.
+        huong_dan = (GOC / "nghiem-thu/bat_cong.py").read_text(encoding="utf-8")
+        for quyen in ("Checks: write", "Pull requests: read", "Actions: read", "Issues: read"):
+            self.assertIn(quyen, huong_dan)
 
     def test_khoa_chi_qua_environment(self):
         self.assertIn("environment: %s\n" % ten.MOI_TRUONG, CUOI)

@@ -85,17 +85,18 @@ class GiaLap:
 
 
 def _trang(gh, duong, khoa=None, toi_da=30):
-    ket = []
+    ket, tong = [], 0
     for so in range(1, toi_da + 1):
         phan = gh.goi("GET", "%s%sper_page=100&page=%d" % (duong, "&" if "?" in duong else "?", so))
         muc = (phan or {}).get(khoa, []) if khoa else phan
         ket.extend(muc)
+        tong = max(tong, (phan or {}).get("total_count", 0) if khoa else 0)
         if len(muc) < 100:
             break
     else:
         raise LoiApi("GET %s: quá %d trang, không đọc đủ" % (duong, toi_da))
-    # /runs chỉ trả tới 1000 lượt: lượt đỏ cũ không được rơi ra ngoài trang đọc được.
-    if khoa and (phan or {}).get("total_count", 0) > len(ket):
+    # /runs chỉ trả tới 1000 lượt, trang vượt trần ghi total_count 0: lấy số lớn nhất, lượt đỏ cũ không được rơi.
+    if tong > len(ket):
         raise LoiApi("GET %s: không đọc đủ %s" % (duong, khoa))
     return ket
 
@@ -112,19 +113,18 @@ def _pr_vao_goc(gh, sha):
 
 
 def _luot_cua_pr(gh, so_pr, pr, lan_chay):
-    """Lượt chắc chắn đã test PR này với base hiện tại. Không dùng `pull_requests[]`: trường đó tính lúc đọc, ghi base hiện tại
-    và mọi PR mở cùng nhánh, nên lượt test với base khác vẫn mang tên PR này. Bỏ lượt của repo hay nhánh đầu khác, lượt tạo
-    trước khi PR mở hoặc trước lần đổi base cuối, lượt tạo lúc PR khác cùng nhánh đầu còn mở. Thiếu dữ liệu là 0 lượt, đóng cổng."""
+    """Lượt được tính là đã test PR này với base hiện tại. Lượt không ghi nó test với base nào: `pull_requests[]` tính lúc đọc, còn
+    PR đã đóng vẫn sinh lượt mới (sửa tiêu đề, tạo trễ). Nên nhánh đầu từng có PR khác thì không lượt nào tính, kể cả khi danh sách
+    không có chính PR này. Còn lại bỏ lượt của repo hay nhánh đầu khác, lượt trước khi PR mở hoặc trước lần đổi base cuối."""
     dau = pr["head"]
     if not (dau.get("repo") and dau.get("label")):
         return []
-    doi_base = [e.get("created_at") or "~" for e in _trang(gh, "/issues/%s/events" % so_pr) if e.get("event") == "base_ref_changed"]
-    moc = max([pr.get("created_at") or "~"] + doi_base)
-    khac = [(p.get("created_at") or "", p.get("closed_at") or "~") for p in _trang(
-        gh, "/pulls?state=all&head=" + urllib.parse.quote(dau["label"], safe=":/")) if str(p.get("number")) != so_pr]
+    if {str(p.get("number")) for p in _trang(gh, "/pulls?state=all&head=" + urllib.parse.quote(dau["label"], safe=":/"))} != {so_pr}:
+        return []
+    moc = max([pr.get("created_at") or "~"] + [e.get("created_at") or "~" for e in _trang(gh, "/issues/%s/events" % so_pr)
+                                               if e.get("event") in ("base_ref_changed", "automatic_base_change_succeeded")])
     return [r for r in lan_chay if (r.get("head_repository") or {}).get("full_name") == _repo(pr, "head")
-            and r.get("head_branch") == dau.get("ref") and (r.get("created_at") or "") >= moc
-            and not any(a <= r["created_at"] <= b for a, b in khac)]
+            and r.get("head_branch") == dau.get("ref") and (r.get("created_at") or "") >= moc]
 
 
 def _doc_theo_sha(gh, so_pr, pr, nguoi_tin):
