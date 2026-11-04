@@ -71,7 +71,18 @@
     "conclusion": "success",
     "head_repository": {
      "full_name": "chu/repo"
-    }
+    },
+    "pull_requests": [
+     {
+      "number": 7,
+      "base": {
+       "ref": "main"
+      },
+      "head": {
+       "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+     }
+    ]
    }
   ]
  }

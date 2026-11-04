@@ -29,9 +29,28 @@ class TestMuc(unittest.TestCase):
                 self.assertEqual(phan_loai([tep(ten)])["muc"], CAO)
 
     def test_tep_che_thu_vien_chuan_la_cao(self):
-        for ten in ("unittest.py", "unittest/__init__.py", "unittest/main.py", "sitecustomize.py", "usercustomize.py"):
+        for ten in ("sitecustomize.py", "usercustomize.py"):
             with self.subTest(ten):
                 self.assertEqual(phan_loai([tep(ten)])["muc"], CAO)
+
+    def test_them_tep_trung_mo_dun_chuan_la_cao(self):
+        # A3, A4: `pprint.py` hay `tests/unittest.py` thêm vào là đủ làm CI xanh giả.
+        for ten in ("unittest.py", "unittest/__init__.py", "pprint.py", "app/json.py", "tests/unittest.py",
+                    "traceback.pyc", "signal.so"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "added")])["muc"], CAO)
+
+    def test_doi_ten_thanh_mo_dun_chuan_la_cao(self):
+        t = tep("pprint.py", "renamed", 0, 0, None, previous_filename="a.py")
+        self.assertEqual(phan_loai([t])["muc"], CAO)
+
+    def test_sua_tep_trung_ten_mo_dun_co_san_khong_oan(self):
+        self.assertEqual(phan_loai([tep("app/json.py")])["muc"], THAP)
+
+    def test_ten_gan_mo_dun_chuan_khong_oan(self):
+        for ten in ("unittest/main.py", "pprint.md", "json.txt", "app/my_json.py"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "added")])["muc"], THAP)
 
     def test_khong_nham_ten_gan_giong(self):
         for ten in ("docs/github.md", "src/cong/x.py", "checklist.md", "my.github.io/a.md", "xuong.yml.md"):
@@ -75,7 +94,8 @@ class TestPhuThuoc(unittest.TestCase):
     def test_moi_tep_khai_phu_thuoc_la_cao(self):
         for ten in ("package.json", "web/package.json", "pyproject.toml", "go.mod", "requirements.txt",
                     "requirements-dev.txt", "setup.py", "setup.cfg", "Cargo.toml", "Gemfile", "composer.json",
-                    "Pipfile", ".npmrc", "pnpm-workspace.yaml"):
+                    "Pipfile", ".npmrc", "pnpm-workspace.yaml", ".nvmrc", "pom.xml", "build.gradle", "app/build.gradle.kts",
+                    "settings.gradle", "settings.gradle.kts", "pdm.lock"):
             with self.subTest(ten):
                 self.assertEqual(phan_loai([tep(ten)])["muc"], CAO)
 
@@ -92,6 +112,12 @@ class TestPhuThuoc(unittest.TestCase):
 
 
 class TestManifest(unittest.TestCase):
+    def test_doi_ten_lockfile_manifest_ra_ngoai_van_cao(self):
+        for cu in ("yarn.lock", "web/package.json", "requirements.txt"):
+            with self.subTest(cu):
+                t = tep("docs/cu.txt", "renamed", 0, 0, None, previous_filename=cu)
+                self.assertEqual(phan_loai([t])["muc"], CAO)
+
     def test_tep_doi_moi_truong_chay_la_cao(self):
         for ten in ("requirements.txt", "requirements-dev.txt", "requirements/ci.txt", "requirements/ci.in", "a/requirements.in",
                     "constraints.txt", "constraints-ci.txt", "Dockerfile", "docker/Dockerfile.ci", ".python-version",
@@ -105,78 +131,60 @@ class TestManifest(unittest.TestCase):
                 self.assertEqual(phan_loai([tep(ten)])["muc"], THAP)
 
 
-class TestGiamTest(unittest.TestCase):
+class TestTestCoSan(unittest.TestCase):
+    """Chỉ thêm tệp test mới là tự qua: mọi cách đụng test có sẵn đều phải có người xem."""
+
     def test_xoa_tep_test(self):
         for ten in ("tests/test_a.py", "a_test.go", "web/a.spec.ts", "src/__tests__/a.js", "app/tests.py",
-                    "testing/x.py", "test.py", "a.test.js", "a-test.rs"):
+                    "testing/x.py", "test.py", "a.test.js", "a-test.rs", "test_a.py", "testx.py",
+                    "src/FooTest.java", "FooTests.cs", "UserSpec.rb", "a_test.swift", "a_tests.go"):
             with self.subTest(ten):
-                t = tep(ten, "removed", 0, 5, "@@ -1,5 +0,0 @@\n-x")
-                r = phan_loai([t])
+                r = phan_loai([tep(ten, "removed", 0, 5, "@@ -1,5 +0,0 @@\n-x")])
                 self.assertEqual(r["muc"], CAO)
-                self.assertIn("xoá test", r["ly_do"][0])
+                self.assertIn("test có sẵn", r["ly_do"][0])
 
     def test_ten_gan_giong_khong_phai_test(self):
-        for ten in ("latest.py", "contest.py", "docs/spec.md", "inspect.py", "testdata.csv"):
+        for ten in ("latest.py", "contest.py", "docs/spec.md", "inspect.py", "testdata.csv", "Contest.java",
+                    "ProductSpec.md", "docs/LoadTest.pdf"):
             with self.subTest(ten):
                 self.assertEqual(phan_loai([tep(ten, "removed", 0, 5, "@@ -1,5 +0,0 @@\n-x")])["muc"], THAP)
 
-    def test_doi_ten_test_ra_ngoai(self):
-        t = tep("docs/a.txt", "renamed", 0, 0, None, previous_filename="tests/test_a.py")
-        self.assertEqual(phan_loai([t])["muc"], CAO)
-
-    def test_doi_ten_trong_vung_test_khong_cao(self):
-        t = tep("tests/test_b.py", "renamed", 0, 0, None, previous_filename="tests/test_a.py")
-        self.assertEqual(phan_loai([t])["muc"], THAP)
-
-    def test_giam_dong_rong(self):
-        t = tep("tests/test_a.py", them=1, xoa=3, patch="@@ -1,3 +1 @@\n-a\n-b\n-c\n+d")
-        self.assertEqual(phan_loai([t])["muc"], CAO)
-
-    def test_giam_khang_dinh_du_so_dong_khong_doi(self):
-        p = "@@ -1,2 +1,2 @@\n-    self.assertEqual(f(), 1)\n-    assert g()\n+    x = 1\n+    y = 2"
-        t = tep("tests/test_a.py", them=2, xoa=2, patch=p)
-        r = phan_loai([t])
-        self.assertEqual(r["muc"], CAO)
-        self.assertIn("khẳng định", r["ly_do"][0])
-
-    def test_chu_thich_hoa_khang_dinh_la_giam(self):
-        for moi in ("# assert g()", "    // expect(a)", "x = 1  # assert g()"):
+    def test_doi_ten_test_deu_cao(self):
+        # Đổi tên trong vùng test làm hỏng khớp mẫu của trình chạy test, test đó lặng lẽ không chạy nữa.
+        for moi, cu in (("docs/a.txt", "tests/test_a.py"), ("tests/b_tests.py", "tests/test_a.py"),
+                        ("tests/test_b.py", "tests/test_a.py"), ("tests/test_a.py", "docs/a.py")):
             with self.subTest(moi):
-                p = "@@ -1 +1 @@\n-    assert g()\n+" + moi
-                self.assertEqual(phan_loai([tep("tests/test_a.py", them=1, xoa=1, patch=p)])["muc"], CAO)
-
-    def test_bo_chu_thich_co_chu_assert_khong_phai_giam(self):
-        p = "@@ -1 +1 @@\n-    # assert g()\n+    x = 1"
-        self.assertEqual(phan_loai([tep("tests/test_a.py", them=1, xoa=1, patch=p)])["muc"], THAP)
-
-    def test_them_bo_qua_test(self):
-        for dong in ("@unittest.skip('x')", "self.skipTest('x')", "it.only('a', f)", "xit('a', f)",
-                     "@pytest.mark.xfail"):
-            with self.subTest(dong):
-                t = tep("tests/test_a.py", patch="@@ -1 +1,2 @@\n+    " + dong)
+                t = tep(moi, "renamed", 0, 0, None, previous_filename=cu)
                 self.assertEqual(phan_loai([t])["muc"], CAO)
 
-    def test_them_test_binh_thuong_la_thap(self):
-        p = "@@ -1 +1,2 @@\n+    def test_moi(self):\n+        self.assertTrue(f())"
-        self.assertEqual(phan_loai([tep("tests/test_a.py", them=2, patch=p)])["muc"], THAP)
-
-    def test_test_khong_co_patch_la_cao(self):
-        self.assertEqual(phan_loai([tep("tests/test_a.py", them=900, xoa=0, patch=None)])["muc"], CAO)
+    def test_moi_cach_sua_test_co_san_deu_cao(self):
+        for p, them, xoa in (("@@ -1,3 +1 @@\n-a\n-b\n-c\n+d", 1, 3),
+                             ("@@ -1 +1 @@\n-    assert g()\n+    x = 1", 1, 1),
+                             ("@@ -1 +1 @@\n-    assertEqual(f(), 1)\n+    assertEqual(f(), 2)", 1, 1),
+                             ("@@ -1 +1 @@\n-    # assert g()\n+    x = 1", 1, 1),
+                             ("@@ -1 +1,2 @@\n+    @unittest.skip('x')", 1, 0),
+                             ("@@ -1 +1,2 @@\n+    def test_moi(self):\n+        self.assertTrue(f())", 2, 0)):
+            with self.subTest(p):
+                self.assertEqual(phan_loai([tep("tests/test_a.py", them=them, xoa=xoa, patch=p)])["muc"], CAO)
 
     def test_sua_test_khong_co_diff_la_cao(self):
-        # Sửa quyền tệp, hay API bỏ patch, đều báo 0 dòng: không đọc được thì không coi là sạch.
         for status in ("modified", "changed"):
             with self.subTest(status):
-                t = tep("tests/test_a.py", status, 0, 0, None)
-                self.assertEqual(phan_loai([t])["muc"], CAO)
+                self.assertEqual(phan_loai([tep("tests/test_a.py", status, 0, 0, None)])["muc"], CAO)
+
+    def test_them_tep_test_moi_la_thap(self):
+        p = "@@ -0,0 +1,2 @@\n+def test_moi():\n+    assert f()"
+        for ten in ("tests/test_moi.py", "a_test.go", "src/FooTest.java"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "added", 2, 0, p)])["muc"], THAP)
 
     def test_tep_test_rong_moi_khong_oan(self):
         # Không có diff nên xếp như tệp nhị phân: trung bình, không phải rủi ro cao.
-        self.assertEqual(phan_loai([tep("tests/__init__.py", "added", 0, 0, None)])["muc"], TRUNG_BINH)
+        self.assertEqual(phan_loai([tep("tests/test_moi.py", "added", 0, 0, None)])["muc"], TRUNG_BINH)
 
-    def test_doi_ten_thuan_trong_vung_test_khong_oan(self):
-        t = tep("tests/test_b.py", "renamed", 0, 0, None, previous_filename="tests/test_a.py")
-        self.assertEqual(phan_loai([t])["muc"], THAP)
+    def test_init_trong_vung_test_la_cao(self):
+        # `load_tests` trong `__init__.py` quyết định test nào được nạp, thêm mới cũng đủ tắt cả gói test.
+        self.assertEqual(phan_loai([tep("tests/__init__.py", "added", 3, 0, "@@ -0,0 +1 @@\n+x")])["muc"], CAO)
 
     def test_xoa_ma_thuong_khong_tinh_la_xoa_test(self):
         t = tep("hoa_don/cu.py", "removed", 0, 5, "@@ -1,5 +0,0 @@\n-x")

@@ -28,6 +28,8 @@ concurrency:
 jobs:
   phat:
     name: phat-check-cuoi
+    # PR đã merge thì không còn gì để xét: không đánh đỏ commit đã vào nhánh gốc.
+    if: github.event.pull_request.merged != true
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: gate

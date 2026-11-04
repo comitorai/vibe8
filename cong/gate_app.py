@@ -92,6 +92,11 @@ def _trang(gh, duong, khoa=None, toi_da=30):
         ket.extend(muc)
         if len(muc) < 100:
             break
+    else:
+        raise LoiApi("GET %s: quá %d trang, không đọc đủ" % (duong, toi_da))
+    # /runs chỉ trả tới 1000 lượt: lượt đỏ cũ không được rơi ra ngoài trang đọc được.
+    if khoa and (phan or {}).get("total_count", 0) > len(ket):
+        raise LoiApi("GET %s: không đọc đủ %s" % (duong, khoa))
     return ket
 
 
@@ -115,8 +120,13 @@ def _doc_theo_sha(gh, so_pr, pr, nguoi_tin):
     # Theo TỆP workflow và sự kiện: workflow tệp khác đặt cùng tên, hay chạy on: push, không vào đây.
     lan_chay = _trang(gh, "/actions/workflows/%s.yml/runs?head_sha=%s&event=pull_request" % (ten.CHECK_NHANH, sha),
                       "workflow_runs")
-    # Lọc theo SHA gom cả lượt của PR fork cùng SHA. Thiếu head_repository thì bỏ lượt: 0 lượt là đóng cổng.
-    if repo_dau is not None:
+    # Lọc theo SHA gom cả lượt của PR khác cùng SHA, kể cả PR vào base lạ có workflow in pass.
+    # Lượt của PR trong repo ghi rõ PR và base; lượt PR fork không ghi nên lọc theo repo đầu. Thiếu dữ liệu là 0 lượt, đóng cổng.
+    if repo_dau is not None and repo_dau == _repo(pr, "base"):
+        lan_chay = [r for r in lan_chay if any(str(p.get("number")) == so_pr
+                                               and (p.get("base") or {}).get("ref") == ten.NHANH_GOC
+                                               for p in r.get("pull_requests") or [])]
+    elif repo_dau is not None:
         lan_chay = [r for r in lan_chay if (r.get("head_repository") or {}).get("full_name") == repo_dau]
     return {
         "sha_dau": sha, "trang_thai_pr": pr.get("state"), "nhanh_dich": (pr.get("base") or {}).get("ref"),
@@ -169,7 +179,10 @@ def chay(gh, nguoi_tin, sha):
         ds = _pr_vao_goc(gh, sha)
         du_lieu = thu_thap(gh, ds[0], sha, nguoi_tin) if ds else None
         if du_lieu is None:
-            print("SHA này không còn là head của PR mở vào nhánh gốc, không xét.")
+            # `success` cũ không được ở lại: đổi base đi rồi đổi lại là dùng được ngay nếu không thu hồi.
+            q = {"ket_luan": "khong_xet", "rui_ro": "chua_ro", "so_dong": 0, "chi_tiet": [],
+                 "ly_do": ["SHA này không còn là head của PR mở vào nhánh gốc"]}
+            print("%s: %s" % (ten.CHECK_CUOI, phat_check(gh, sha, q)))
             return 0
         q = kiem_pr.quyet_dinh(du_lieu)
         print("%s: %s" % (ten.CHECK_CUOI, phat_check(gh, sha, q)))

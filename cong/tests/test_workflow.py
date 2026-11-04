@@ -10,6 +10,7 @@ NHANH = (GOC / ".github/workflows/cong-nhanh.yml").read_text(encoding="utf-8")
 CUOI = (GOC / ".github/workflows/cong-cuoi.yml").read_text(encoding="utf-8")
 TIN_HIEU = (GOC / ".github/workflows/tin-hieu-duyet.yml").read_text(encoding="utf-8")
 BIEU_THUC_SHA = "${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}"
+KHONG_XET_PR_DA_MERGE = "if: github.event.pull_request.merged != true"
 
 
 def khoi_run(yml):
@@ -84,9 +85,12 @@ class TestCongCuoi(unittest.TestCase):
 
     def test_khong_cham_ma_pr(self):
         # Chỉ một chỗ được đụng dữ liệu PR: giá trị SHA, chuyển qua env và kiểm dạng trước khi dùng.
-        job = re.sub(r"(?m)^\s*#.*$", "", CUOI.split("\njobs:")[1]).replace(BIEU_THUC_SHA, "")
+        job = re.sub(r"(?m)^\s*#.*$", "", CUOI.split("\njobs:")[1]).replace(BIEU_THUC_SHA, "").replace(KHONG_XET_PR_DA_MERGE, "")
         for cam in ("pull_request.head", "head_ref", "github.event.pull_request.merge", "refs/pull", "github.sha"):
             self.assertNotIn(cam, job)
+
+    def test_pr_da_merge_khong_danh_do_commit(self):
+        self.assertIn(KHONG_XET_PR_DA_MERGE, CUOI)
 
     def test_checkout_nhanh_goc(self):
         self.assertEqual(CUOI.count("actions/checkout@"), 1)
