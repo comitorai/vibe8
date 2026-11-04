@@ -9,6 +9,7 @@ GOC = Path(__file__).resolve().parents[2]
 NHANH = (GOC / ".github/workflows/cong-nhanh.yml").read_text(encoding="utf-8")
 CUOI = (GOC / ".github/workflows/cong-cuoi.yml").read_text(encoding="utf-8")
 TIN_HIEU = (GOC / ".github/workflows/tin-hieu-duyet.yml").read_text(encoding="utf-8")
+BIEU_THUC_SHA = "${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}"
 
 
 def khoi_run(yml):
@@ -79,10 +80,11 @@ class TestCongCuoi(unittest.TestCase):
         self.assertRegex(CUOI, r"\n  pull_request_target:[^\n]*\n    branches: \[%s\]\n" % ten.NHANH_GOC)
         self.assertRegex(CUOI, r"\n  workflow_run:[^\n]*\n    workflows: \[%s, tin-hieu-duyet\]\n" % ten.CHECK_NHANH)
         self.assertNotRegex(CUOI, r"\n  pull_request(_review)?:")
+        self.assertRegex(CUOI, r"types: \[[^\]]*\bclosed\b")  # đóng một PR trùng SHA thì PR còn lại phải hết kẹt
 
     def test_khong_cham_ma_pr(self):
-        # Khoá concurrency được dùng SHA của PR; phần job thì không.
-        job = re.sub(r"(?m)^\s*#.*$", "", CUOI.split("\njobs:")[1])
+        # Chỉ một chỗ được đụng dữ liệu PR: giá trị SHA, chuyển qua env và kiểm dạng trước khi dùng.
+        job = re.sub(r"(?m)^\s*#.*$", "", CUOI.split("\njobs:")[1]).replace(BIEU_THUC_SHA, "")
         for cam in ("pull_request.head", "head_ref", "github.event.pull_request.merge", "refs/pull", "github.sha"):
             self.assertNotIn(cam, job)
 
@@ -111,13 +113,14 @@ class TestCongCuoi(unittest.TestCase):
         self.assertNotEqual(ten_job[0], ten.CHECK_CUOI)
 
     def test_luot_xet_gom_theo_sha_khong_huy(self):
-        self.assertIn("group: cong-cuoi-${{ github.event.workflow_run.head_sha ||", CUOI)
+        # Cùng một biểu thức với SHA truyền vào cổng: nhóm, SHA xét và SHA phát phải là một.
+        self.assertIn("group: cong-cuoi-" + BIEU_THUC_SHA, CUOI)
         self.assertIn("cancel-in-progress: false", CUOI)
 
     def test_goi_dung_bien(self):
         self.assertIn("%s: ${{ steps.token.outputs.token }}" % ten.BIEN_TOKEN_APP, CUOI)
-        self.assertIn("%s: ${{ github.event.pull_request.number }}" % ten.BIEN_PR, CUOI)
-        self.assertIn("%s: ${{ github.event.workflow_run.head_sha }}" % ten.BIEN_SHA, CUOI)
+        self.assertIn("%s: %s" % (ten.BIEN_SHA, BIEU_THUC_SHA), CUOI)
+        self.assertNotIn("pull_request.number", CUOI)
         self.assertIn("%s: ${{ vars.%s }}" % (ten.BIEN_NGUOI_DUYET, ten.BIEN_NGUOI_DUYET), CUOI)
         self.assertIn("python3 -m cong.gate_app", CUOI)
 

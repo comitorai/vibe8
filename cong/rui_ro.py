@@ -13,10 +13,12 @@ THAP, TRUNG_BINH, CAO = "thap", "trung_binh", "cao"
 NGUONG_CO_DONG = 400
 
 _THU_TU = {THAP: 0, TRUNG_BINH: 1, CAO: 2}
-_GOC_BAO_VE = ("cong/", "luat/", "nghiem-thu/kiem_cuc_bo.py", "nghiem-thu/bat_cong.py", "nghiem-thu/loi/")
+_GOC_BAO_VE = ("cong/", "luat/", "unittest/", "nghiem-thu/kiem_cuc_bo.py", "nghiem-thu/bat_cong.py", "nghiem-thu/loi/")
 _TEP_BAO_VE = {
     ten.TEP_CAU_HINH, "codeowners", "makefile", "justfile", "noxfile.py", "tox.ini",
     "pytest.ini", "conftest.py", ".gitattributes", ".gitmodules",
+    # Đặt ở gốc repo là che được thư viện chuẩn khi chạy test, nên CI xanh giả chỉ bằng một tệp.
+    "unittest.py", "sitecustomize.py", "usercustomize.py",
 }
 _MAU_SCRIPT_CHECK = re.compile(r"^(check|kiem-tra)(\.[a-z0-9]+)?$|^(vitest|jest|playwright|karma)\.config\.")
 _LOCKFILE = {
@@ -24,8 +26,9 @@ _LOCKFILE = {
     "bun.lockb", "poetry.lock", "uv.lock", "pipfile.lock", "cargo.lock", "go.sum",
     "gemfile.lock", "composer.lock",
 }
-_MANIFEST = re.compile(r"^(package\.json|pyproject\.toml|go\.mod|requirements[^/]*\.txt|setup\.py|setup\.cfg|cargo\.toml"
-                       r"|gemfile|composer\.json|pipfile|\.npmrc|pnpm-workspace\.yaml)$")
+_MANIFEST = re.compile(r"(^|/)(package\.json|pyproject\.toml|go\.mod|requirements[^/]*\.(txt|in)|requirements/[^/]*\.(txt|in)"
+                       r"|constraints[^/]*\.txt|setup\.py|setup\.cfg|cargo\.toml|gemfile|composer\.json|pipfile|\.npmrc"
+                       r"|pnpm-workspace\.yaml|dockerfile[^/]*|\.python-version|\.tool-versions|\.pre-commit-config\.yaml)$")
 _THU_MUC_TEST = {"test", "tests", "testing", "__tests__", "spec", "specs", "e2e"}
 _TEN_TEST = re.compile(r"(^|[._-])(tests?|spec)([._-][^/]*)?\.(py|go|rb|rs|java|kt|php|[cm]?[jt]sx?)$")
 _CHU_THICH = re.compile(r"\s*(#|//).*$")
@@ -85,7 +88,8 @@ def _xet_test(tep, moi, cu, them, xoa):
         return [(CAO, "xoá test " + ky_hieu)]
     if cu is not None and _la_test(cu) and not _la_test(moi):
         return [(CAO, "đổi tên test ra ngoài vùng test " + ky_hieu)]
-    if them + xoa == 0:
+    # Chỉ đổi tên, hay thêm tệp rỗng, thì không có diff mà không mất gì. Sửa mà không có diff là thiếu dữ liệu.
+    if them + xoa == 0 and tep.get("status") in ("renamed", "added"):
         return []
     patch = tep.get("patch")
     if not isinstance(patch, str):
@@ -128,7 +132,7 @@ def _xet_tep(tep):
     # Phụ thuộc mới chạy trong CI và app, diff không nói được gói đó làm gì: phải có người xem.
     if _la_lockfile(tep):
         ket.append((CAO, "đổi lockfile " + hien_thi(ten_moi)))
-    if _MANIFEST.search(moi.split("/")[-1]):
+    if _MANIFEST.search(moi):
         ket.append((CAO, "đổi tệp khai phụ thuộc " + hien_thi(ten_moi)))
     trang_thai = tep.get("status")
     if trang_thai not in ("added", "modified", "removed", "renamed"):

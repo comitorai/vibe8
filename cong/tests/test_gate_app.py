@@ -3,7 +3,6 @@ import http.server
 import io
 import json
 import os
-import re
 import threading
 import unittest
 import urllib.error
@@ -22,10 +21,10 @@ def du_lieu():
     return json.loads(MAU.read_text(encoding="utf-8"))
 
 
-def chay(gh, so_pr="7", sha=None, nguoi_tin=("khac", "tac-gia")):
+def chay(gh, sha=SHA, nguoi_tin=("khac", "tac-gia")):
     ra = io.StringIO()
     with contextlib.redirect_stdout(ra):
-        ma = gate_app.chay(gh, list(nguoi_tin), so_pr, sha)
+        ma = gate_app.chay(gh, list(nguoi_tin), sha)
     return ma, ra.getvalue()
 
 
@@ -76,7 +75,8 @@ class TestChay(unittest.TestCase):
 
     def test_luot_do_khong_duoc_luot_xanh_che(self):
         d = du_lieu()
-        lan_chay(d).append({"head_sha": SHA, "status": "completed", "conclusion": "failure"})
+        lan_chay(d).append({"head_sha": SHA, "status": "completed", "conclusion": "failure",
+                            "head_repository": {"full_name": "chu/repo"}})
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
@@ -137,36 +137,100 @@ class TestChay(unittest.TestCase):
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
 
 
-class TestTheoSha(unittest.TestCase):
-    """Đường workflow_run: chỉ có SHA, phải tự tìm PR."""
+def them_pr_fork(d, so=8):
+    d["/pulls?state=open&base=main"].append({
+        "number": so, "head": {"sha": SHA, "repo": {"full_name": "la/repo"}},
+        "base": {"ref": "main", "repo": {"full_name": "chu/repo"}}})
 
-    def test_tim_duoc_pr_va_phat(self):
-        gh = gate_app.GiaLap(du_lieu())
-        ma, _ = chay(gh, None, SHA)
-        self.assertEqual(ma, 0)
-        self.assertEqual(gh.da_phat[0][2]["head_sha"], SHA)
-        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
 
+class TestTimPr(unittest.TestCase):
     def test_khong_co_pr_thi_khong_phat(self):
         d = du_lieu()
         d["/pulls?state=open&base=main"][0]["head"]["sha"] = SHA_MOI
         gh = gate_app.GiaLap(d)
-        ma, ra = chay(gh, None, SHA)
+        ma, ra = chay(gh)
         self.assertEqual((ma, gh.da_phat), (0, []))
-        self.assertIn("không có PR", ra)
+        self.assertIn("không còn là head", ra)
 
-    def test_hai_pr_cung_sha_phat_failure(self):
+    def test_hai_pr_trong_repo_cung_sha_phat_failure(self):
         d = du_lieu()
-        d["/pulls?state=open&base=main"].append({"number": 8, "head": {"sha": SHA}})
+        d["/pulls?state=open&base=main"].append(dict(d["/pulls?state=open&base=main"][0], number=8))
         gh = gate_app.GiaLap(d)
-        chay(gh, None, SHA)
+        chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
 
-    def test_khong_doc_duoc_pr_van_phat_failure_tren_sha(self):
+    def test_khong_doc_duoc_danh_sach_van_phat_failure_tren_sha(self):
         gh = GitHubHong(du_lieu(), "/pulls?state", gate_app.LoiApi("hỏng", 500))
-        ma, _ = chay(gh, None, SHA)
+        ma, _ = chay(gh)
         self.assertEqual(ma, 1)
         self.assertEqual([(x[2]["head_sha"], x[2]["conclusion"]) for x in gh.da_phat], [(SHA, "failure")])
+
+    def test_fork_cung_sha_khong_lam_ket_pr_trong_repo(self):
+        d = du_lieu()
+        them_pr_fork(d)
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
+
+    def test_fork_mo_truoc_van_xet_pr_trong_repo(self):
+        d = du_lieu()
+        d["/pulls?state=open&base=main"].insert(0, {
+            "number": 8, "head": {"sha": SHA, "repo": {"full_name": "la/repo"}},
+            "base": {"ref": "main", "repo": {"full_name": "chu/repo"}}})
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
+
+    def test_chi_co_pr_tu_fork_thi_van_xet(self):
+        d = du_lieu()
+        la = {"full_name": "la/repo"}
+        d["/pulls?state=open&base=main"][0]["head"]["repo"] = la
+        d["/pulls/7"]["head"]["repo"] = la
+        lan_chay(d)[0]["head_repository"] = la
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
+
+
+class TestLocLuotCi(unittest.TestCase):
+    def test_luot_do_cua_fork_khong_lam_ket(self):
+        d = du_lieu()
+        lan_chay(d).append({"head_sha": SHA, "status": "completed", "conclusion": "action_required",
+                            "head_repository": {"full_name": "la/repo"}})
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
+
+    def test_luot_xanh_cua_fork_khong_thay_duoc_luot_trong_repo(self):
+        d = du_lieu()
+        lan_chay(d)[0]["head_repository"] = {"full_name": "la/repo"}
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertTrue(gh.da_phat[0][2]["output"]["title"].startswith("cho "))
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_thieu_head_repository_thi_dong(self):
+        d = du_lieu()
+        del lan_chay(d)[0]["head_repository"]
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_fork_da_xoa_lan_xanh_van_tinh(self):
+        d = du_lieu()
+        d["/pulls/7"]["head"]["repo"] = None
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
+
+    def test_fork_da_xoa_khong_loc_duoc_thi_tinh_het(self):
+        d = du_lieu()
+        d["/pulls/7"]["head"]["repo"] = None
+        lan_chay(d).append({"head_sha": SHA, "status": "completed", "conclusion": "failure"})
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+        self.assertFalse(gh.da_phat[0][2]["output"]["title"].startswith("cho "))
 
 
 class TestGiaLap(unittest.TestCase):
@@ -182,44 +246,37 @@ class TestGiaLap(unittest.TestCase):
 
 
 class GitHubDoiSha(gate_app.GiaLap):
-    """Head đổi đúng lúc đang đọc: /files đã là của commit mới."""
+    """Mỗi lần đọc /pulls/7 trả head kế tiếp trong danh sách."""
 
-    def __init__(self, d, so_lan_doi):
+    def __init__(self, d, cac_sha):
         super().__init__(d)
-        self.lan = 0
-        self.so_lan_doi = so_lan_doi
-
-    def _sha(self):
-        if self.so_lan_doi > 1:
-            return "%040x" % self.lan
-        return SHA if self.lan <= 1 else SHA_MOI
+        self.cac_sha = iter(cac_sha)
 
     def goi(self, phuong, duong, body=None):
         if duong == "/pulls/7":
-            self.lan += 1
-            return dict(self.du_lieu[duong], head={"sha": self._sha()})
-        if duong.startswith("/pulls?state="):
-            return [{"number": 7, "head": {"sha": self._sha()}}]
-        if duong.startswith("/actions/workflows/"):
-            sha = re.search(r"head_sha=(\w+)", duong).group(1)
-            return {"workflow_runs": [{"head_sha": sha, "status": "completed", "conclusion": "success"}]}
+            return dict(self.du_lieu[duong], head=dict(self.du_lieu[duong]["head"], sha=next(self.cac_sha)))
         return super().goi(phuong, duong, body)
 
 
 class TestShaDoi(unittest.TestCase):
-    def test_doi_giua_chung_doc_lai_va_phat_tren_sha_moi(self):
-        gh = GitHubDoiSha(du_lieu(), 1)
-        ma, _ = chay(gh)
-        self.assertEqual(ma, 0)
-        self.assertEqual(len(gh.da_phat), 1)
-        self.assertEqual(gh.da_phat[0][2]["head_sha"], SHA_MOI)
+    """Lượt của SHA cũ không được phát gì: phát trên SHA cũ thì vô nghĩa, trên SHA mới thì chồng lên lượt của SHA đó."""
 
-    def test_doi_lien_tuc_khong_phat_success(self):
-        gh = GitHubDoiSha(du_lieu(), 99)
+    def _xet(self, cac_sha):
+        gh = GitHubDoiSha(du_lieu(), cac_sha)
         ma, ra = chay(gh)
-        self.assertEqual(ma, 1)
-        self.assertIn("đổi liên tục", ra)
-        self.assertEqual([x[2]["conclusion"] for x in gh.da_phat], ["failure"])
+        return ma, ra, gh.da_phat
+
+    def test_khong_doi_thi_phat(self):
+        self.assertEqual([x[2]["head_sha"] for x in self._xet([SHA, SHA])[2]], [SHA])
+
+    def test_da_doi_truoc_khi_doc_thi_khong_phat(self):
+        ma, ra, phat = self._xet([SHA_MOI])
+        self.assertEqual((ma, phat), (0, []))
+        self.assertIn("không còn là head", ra)
+
+    def test_doi_giua_luc_doc_thi_khong_phat(self):
+        ma, _, phat = self._xet([SHA, SHA_MOI])
+        self.assertEqual((ma, phat), (0, []))
 
 
 class GitHubHong(gate_app.GiaLap):
@@ -246,20 +303,19 @@ class TestHong(unittest.TestCase):
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
         self.assertNotIn(TOKEN, json.dumps(gh.da_phat))
 
-    def test_khong_doc_duoc_pr_thi_khong_phat_gi(self):
+    def test_khong_doc_duoc_pr_van_phat_failure_tren_sha_su_kien(self):
+        # `success` cũ không được ở lại khi lần xét mới hỏng.
         gh = GitHubHong(du_lieu(), "/pulls/7", gate_app.LoiApi("hỏng", 500))
         ma, _ = chay(gh)
         self.assertEqual(ma, 1)
-        self.assertEqual(gh.da_phat, [])
+        self.assertEqual([(x[2]["head_sha"], x[2]["conclusion"]) for x in gh.da_phat], [(SHA, "failure")])
 
     def test_sha_rac_tu_api_khong_phat(self):
         d = du_lieu()
         d["/pulls/7"]["head"]["sha"] = "main"
-        d["/actions/workflows/cong-nhanh.yml/runs?head_sha=main&event=pull_request"] = {"workflow_runs": []}
         gh = gate_app.GiaLap(d)
         ma, _ = chay(gh)
-        self.assertEqual(ma, 1)
-        self.assertEqual(gh.da_phat, [])
+        self.assertEqual((ma, gh.da_phat), (0, []))
 
 
 class _PhanHoi(io.BytesIO):
@@ -369,28 +425,22 @@ class TestMain(unittest.TestCase):
             return gate_app.main(argv), ra.getvalue()
 
     def test_chay_kho_khong_can_token(self):
-        ma, ra = self._main(["--kho", str(MAU), "--pr", "7"])
+        ma, ra = self._main(["--kho", str(MAU), "--sha", SHA])
         self.assertEqual(ma, 0)
         self.assertIn("CHẠY KHÔ", ra)
         self.assertIn("/check-runs", ra)
 
-    def test_so_pr_rac_bi_tu_choi(self):
-        for pr in ("", "0", "-1", "7/../../x", "7\n"):
-            with self.subTest(repr(pr)):
-                self.assertEqual(self._main(["--pr", pr])[0], 2)
-
     def test_sha_rac_bi_tu_choi(self):
-        for sha in ("main", "a" * 39, "A" * 40):
-            with self.subTest(sha):
+        for sha in ("", "main", "a" * 39, "A" * 40, SHA + "\n"):
+            with self.subTest(repr(sha)):
                 self.assertEqual(self._main(["--kho", str(MAU), "--sha", sha])[0], 2)
 
-    def test_phai_dung_mot_trong_hai(self):
-        self.assertEqual(self._main(["--kho", str(MAU), "--pr", "7", "--sha", SHA])[0], 2)
+    def test_phai_co_sha(self):
         self.assertEqual(self._main(["--kho", str(MAU)])[0], 2)
 
     def test_tach_danh_sach_nguoi_duyet(self):
         with mock.patch.object(gate_app, "chay", return_value=0) as gia:
-            self._main(["--kho", str(MAU), "--pr", "7"], {ten.BIEN_NGUOI_DUYET: "a, b  c,d\ne"})
+            self._main(["--kho", str(MAU), "--sha", SHA], {ten.BIEN_NGUOI_DUYET: "a, b  c,d\ne"})
         self.assertEqual(gia.call_args[0][1], ["a", "b", "c", "d", "e"])
 
     def test_doc_bien_moi_truong_theo_sha(self):
@@ -400,10 +450,10 @@ class TestMain(unittest.TestCase):
         self.assertIn("%s: success" % ten.CHECK_CUOI, ra)
 
     def test_khong_khai_nguoi_duyet_thi_failure(self):
-        ma, ra = self._main(["--kho", str(MAU), "--pr", "7"])
+        ma, ra = self._main(["--kho", str(MAU), "--sha", SHA])
         self.assertEqual(ma, 0)
         self.assertIn("%s: failure" % ten.CHECK_CUOI, ra)
 
     def test_thieu_token_khong_chay(self):
-        ma, _ = self._main(["--pr", "7"], {"GITHUB_REPOSITORY": "chu/repo"})
+        ma, _ = self._main(["--sha", SHA], {"GITHUB_REPOSITORY": "chu/repo"})
         self.assertEqual(ma, 2)

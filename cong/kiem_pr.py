@@ -12,7 +12,7 @@ CHO_QUA, CHAN, CHO = "cho_qua", "chan", "cho"
 
 SHA_HOP_LE = re.compile(r"[0-9a-f]{40}")
 _TRANG_THAI_XET = {"APPROVED", "CHANGES_REQUESTED", "DISMISSED"}
-_NGOAI_LE = re.compile(r"^ngoai-le-co:[ \t]*(\S.{9,})$", re.M)
+_NGOAI_LE = re.compile(r"^ngoai-le-co:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
 
 
 def _xet_nhanh(lan_chay, sha):
@@ -98,6 +98,7 @@ def quyet_dinh(du_lieu):
         if not ly_do_le:
             chan.append("quá %d dòng (%d): cần người duyệt ghi `ngoai-le-co: <lý do>`"
                         % (rui_ro.NGUONG_CO_DONG, rr["so_dong"]))
+        bo += ["ngoại lệ cỡ: " + rui_ro.hien_thi(x) for x in ly_do_le]
     nhanh, ly_do_nhanh = _xet_nhanh(du_lieu.get("lan_chay_nhanh"), sha)
     if nhanh == "do":
         chan.append(ly_do_nhanh)

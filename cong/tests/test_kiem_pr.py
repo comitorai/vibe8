@@ -205,8 +205,13 @@ class TestCo(unittest.TestCase):
         ds = [duyet(body="ok\nngoai-le-co: chuyển mã máy sinh, đã đọc lướt")]
         self.assertEqual(quyet_dinh(pr([tep(them=900)], ds_duyet=ds))["ket_luan"], CHO_QUA)
 
+    def test_ly_do_ngoai_le_duoc_in_de_con_truy_lai(self):
+        q = quyet_dinh(pr([tep(them=500)], ds_duyet=[duyet(body="ngoai-le-co: chuyển mã máy sinh, đã đọc lướt")]))
+        self.assertTrue(any("chuyển mã máy sinh" in x for x in q["chi_tiet"]))
+
     def test_ngoai_le_khong_ly_do_khong_tinh(self):
-        for body in ("", "ngoai-le-co:", "ngoai-le-co: ngắn", "có ngoai-le-co: viết giữa dòng thì không tính"):
+        for body in ("", "ngoai-le-co:", "ngoai-le-co: ngắn", "có ngoai-le-co: viết giữa dòng thì không tính",
+                     "ngoai-le-co: x" + " " * 12):
             with self.subTest(body):
                 ds = [duyet(body=body)]
                 self.assertEqual(quyet_dinh(pr([tep(them=900)], ds_duyet=ds))["ket_luan"], CHAN)

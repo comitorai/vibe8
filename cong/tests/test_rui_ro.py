@@ -28,6 +28,11 @@ class TestMuc(unittest.TestCase):
             with self.subTest(ten):
                 self.assertEqual(phan_loai([tep(ten)])["muc"], CAO)
 
+    def test_tep_che_thu_vien_chuan_la_cao(self):
+        for ten in ("unittest.py", "unittest/__init__.py", "unittest/main.py", "sitecustomize.py", "usercustomize.py"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten)])["muc"], CAO)
+
     def test_khong_nham_ten_gan_giong(self):
         for ten in ("docs/github.md", "src/cong/x.py", "checklist.md", "my.github.io/a.md", "xuong.yml.md"):
             with self.subTest(ten):
@@ -84,6 +89,20 @@ class TestPhuThuoc(unittest.TestCase):
 
     def test_ten_khong_phai_chuoi_khong_lam_hong_cach_dem(self):
         self.assertEqual(phan_loai([tep(7, them=5)])["so_dong"], 5)
+
+
+class TestManifest(unittest.TestCase):
+    def test_tep_doi_moi_truong_chay_la_cao(self):
+        for ten in ("requirements.txt", "requirements-dev.txt", "requirements/ci.txt", "requirements/ci.in", "a/requirements.in",
+                    "constraints.txt", "constraints-ci.txt", "Dockerfile", "docker/Dockerfile.ci", ".python-version",
+                    ".tool-versions", ".pre-commit-config.yaml", "web/package.json", "PIPFILE"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten)])["muc"], CAO)
+
+    def test_khong_nham_ten_gan_giong(self):
+        for ten in ("docs/requirements.md", "requirements/ghi-chu.md", "my-dockerfile-notes/a.py", "constraints.md"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten)])["muc"], THAP)
 
 
 class TestGiamTest(unittest.TestCase):
@@ -143,6 +162,21 @@ class TestGiamTest(unittest.TestCase):
 
     def test_test_khong_co_patch_la_cao(self):
         self.assertEqual(phan_loai([tep("tests/test_a.py", them=900, xoa=0, patch=None)])["muc"], CAO)
+
+    def test_sua_test_khong_co_diff_la_cao(self):
+        # Sửa quyền tệp, hay API bỏ patch, đều báo 0 dòng: không đọc được thì không coi là sạch.
+        for status in ("modified", "changed"):
+            with self.subTest(status):
+                t = tep("tests/test_a.py", status, 0, 0, None)
+                self.assertEqual(phan_loai([t])["muc"], CAO)
+
+    def test_tep_test_rong_moi_khong_oan(self):
+        # Không có diff nên xếp như tệp nhị phân: trung bình, không phải rủi ro cao.
+        self.assertEqual(phan_loai([tep("tests/__init__.py", "added", 0, 0, None)])["muc"], TRUNG_BINH)
+
+    def test_doi_ten_thuan_trong_vung_test_khong_oan(self):
+        t = tep("tests/test_b.py", "renamed", 0, 0, None, previous_filename="tests/test_a.py")
+        self.assertEqual(phan_loai([t])["muc"], THAP)
 
     def test_xoa_ma_thuong_khong_tinh_la_xoa_test(self):
         t = tep("hoa_don/cu.py", "removed", 0, 5, "@@ -1,5 +0,0 @@\n-x")

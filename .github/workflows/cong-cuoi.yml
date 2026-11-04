@@ -3,7 +3,7 @@
 # Tên job KHÔNG được là `cong-cuoi`: check required do App phát, job Actions không được trùng tên.
 #
 # Hai sự kiện, đều chạy workflow của nhánh gốc nên qua được environment `gate` (docs/bao-mat.md):
-# - pull_request_target: PR mở, có commit mới, đổi base. CI chưa xong thì phát failure.
+# - pull_request_target: PR mở, có commit mới, đổi base, đóng (PR trùng SHA có thể hết kẹt). CI chưa xong thì phát failure.
 # - workflow_run: CI xong, hoặc có lượt duyệt. Không gọi trực tiếp `pull_request_review` vì sự kiện đó
 #   xét environment theo refs/pull/N/merge nên bị từ chối; không được nới `gate`, khoá App sẽ lộ.
 # Sự kiện chỉ đánh thức cổng. Tên workflow giả được, nên quyết định chỉ lấy từ API.
@@ -12,7 +12,7 @@ name: cong-cuoi
 on:
   pull_request_target: # zizmor: ignore[dangerous-triggers] không checkout mã PR, không đưa dữ liệu PR vào run
     branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review, edited]
+    types: [opened, synchronize, reopened, ready_for_review, edited, closed]
   workflow_run: # zizmor: ignore[dangerous-triggers] chỉ dùng head_sha, kiểm dạng trước khi gọi API
     workflows: [cong-nhanh, tin-hieu-duyet]
     types: [completed]
@@ -20,7 +20,8 @@ on:
 permissions: {}
 
 concurrency:
-  # Theo SHA và không huỷ: lượt đang chờ luôn chạy sau, đọc dữ liệu mới nhất, nên phát sau cùng.
+  # Khoá này, SHA được xét và SHA được phát là một giá trị (XUONG_SHA bên dưới), nên hai SHA không phát chồng nhau.
+  # Không huỷ: lượt đang chờ luôn chạy sau, đọc dữ liệu mới nhất, nên phát sau cùng.
   group: cong-cuoi-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
   cancel-in-progress: false
 
@@ -50,7 +51,6 @@ jobs:
       - name: Xét PR và phát check
         env:
           XUONG_TOKEN_APP: ${{ steps.token.outputs.token }}
-          XUONG_PR: ${{ github.event.pull_request.number }}
-          XUONG_SHA: ${{ github.event.workflow_run.head_sha }}
+          XUONG_SHA: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
           XUONG_NGUOI_DUYET: ${{ vars.XUONG_NGUOI_DUYET }}
         run: python3 -m cong.gate_app

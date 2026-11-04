@@ -22,7 +22,7 @@ Python 3.9 trở lên, chỉ stdlib.
 
 ```sh
 sh ./kiem-tra.sh                                   # test lõi, test app mẫu, bài L1-L6 cục bộ
-python3 -m cong.gate_app --kho cong/tests/pr_mau.json --pr 7
+python3 -m cong.gate_app --kho cong/tests/pr_mau.json --sha aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 python3 nghiem-thu/bat_cong.py --repo chu/repo --app-id 123 --kho
 ```
 
@@ -37,5 +37,6 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
   rủi ro cao, cần duyệt. Rủi ro thấp và trung bình tự qua khi đủ các điều kiện khác.
 - Quá 400 dòng (không tính lockfile): chặn, trừ khi người duyệt hợp lệ ghi dòng `ngoai-le-co: <lý do>` trong lượt duyệt.
 - Duyệt hợp lệ: người trong biến `XUONG_NGUOI_DUYET` của environment `gate`, không phải tác giả hay người có commit
-  trong PR, không phải bot, đúng SHA. Danh sách rỗng thì mọi PR đều bị chặn.
+  trong PR (không tính commit merge, ví dụ bấm Update branch), không phải bot, đúng SHA. Danh sách rỗng thì mọi PR đều bị chặn.
+- PR quá 250 commit bị chặn, vì API chỉ trả tới đó nên không đọc đủ được người có commit.
 - Yêu cầu sửa của người trong danh sách chặn bất kể SHA và mức rủi ro. Lượt của họ bị gỡ thì vẫn chặn đến khi họ duyệt lại.

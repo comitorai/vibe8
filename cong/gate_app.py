@@ -95,16 +95,19 @@ def _trang(gh, duong, khoa=None, toi_da=30):
     return ket
 
 
+def _repo(pr, dau):
+    return ((pr.get(dau) or {}).get("repo") or {}).get("full_name")
+
+
 def _pr_vao_goc(gh, sha):
-    """Số các PR mở vào nhánh gốc có head đúng SHA. PR nhắm nhánh khác không liên quan tới cổng."""
-    ds = _trang(gh, "/pulls?state=open&base=%s" % ten.NHANH_GOC)
-    return [str(p["number"]) for p in ds if (p.get("head") or {}).get("sha") == sha]
+    """PR mở vào nhánh gốc có head đúng SHA. Có PR trong repo thì bỏ PR từ fork: người lạ đưa cùng SHA lên fork không làm kẹt được."""
+    ds = [p for p in _trang(gh, "/pulls?state=open&base=%s" % ten.NHANH_GOC) if (p.get("head") or {}).get("sha") == sha]
+    noi_bo = [p for p in ds if _repo(p, "head") == _repo(p, "base")]
+    return [str(p["number"]) for p in (noi_bo or ds)]
 
 
 def _doc_theo_sha(gh, so_pr, pr, nguoi_tin):
-    sha = pr["head"]["sha"]
-    if not kiem_pr.SHA_HOP_LE.fullmatch(str(sha)):
-        raise LoiApi("head SHA không hợp lệ, không phát check")
+    sha, repo_dau = pr["head"]["sha"], _repo(pr, "head")
     commit = _trang(gh, "/pulls/%s/commits" % so_pr)
     # Commit merge từ nhánh gốc (chủ bấm Update branch) không làm họ thành đồng tác giả.
     nguoi_commit = {(c.get(k) or {}).get("login") for c in commit if len(c.get("parents") or []) < 2
@@ -112,6 +115,9 @@ def _doc_theo_sha(gh, so_pr, pr, nguoi_tin):
     # Theo TỆP workflow và sự kiện: workflow tệp khác đặt cùng tên, hay chạy on: push, không vào đây.
     lan_chay = _trang(gh, "/actions/workflows/%s.yml/runs?head_sha=%s&event=pull_request" % (ten.CHECK_NHANH, sha),
                       "workflow_runs")
+    # Lọc theo SHA gom cả lượt của PR fork cùng SHA. Thiếu head_repository thì bỏ lượt: 0 lượt là đóng cổng.
+    if repo_dau is not None:
+        lan_chay = [r for r in lan_chay if (r.get("head_repository") or {}).get("full_name") == repo_dau]
     return {
         "sha_dau": sha, "trang_thai_pr": pr.get("state"), "nhanh_dich": (pr.get("base") or {}).get("ref"),
         "so_pr_vao_goc": len(_pr_vao_goc(gh, sha)), "so_tep_khai": pr.get("changed_files"),
@@ -129,13 +135,13 @@ def _doc_theo_sha(gh, so_pr, pr, nguoi_tin):
     }
 
 
-def thu_thap(gh, so_pr, nguoi_tin):
-    """/files trả theo head hiện tại, nên đọc PR hai lần kẹp giữa: SHA đổi thì đọc lại."""
-    for _ in range(3):
-        du_lieu = _doc_theo_sha(gh, so_pr, gh.goi("GET", "/pulls/%s" % so_pr), nguoi_tin)
-        if gh.goi("GET", "/pulls/%s" % so_pr)["head"]["sha"] == du_lieu["sha_dau"]:
-            return du_lieu
-    raise LoiApi("head SHA đổi liên tục trong lúc đọc")
+def thu_thap(gh, so_pr, sha, nguoi_tin):
+    """/files trả theo head hiện tại, nên đọc PR hai lần kẹp giữa. Head đã đổi thì trả None: lượt của head mới tự xét."""
+    pr = gh.goi("GET", "/pulls/%s" % so_pr)
+    if pr["head"]["sha"] != sha:
+        return None
+    du_lieu = _doc_theo_sha(gh, so_pr, pr, nguoi_tin)
+    return du_lieu if gh.goi("GET", "/pulls/%s" % so_pr)["head"]["sha"] == sha else None
 
 
 def tom_tat(q):
@@ -157,17 +163,14 @@ def phat_check(gh, sha, q):
     return ket_luan
 
 
-def chay(gh, nguoi_tin, so_pr=None, sha=None):
-    """0: đã phát, hoặc SHA không thuộc PR nào. 1: hỏng hạ tầng. Không chờ CI: CI xong sẽ đánh thức cổng."""
+def chay(gh, nguoi_tin, sha):
+    """Chỉ xét và phát trên SHA sự kiện. 0: đã phát, hoặc SHA không còn là head PR nào. 1: hỏng hạ tầng."""
     try:
-        if so_pr is None:
-            ds = _pr_vao_goc(gh, sha)
-            if not ds:
-                print("SHA này không có PR mở vào nhánh gốc, không xét.")
-                return 0
-            so_pr = ds[0]
-        du_lieu = thu_thap(gh, so_pr, nguoi_tin)
-        sha = du_lieu["sha_dau"]
+        ds = _pr_vao_goc(gh, sha)
+        du_lieu = thu_thap(gh, ds[0], sha, nguoi_tin) if ds else None
+        if du_lieu is None:
+            print("SHA này không còn là head của PR mở vào nhánh gốc, không xét.")
+            return 0
         q = kiem_pr.quyet_dinh(du_lieu)
         print("%s: %s" % (ten.CHECK_CUOI, phat_check(gh, sha, q)))
         print(tom_tat(q))
@@ -175,11 +178,9 @@ def chay(gh, nguoi_tin, so_pr=None, sha=None):
     except Exception as loi:  # noqa: BLE001 - mọi lỗi đều phải kết thúc đóng
         print("lỗi hạ tầng: " + gh.che("%s: %s" % (type(loi).__name__, loi)))
         try:
-            # Vẫn phải phát failure: `success` cũ trên cùng SHA không được ở lại khi lần xét mới hỏng.
-            sha = gh.goi("GET", "/pulls/%s" % so_pr)["head"]["sha"] if so_pr else sha
-            if kiem_pr.SHA_HOP_LE.fullmatch(str(sha)):
-                phat_check(gh, sha, {"ket_luan": "loi_ha_tang", "rui_ro": "chua_ro", "so_dong": 0, "chi_tiet": [],
-                                     "ly_do": ["cổng không đọc đủ dữ liệu, PR chưa được xét"]})
+            # Vẫn phải phát failure: `success` cũ trên SHA này không được ở lại khi lần xét mới hỏng.
+            phat_check(gh, sha, {"ket_luan": "loi_ha_tang", "rui_ro": "chua_ro", "so_dong": 0, "chi_tiet": [],
+                                 "ly_do": ["cổng không đọc đủ dữ liệu, PR chưa được xét"]})
         except Exception as loi_phat:  # noqa: BLE001
             print("không phát được check: " + gh.che(type(loi_phat).__name__))
         return 1
@@ -188,20 +189,16 @@ def chay(gh, nguoi_tin, so_pr=None, sha=None):
 def main(argv=None):
     p = argparse.ArgumentParser(description="Phát check run cổng cuối.")
     p.add_argument("--kho", metavar="TEP_JSON", help="chạy khô bằng dữ liệu giả, không gọi mạng")
-    p.add_argument("--pr", default=os.environ.get(ten.BIEN_PR, ""))
     p.add_argument("--sha", default=os.environ.get(ten.BIEN_SHA, ""))
     a = p.parse_args(argv)
-    if bool(a.pr) == bool(a.sha):
-        print("cần đúng một trong số PR hoặc SHA")
-        return 2
-    if a.pr and not re.fullmatch(r"[1-9][0-9]{0,9}", a.pr) or a.sha and not kiem_pr.SHA_HOP_LE.fullmatch(a.sha):
-        print("số PR hoặc SHA không hợp lệ")
+    if not kiem_pr.SHA_HOP_LE.fullmatch(a.sha):
+        print("SHA không hợp lệ")
         return 2
     nguoi_tin = re.findall(r"[^\s,]+", os.environ.get(ten.BIEN_NGUOI_DUYET, ""))
     if a.kho:
         with open(a.kho, encoding="utf-8") as tep:
             gh = GiaLap(json.load(tep))
-        ma = chay(gh, nguoi_tin, a.pr or None, a.sha or None)
+        ma = chay(gh, nguoi_tin, a.sha)
         print("CHẠY KHÔ, không gọi GitHub. Sẽ gọi:\n" + json.dumps(gh.da_phat, ensure_ascii=False, indent=2))
         return ma
     repo, token = os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get(ten.BIEN_TOKEN_APP, "")
@@ -209,7 +206,7 @@ def main(argv=None):
         print("thiếu GITHUB_REPOSITORY hoặc %s" % ten.BIEN_TOKEN_APP)
         return 2
     gh = GitHub(repo, token, os.environ.get("GITHUB_API_URL", API_GOC))
-    return chay(gh, nguoi_tin, a.pr or None, a.sha or None)
+    return chay(gh, nguoi_tin, a.sha)
 
 
 if __name__ == "__main__":

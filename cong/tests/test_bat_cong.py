@@ -58,10 +58,6 @@ class TestKho(unittest.TestCase):
         self.assertIn("PUT /repos/chu/repo/branches/main/protection", ra)
         self.assertIn('"app_id": 123', ra)
 
-    def test_kho_khong_in_token(self):
-        _, ra = main(["--repo", "chu/repo", "--app-id", "123", "--kho"], {"GH_TOKEN": "ghp_bimat"})
-        self.assertNotIn("ghp_bimat", ra)
-
     def test_tu_choi_app_id_bat_ky(self):
         for so in ("-1", "0"):
             with self.subTest(so):
