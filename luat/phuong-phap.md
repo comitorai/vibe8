@@ -74,7 +74,7 @@ Trích dẫn cho bảng: lượt phản bác có bắt lỗi thật trước mer
 
 | Số | Định nghĩa | Đủ để kết luận |
 |---|---|---|
-| Lỗi lọt | lỗi do người dùng hoặc giám sát báo, trên 100 PR, theo mức nặng | ≥ 10 lỗi mỗi kỳ |
+| Lỗi lọt | issue nhãn `loi-lot` (mục 8), trên 100 PR, theo mức nặng và khâu lẽ ra chặn | ≥ 10 lỗi mỗi kỳ |
 | Tỉ lệ thay đổi gây hỏng | % PR phải sửa gấp, hoàn lại trong 7 ngày | ≥ 30 PR đủ 7 ngày |
 | Thời gian ra | mở PR → lên production; trung vị và mức chậm nhất của 1/10 số PR; theo mức rủi ro | ≥ 30 PR mỗi mức |
 | Token mỗi PR đã merge | token mới (không tính đọc lại bộ nhớ đệm), tính cả PR bị bỏ | ≥ 30 PR |
@@ -97,3 +97,32 @@ Theo bảng chấm nội bộ 04/11:
 - Hướng dẫn thao tác tay cho người: đúng màn hiện tại, một bước một dòng.
 - Đặc tả trước code có mục «KHÔNG được phá» cho mức Vừa: đang chờ số đo.
 - Kiểm thử đột biến cho mã cổng và mã quyền: 0 token, vài phút, bắt được bài test yếu.
+
+## 8. Vòng cải tiến — nhận diện, phân loại, đo, đề xuất
+
+Thiếu khâu nào trong bốn khâu dưới đây thì mục 1 và mục 5 không chạy được: không có sổ lỗi thì không có số, không có số thì không xét giữ hay bỏ luật nào.
+
+**8.1 Nhận diện — sổ lỗi lọt là issue GitHub, không phải tệp tự ghi.**
+- Lỗi lọt = lỗi đã tới bản người dùng chạy. Ai thấy (người dùng, giám sát, người trong nhóm) thì mở issue nhãn `loi-lot` trong 24 giờ.
+- Issue ghi: PR gây lỗi (số PR hoặc SHA, ghi «chưa rõ» nếu chưa truy được) · cách tái hiện · ngày lộ.
+- PR sửa ghi `sua-loi-lot: #<issue>` để máy nối lỗi với bản sửa và tính tỉ lệ thay đổi gây hỏng.
+- Lỗi bắt được trước merge (phản bác, cổng, test) không phải lỗi lọt; ghi nhãn `bat-truoc-merge` để đo L3.
+
+**8.2 Phân loại — ba trường bắt buộc trên mỗi issue `loi-lot`.**
+
+| Trường | Giá trị | Ai điền |
+|---|---|---|
+| Mức nặng | **N1** mất hoặc sai dữ liệu, lộ dữ liệu, sai tiền, vượt quyền · **N2** chức năng chính hỏng, không có đường vòng · **N3** có đường vòng hoặc chỉ sai giao diện | agent không viết PR gây lỗi đề xuất; người duyệt chốt N1 |
+| Khâu lẽ ra chặn | khâu **sớm nhất** lẽ ra bắt được, chỉ một: `dac-ta` (tiêu chí thiếu) · `test` (thiếu test) · `phan-bac` (có lượt mà sót) · `khong-phan-bac` (mức Thấp hoặc bị rút thăm) · `cong` (xếp sai mức) · `chay-that` (L7) · `ngoai-tam` (môi trường, bên thứ ba) | như trên |
+| Mức rủi ro của PR gây lỗi | Thấp · Vừa · Cao | máy, từ kết luận của cổng trên PR đó |
+
+**8.3 Đo — máy đọc nhãn, không đếm tay.**
+`[CHƯA KIỂM]` Script đo chưa có; hiện chỉ `nghiem-thu/do_nhip.py` đo thời gian ra. Script mới chỉ đọc API GitHub, ra năm số của mục 5 và bảng «lỗi lọt theo khâu × mức nặng». Token mỗi PR chưa có cách máy ghi: tới khi có, ghi «chưa đo», không dùng số agent tự báo.
+
+**8.4 Xét và đề xuất.**
+- **Lịch:** 14 ngày một lần, việc định giờ chạy script và mở issue `xet-vong` kèm bảng số. Luật nào tới ngày ở cột «Xét» của mục 3 thì xét trong buổi đó. Script không chạy được thì hoãn buổi xét, không đoán số.
+- **Không chờ lịch:** mỗi lỗi N1 có buổi xét riêng trong 3 ngày, tìm khâu hở, không tìm người có lỗi.
+- **Mỗi buổi tối đa 3 đề xuất**, ưu tiên khâu có nhiều lỗi N1 và N2 nhất. Mỗi đề xuất ghi: khâu hở và các issue làm căn cứ · thay đổi gì (sửa máy, thêm, sửa hay bỏ luật) · đủ bốn thứ của mục 1 · tốn thêm bao nhiêu token và thời gian.
+- **Sửa máy trước, thêm chữ sau:** khâu hở mà cổng hoặc test chặn được thì sửa cổng hoặc test, không thêm luật.
+- Đề xuất đi qua PR sửa file này, mức Cao, người duyệt chốt.
+- **Kỳ không có lỗi lọt nào:** trước khi kết luận tốt, đối chiếu các PR sửa gấp trong kỳ với sổ; có PR sửa gấp mà không có issue thì sổ đang bị bỏ sót.
