@@ -1,0 +1,4 @@
+# Vùng nhạy cảm của vibe8: chạm vào là rủi ro cao, cần người duyệt (README, mục rủi ro).
+# Sổ bằng chứng nghiệm thu: sửa nó là sửa kết quả đã đo.
+nghiem-thu/ket-qua.md
+nghiem-thu/loi/
