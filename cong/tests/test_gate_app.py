@@ -659,3 +659,33 @@ class TestMain(unittest.TestCase):
     def test_thieu_token_khong_chay(self):
         ma, _ = self._main(["--sha", SHA], {"GITHUB_REPOSITORY": "chu/repo"})
         self.assertEqual(ma, 2)
+
+
+class TestVungNhayCam(unittest.TestCase):
+    def _chay(self, noi_dung):
+        import tempfile
+        with tempfile.TemporaryDirectory() as thu_muc:
+            duong = os.path.join(thu_muc, "vung.txt")
+            Path(duong).write_bytes(noi_dung)
+            gh = gate_app.GiaLap(du_lieu())
+            gh.du_lieu.update({"/collaborators/%s/permission" % x: {"permission": "admin"} for x in ("khac", "tac-gia")})
+            ra = io.StringIO()
+            with contextlib.redirect_stdout(ra):
+                ma = gate_app.chay(gh, SHA, duong)
+            return ma, gh.da_phat[-1][2]
+
+    def test_vung_khai_tren_nhanh_goc_lam_pr_can_duyet(self):
+        ma, body = self._chay(b"# quyen\nhoa_don/\n")
+        self.assertEqual((ma, body["conclusion"], body["output"]["title"]), (0, "failure", "chan (cao)"))
+        self.assertIn("Vùng nhạy cảm đã khai:** 1 mẫu", body["output"]["summary"])
+
+    def test_tep_vung_hong_thi_khong_qua(self):
+        ma, body = self._chay(b"\xff\xfe")
+        self.assertEqual((ma, body["conclusion"]), (1, "failure"))
+        self.assertIn("UTF-8", body["output"]["summary"])  # người xem check phải thấy lý do, không chỉ «0 mẫu»
+
+    def test_main_doc_tep_vung_cua_repo(self):
+        with mock.patch.object(gate_app, "chay", return_value=0) as gia:
+            gate_app.main(["--kho", str(MAU), "--sha", SHA])
+        self.assertEqual(gia.call_args.args[2], ten.TEP_VUNG)
+        self.assertTrue(ten.TEP_VUNG.startswith("cong/"))  # workflow chỉ lấy /cong/ của nhánh gốc

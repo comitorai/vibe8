@@ -49,6 +49,12 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
   Trừ ảnh, PDF, phông chữ: rủi ro trung bình. Thêm `__init__.py` thì ghi một dòng chú thích để khỏi phải duyệt.
   Đổi tên kèm sửa tệp nhị phân thì tự qua, vì API không phân biệt được với đổi tên thuần: xem giới hạn 8.
 - Một số tệp vô hại có thể bị báo oan vì trùng tên tệp nhạy cảm (`docs/check.md`, `docs/requirements-q4.txt`, thư mục `docs/specs/`); người duyệt bấm qua.
+- Rủi ro thấp chỉ gồm tài liệu, thêm test mới và tệp tĩnh. Mọi tệp khác, gồm mã và cấu hình chạy được, là trung bình.
+- **Vùng nhạy cảm do repo tự khai** trong `cong/vung-nhay-cam.txt`: chạm vùng là rủi ro cao. Mỗi dòng một mẫu, `#` là chú thích;
+  `*` khớp cả `/`, `**/` là không hoặc nhiều thư mục, `[id]` là chữ thường. Mẫu khớp chính nó và mọi thứ bên dưới; mẫu không có `/` như `auth.py` khớp ở mọi tầng.
+  Cổng đọc tệp ở nhánh gốc, nên PR không tự gỡ vùng được. Tệp hỏng, hay có mẫu không bao giờ khớp được (`!x`, dấu cách lạ), thì cổng báo lỗi.
+  Khai vùng mới trên `main` không xét lại PR đang mở: PR đó xét lại ở lần đẩy kế tiếp.
+  Mức Thấp hay Vừa hôm nay chỉ là nhãn, cả hai đều tự qua. Một số tệp chạy được vẫn ra Thấp, vd `dev-requirements.txt`, tệp mới trong `tests/`.
 - Rủi ro thấp và trung bình tự qua khi đủ các điều kiện khác.
 - Merge kiểu rebase phải tắt: cổng xét theo diff, còn rebase phát lại từng commit. Chưa tái hiện được kết quả lệch, đây là biện pháp phòng. `bat_cong.py` tắt và đọc lại.
 - Quá 400 dòng (không tính lockfile): chặn, trừ khi người duyệt hợp lệ ghi dòng `ngoai-le-co: <lý do>` trong lượt duyệt.

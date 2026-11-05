@@ -1,6 +1,8 @@
 """Mọi tên có thể đổi gom về đây. YAML không import được: cong/tests/test_workflow.py đối chiếu."""
 
 TEP_CAU_HINH = "xuong.yml"
+# Vùng nhạy cảm repo tự khai. Nằm trong cong/ vì workflow chỉ lấy /cong/ của nhánh gốc, và đổi nó là đổi cổng: cần duyệt.
+TEP_VUNG = "cong/vung-nhay-cam.txt"
 CHECK_NHANH = "cong-nhanh"
 CHECK_CUOI = "cong-cuoi"
 MOI_TRUONG = "gate"

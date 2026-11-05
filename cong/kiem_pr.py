@@ -1,7 +1,7 @@
 """Quyết định của cổng cuối. Hàm thuần, không đọc thân PR, nhãn hay tiêu đề.
 
 Các khoá của du_lieu: sha_dau, trang_thai_pr, nhanh_dich, so_pr_vao_goc, tac_gia, nguoi_commit,
-so_commit_khai, so_commit_doc, so_tep_khai, tep, lan_chay_nhanh [{head_sha, status, conclusion}],
+so_commit_khai, so_commit_doc, so_tep_khai, tep, vung_nhay_cam [mẫu, đọc từ nhánh gốc], lan_chay_nhanh [{head_sha, status, conclusion}],
 nguoi_tin [login], duyet [{user, user_type, state, commit_id, submitted_at, body}].
 """
 import re
@@ -68,10 +68,13 @@ def _xet_duyet(du_lieu, sha):
 
 
 def quyet_dinh(du_lieu):
-    """Trả {ket_luan, ly_do, chi_tiet, sha, rui_ro, so_dong, nguoi_duyet}."""
+    """Trả {ket_luan, ly_do, chi_tiet, sha, rui_ro, so_dong, so_mau_vung, nguoi_duyet}."""
     sha = du_lieu.get("sha_dau")
     ds_tep = du_lieu.get("tep")
-    rr = rui_ro.phan_loai(ds_tep)
+    vung = du_lieu.get("vung_nhay_cam") or []
+    if not isinstance(vung, list):
+        vung = ["*"]  # dữ liệu vùng hỏng: coi mọi tệp là nhạy cảm
+    rr = rui_ro.phan_loai(ds_tep, vung)
     hop_le, bo, dang_chan = _xet_duyet(du_lieu, sha)
     chan = []
     if not (isinstance(sha, str) and SHA_HOP_LE.fullmatch(sha)):
@@ -106,6 +109,6 @@ def quyet_dinh(du_lieu):
         ket_luan, ly_do = CHO_QUA, ["cong-nhanh xanh trên đúng SHA, không vướng điều kiện nào"]
     return {
         "ket_luan": ket_luan, "ly_do": ly_do, "chi_tiet": rr["ly_do"] + bo, "sha": sha,
-        "rui_ro": rr["muc"], "so_dong": rr["so_dong"],
+        "rui_ro": rr["muc"], "so_dong": rr["so_dong"], "so_mau_vung": len(vung),
         "nguoi_duyet": [rui_ro.hien_thi(r.get("user")) for r in hop_le],
     }

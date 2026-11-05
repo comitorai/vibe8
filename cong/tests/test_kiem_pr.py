@@ -260,3 +260,17 @@ class TestDuLieuHong(unittest.TestCase):
         ban_sao = copy.deepcopy(d)
         quyet_dinh(d)
         self.assertEqual(d, ban_sao)
+
+
+class TestVungNhayCam(unittest.TestCase):
+    def test_cham_vung_khai_thi_can_duyet(self):
+        q = quyet_dinh(pr([tep("src/quyen/a.py")], vung_nhay_cam=["src/quyen/"]))
+        self.assertEqual((q["ket_luan"], q["rui_ro"]), (CHAN, "cao"))
+
+    def test_ma_ngoai_vung_la_vua_va_tu_qua(self):
+        q = quyet_dinh(pr([tep("src/khac.py")], vung_nhay_cam=["src/quyen/"]))
+        self.assertEqual((q["ket_luan"], q["rui_ro"]), (CHO_QUA, "trung_binh"))
+        self.assertEqual(q["so_mau_vung"], 1)
+
+    def test_khong_khai_vung(self):
+        self.assertEqual(quyet_dinh(pr())["so_mau_vung"], 0)

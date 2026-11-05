@@ -27,11 +27,12 @@ Khi va nhau: lỗi lọt mức nặng thắng tốc độ; tốc độ thắng t
 ## 2. Ba mức việc — chi tiêu theo rủi ro
 
 **Mức do máy xếp theo đường dẫn tệp, agent không tự khai.**
-- Cao: những gì `cong/rui_ro.py` đã xếp cao (tệp của cổng, CI (tích hợp liên tục), sửa test có sẵn, phụ thuộc, mã máy) **cộng** các mẫu đường dẫn repo tự khai là nhạy cảm: quyền, xoá dữ liệu, migration (di chuyển cơ sở dữ liệu), thanh toán.
-- Vừa: mọi tệp mã chạy được còn lại.
-- Thấp: tài liệu, thêm test mới, tệp tĩnh.
+- Cao: những gì `cong/rui_ro.py` đã xếp cao (tệp của cổng, CI (tích hợp liên tục), sửa test có sẵn, phụ thuộc, mã máy) **cộng** các mẫu đường dẫn repo tự khai là nhạy cảm trong `cong/vung-nhay-cam.txt`: quyền, xoá dữ liệu, migration (di chuyển cơ sở dữ liệu), thanh toán.
+- Vừa: mọi tệp còn lại, gồm mã và cấu hình chạy được.
+- Thấp: chỉ tài liệu, thêm test mới, tệp tĩnh. Danh sách cho phép: tệp lạ thì xếp Vừa.
 
-`[CHƯA KIỂM]` Phần «repo tự khai mẫu đường dẫn» và mức Vừa cho mã chạy chưa có trong cổng: hôm nay cổng xếp mọi mã thường là thấp. Đây là việc phải làm trước khi áp vào repo thật.
+`[ĐÃ KIỂM: test cổng · 05/11]` Cổng đã xếp ba mức như trên và đọc vùng từ nhánh gốc, nên PR không tự gỡ vùng được. Mức Vừa hôm nay mới là nhãn, chưa bắt lượt phản bác của L3.
+`[CHƯA KIỂM]` Chưa thử trên PR thật chạm vùng đã khai.
 Giới hạn đã biết: tách một thay đổi lớn thành nhiều PR nhỏ vẫn lọt qua trần cỡ của L2.
 
 | | Thấp | Vừa | Cao |

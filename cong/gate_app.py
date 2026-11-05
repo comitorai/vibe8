@@ -12,7 +12,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from . import kiem_pr, ten
+from . import kiem_pr, rui_ro, ten
 
 API_GOC = "https://api.github.com"
 _GIOI_HAN_TOM_TAT = 60000
@@ -167,7 +167,7 @@ def thu_thap(gh, so_pr, sha):
 
 def tom_tat(q):
     dong = ["**Kết luận:** %s" % q["ket_luan"], "**Rủi ro từ diff:** %s" % q["rui_ro"],
-            "**Số dòng đổi:** %d" % q["so_dong"], "", "**Lý do:**"]
+            "**Số dòng đổi:** %d" % q["so_dong"], "**Vùng nhạy cảm đã khai:** %d mẫu" % q.get("so_mau_vung", 0), "", "**Lý do:**"]
     dong += ["- " + x for x in q["ly_do"][:50]]
     if q["chi_tiet"]:
         dong += ["", "**Chi tiết:**"] + ["- " + x for x in q["chi_tiet"][:50]]
@@ -184,11 +184,15 @@ def phat_check(gh, sha, q):
     return ket_luan
 
 
-def chay(gh, sha):
-    """Chỉ xét và phát trên SHA sự kiện. 0: đã phát, hoặc SHA không còn là head PR nào. 1: hỏng hạ tầng."""
+def chay(gh, sha, tep_vung=None):
+    """Chỉ xét và phát trên SHA sự kiện. 0: đã phát, hoặc SHA không còn là head PR nào. 1: hỏng hạ tầng.
+    tep_vung: tệp vùng nhạy cảm trong bản checkout nhánh gốc, không phải của PR: PR không tự gỡ được vùng."""
     try:
+        vung = rui_ro.doc_vung(tep_vung)
         ds = _pr_vao_goc(gh, sha)
         du_lieu = thu_thap(gh, ds[0], sha) if ds else None
+        if du_lieu:
+            du_lieu["vung_nhay_cam"] = vung
         # Không còn PR: vẫn phát, để `success` cũ của SHA này không còn đứng sau khi PR đóng.
         q = kiem_pr.quyet_dinh(du_lieu) if du_lieu else {
             "ket_luan": "khong_xet", "rui_ro": "chua_ro", "so_dong": 0, "chi_tiet": [],
@@ -200,8 +204,9 @@ def chay(gh, sha):
         print("lỗi hạ tầng: " + gh.che("%s: %s" % (type(loi).__name__, loi)))
         try:
             # Vẫn phải phát failure: `success` cũ trên SHA này không được ở lại khi lần xét mới hỏng.
+            ly_do = [str(loi)] if isinstance(loi, rui_ro.LoiVung) else []
             phat_check(gh, sha, {"ket_luan": "loi_ha_tang", "rui_ro": "chua_ro", "so_dong": 0, "chi_tiet": [],
-                                 "ly_do": ["cổng không đọc đủ dữ liệu, PR chưa được xét"]})
+                                 "ly_do": ["cổng không đọc đủ dữ liệu, PR chưa được xét"] + ly_do})
         except Exception as loi_phat:  # noqa: BLE001
             print("không phát được check: " + gh.che(type(loi_phat).__name__))
         return 1
@@ -218,7 +223,7 @@ def main(argv=None):
     if a.kho:
         with open(a.kho, encoding="utf-8") as tep:
             gh = GiaLap(json.load(tep))
-        ma = chay(gh, a.sha)
+        ma = chay(gh, a.sha, ten.TEP_VUNG)
         print("CHẠY KHÔ, không gọi GitHub. Sẽ gọi:\n" + json.dumps(gh.da_phat, ensure_ascii=False, indent=2))
         return ma
     repo, token = os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get(ten.BIEN_TOKEN_APP, "")
@@ -226,7 +231,7 @@ def main(argv=None):
         print("thiếu GITHUB_REPOSITORY hoặc %s" % ten.BIEN_TOKEN_APP)
         return 2
     gh = GitHub(repo, token, os.environ.get("GITHUB_API_URL", API_GOC))
-    return chay(gh, a.sha)
+    return chay(gh, a.sha, ten.TEP_VUNG)
 
 
 if __name__ == "__main__":
