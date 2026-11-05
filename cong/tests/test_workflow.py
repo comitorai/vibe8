@@ -9,6 +9,7 @@ GOC = Path(__file__).resolve().parents[2]
 NHANH = (GOC / ".github/workflows/cong-nhanh.yml").read_text(encoding="utf-8")
 CUOI = (GOC / ".github/workflows/cong-cuoi.yml").read_text(encoding="utf-8")
 TIN_HIEU = (GOC / ".github/workflows/tin-hieu-duyet.yml").read_text(encoding="utf-8")
+XET_VONG = (GOC / ".github/workflows/xet-vong.yml").read_text(encoding="utf-8")
 BIEU_THUC_SHA = "${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}"
 KHONG_XET_PR_DA_MERGE = "if: github.event.pull_request.merged != true"
 
@@ -36,19 +37,19 @@ class TestChungCacWorkflow(unittest.TestCase):
         self.assertEqual(khoi_run("a:\n  - run: |\n      x\n      y\n  - b: c"), ["|\n      x\n      y"])
 
     def test_action_ghim_sha(self):
-        for yml in (NHANH, CUOI):
+        for yml in (NHANH, CUOI, XET_VONG):
             ds = re.findall(r"uses:\s*(\S+)", yml)
             self.assertTrue(ds)
             for x in ds:
                 self.assertRegex(x, r"^[\w./-]+@[0-9a-f]{40}$")
 
     def test_khong_noi_suy_vao_run(self):
-        for yml in (NHANH, CUOI, TIN_HIEU):
+        for yml in (NHANH, CUOI, TIN_HIEU, XET_VONG):
             for khoi in khoi_run(yml):
                 self.assertNotIn("${{", khoi)
 
     def test_checkout_khong_giu_credential(self):
-        for yml in (NHANH, CUOI):
+        for yml in (NHANH, CUOI, XET_VONG):
             self.assertEqual(yml.count("actions/checkout@"), yml.count("persist-credentials: false"))
 
 
@@ -153,6 +154,35 @@ class TestTinHieuDuyet(unittest.TestCase):
 
     def test_ten_khop_cong_cuoi(self):
         self.assertIn("name: tin-hieu-duyet\n", TIN_HIEU)
+
+
+class TestXetVong(unittest.TestCase):
+    """Luật §8.4: mỗi 14 ngày máy chạy do_vong.py và mở issue xet-vong."""
+
+    def test_chi_chay_dinh_gio_hoac_tay(self):
+        su_kien = re.findall(r"^  (\w+):", XET_VONG.split("\non:\n")[1].split("\npermissions:")[0], re.M)
+        self.assertEqual(su_kien, ["schedule", "workflow_dispatch"])  # không có sự kiện PR nào chạy được job cầm quyền ghi
+
+    def test_quyen_ghi_duy_nhat_la_issue(self):
+        quyen = dict(re.findall(r"^  ([\w-]+): (read|write)$", XET_VONG.split("\npermissions:\n")[1].split("\n\n")[0], re.M))
+        self.assertEqual(quyen, {"contents": "read", "issues": "write", "pull-requests": "read", "checks": "read"})
+        self.assertEqual(XET_VONG.count("permissions:"), 1)
+        self.assertNotIn("secrets.", XET_VONG)
+
+    def test_14_ngay_mot_lan(self):
+        self.assertRegex(XET_VONG, r'cron: "\d+ \d+ \* \* 1"')  # mỗi thứ Hai
+        self.assertIn("/ 604800 % 2", XET_VONG)  # bỏ tuần lẻ tính từ epoch: cách nhau đúng 14 ngày
+        self.assertIn('[ "$SU_KIEN" = "schedule" ]', XET_VONG)  # chạy tay thì không bỏ
+        self.assertIn("--ngay 14", XET_VONG)
+
+    def test_script_hong_thi_khong_mo_issue(self):
+        khoi = khoi_run(XET_VONG)[0]
+        self.assertIn("set -eu", khoi)
+        self.assertLess(khoi.index("do_vong.py"), khoi.index("gh issue create"))
+        self.assertNotIn("|| true", khoi)
+
+    def test_issue_dung_nhan(self):
+        self.assertIn("gh issue create --repo \"$REPO\" --label xet-vong", XET_VONG)
 
 
 class TestAppMau(unittest.TestCase):
