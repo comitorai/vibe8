@@ -24,6 +24,7 @@ Python 3.9 trở lên, chỉ stdlib.
 sh ./kiem-tra.sh                                   # test lõi, test app mẫu, bài L1-L7 cục bộ
 python3 -m cong.gate_app --kho cong/tests/pr_mau.json --sha aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 python3 nghiem-thu/bat_cong.py --repo chu/repo --app-id 123 --kho
+python3 nghiem-thu/ghi_token.py --repo chu/repo --kho     # token máy ghi của PR nhánh đang mở
 ```
 
 Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bước tay script in ra.

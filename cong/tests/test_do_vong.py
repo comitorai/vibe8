@@ -165,9 +165,31 @@ class TestBang(unittest.TestCase):
 
     def test_token_ghi_chua_do(self):
         k = do_vong.tinh([pr(1)], [], NAY, 30)
-        self.assertEqual(k["token"], "chưa đo")
-        self.assertIn("chưa đo", do_vong.bang(k))
+        self.assertEqual((k["token"]["co_ghi"], k["token"]["thieu"]), (0, [1]))
+        self.assertIn("chưa đo: 0 / 1 PR merge", do_vong.bang(k))
         self.assertIn("chưa đủ mẫu", do_vong.bang(k))
+
+    def test_token_trung_vi_va_tinh_ca_pr_bi_bo(self):
+        ds = [dict(pr(1), token=100), dict(pr(2), token=300), dict(pr(3), token=200), pr(4),
+              dict(pr(5, merge=None), dong=True, token=600),  # bị bỏ: không vào trung vị, vào bình quân
+              dict(pr(6, merge=None), token=900)]  # còn mở: không tính
+        tk = do_vong.tinh(ds, [], NAY, 30)["token"]
+        self.assertEqual((tk["co_ghi"], tk["so_merge"], tk["thieu"]), (3, 4, [4]))
+        self.assertEqual((tk["trung_vi"], tk["binh_quan_ca_bo"], tk["so_bo"]), (200, 400, 1))
+        b = do_vong.bang(do_vong.tinh(ds, [], NAY, 30))
+        self.assertIn("trung vị 200 token mới, bình quân 400 khi tính cả 1 PR bị bỏ, 3 / 4 PR merge", b)
+        self.assertIn("**PR merge chưa có token máy ghi** (không vào trung vị): #4", b)
+
+
+class TestDocToken(unittest.TestCase):
+    def test_lay_comment_moi_nhat_cua_nguoi_trong_repo(self):
+        def c(so, ai, ngay, dau=True):
+            return {"body": ("<!-- token-may-ghi -->\n" if dau else "") + "token-moi: %d" % so,
+                    "author_association": ai, "updated_at": "2026-01-0%d" % ngay}
+        ds = [c(1, "OWNER", 1), c(2, "MEMBER", 2), c(9, "NONE", 3), c(8, "OWNER", 4, dau=False)]
+        self.assertEqual(do_vong.doc_token(ds), 2)
+        self.assertIsNone(do_vong.doc_token([]))
+        self.assertIsNone(do_vong.doc_token([{"body": None, "author_association": "OWNER"}]))
 
 
 if __name__ == "__main__":
