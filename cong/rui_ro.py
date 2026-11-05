@@ -20,6 +20,7 @@ _THU_TU = {THAP: 0, TRUNG_BINH: 1, CAO: 2}
 _GOC_BAO_VE = ("cong/", "luat/", "docs/bao-mat.md", "nghiem-thu/kiem_cuc_bo.py", "nghiem-thu/bat_cong.py", "nghiem-thu/loi/")
 _TEP_BAO_VE = {ten.TEP_CAU_HINH, "codeowners", "makefile", "justfile", "noxfile.py", "tox.ini", "pytest.ini", "conftest.py",
                ".gitattributes", ".gitmodules", "sitecustomize.py", "usercustomize.py"}
+_TEP_AGENT = {".mcp.json"}
 # Mã máy chạy được mà diff không đọc được: Python nạp `.pyc` hash-based thay cho `.py` mà không so với mã nguồn.
 _MA_MAY = (".pyc", ".pyo", ".pyd", ".so", ".dylib", ".dll", ".node", ".wasm", ".jar", ".class")
 _KHONG_CHAY = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".woff", ".woff2", ".ttf")  # Tệp không chữ nhưng không tự chạy.
@@ -69,6 +70,11 @@ def _la_bao_ve(duong):
     if ".github" in doan or duong.startswith(_GOC_BAO_VE):
         return True
     return doan[-1] in _TEP_BAO_VE or bool(_MAU_SCRIPT_CHECK.search(doan[-1]))
+
+
+def _la_cau_hinh_agent(duong):
+    """Hook, MCP, lệnh của Claude Code tự chạy trên máy ai mở repo bằng agent: như workflow CI, phải có người đọc."""
+    return ".claude" in duong.split("/") or duong.split("/")[-1] in _TEP_AGENT
 
 
 def _che_thu_vien(duong, trang_thai, them):
@@ -162,6 +168,8 @@ def _xet_tep(tep):
     for duong, goc in [(moi, ten_moi)] + ([] if cu is None else [(cu, ten_cu)]):
         if _la_bao_ve(duong):
             ket.append((CAO, "đổi tệp của cổng " + hien_thi(goc)))
+        if _la_cau_hinh_agent(duong):
+            ket.append((CAO, "đổi cấu hình agent, chạy lệnh trên máy người mở repo " + hien_thi(goc)))
         # Phụ thuộc mới chạy trong CI và app, diff không nói được gói đó làm gì: phải có người xem.
         if duong.split("/")[-1] in _LOCKFILE:
             ket.append((CAO, "đổi lockfile " + hien_thi(goc)))
