@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Máy ghi token của một PR từ bản ghi phiên Claude Code vào một comment của PR (luật mục 4 và 8.3).
+"""Máy ghi token của một PR từ bản ghi phiên Claude Code và Codex vào một comment của PR (luật mục 4 và 8.3).
 
     GH_TOKEN=$(gh auth token) python3 nghiem-thu/ghi_token.py --repo chu/repo [--pr N] [--kho]
 
@@ -10,10 +10,13 @@ Chạy sau khi đẩy commit cuối, và một lần nữa ngay trước khi mer
 Lượt gọi ở nhánh gốc hay HEAD rời được tính cho nhánh kế tiếp mà cùng phiên chuyển sang: đó là việc làm trước
 khi tạo nhánh. Bảng ghi riêng phần này.
 Token mới = input + cache_creation + output. Đọc lại bộ nhớ đệm (cache_read) ghi riêng, không cộng.
+Codex: đọc ~/.codex/sessions, mỗi bản ghi token_usage_record một lần theo response_id; token mới = input − cached_input
++ output (input của Codex đã gồm phần đọc đệm, output đã gồm reasoning). Codex chỉ ghi nhánh lúc mở phiên, nên cả phiên
+tính cho nhánh đó; cwd lấy theo turn_context của từng lượt. Dòng Codex mang tên "<máy> codex".
 Mỗi máy một dòng: chạy ở máy khác thì thêm dòng của máy đó, dòng các máy khác giữ nguyên.
 Giới hạn: việc ở nhánh gốc sau khi merge PR trước (dọn, kiểm) bị tính cho PR kế tiếp của phiên; việc ở nhánh gốc
-sau nhánh cuối của phiên không tính cho PR nào; tên nhánh dùng lại thì cộng chung; Codex và lượt tóm tắt ngữ cảnh
-chưa tính; người có quyền ghi vẫn sửa tay được comment.
+sau nhánh cuối của phiên không tính cho PR nào; tên nhánh dùng lại thì cộng chung; phiên Codex đổi nhánh giữa chừng
+vẫn tính cho nhánh lúc mở; lượt tóm tắt ngữ cảnh chưa tính; người có quyền ghi vẫn sửa tay được comment.
 """
 import argparse
 import datetime
@@ -82,13 +85,50 @@ def _luot_goi(cac_tep, goc):
     return kq
 
 
-def cong_theo_nhanh(cac_tep, goc_repo, nhanh_goc=("main",)):
+def _luot_goi_codex(cac_tep, goc):
+    """Mỗi lượt gọi model của Codex trong repo đúng một lần: (phiên, lúc, nhánh, token mới, đọc đệm)."""
+    da_tinh, kq = set(), []
+    for tep in cac_tep:
+        phien, nhanh, cwd_luot = None, None, {}
+        with open(tep, encoding="utf-8", errors="replace") as f:
+            for dong in f:
+                try:
+                    e = json.loads(dong)
+                except ValueError:
+                    continue
+                p = e.get("payload") if isinstance(e, dict) else None
+                if not isinstance(p, dict):
+                    continue
+                loai = e.get("type")
+                if loai == "session_meta":
+                    g = p.get("git")
+                    phien = p.get("session_id") or p.get("id")
+                    nhanh = g.get("branch") if isinstance(g, dict) else None
+                elif loai == "turn_context":
+                    cwd_luot[p.get("turn_id")] = p.get("cwd")
+                elif loai == "token_usage_record":
+                    cwd, u, khoa, luc = cwd_luot.get(p.get("turn_id")), p.get("usage"), p.get("response_id"), e.get("timestamp")
+                    if not isinstance(cwd, str) or not (cwd == goc or cwd.startswith(goc + "/")):
+                        continue
+                    if not (isinstance(nhanh, str) and nhanh and isinstance(u, dict) and isinstance(luc, str)):
+                        continue
+                    if not isinstance(khoa, str) or khoa in da_tinh:
+                        continue
+                    da_tinh.add(khoa)
+                    so = lambda k: u.get(k) if isinstance(u.get(k), int) and u.get(k) >= 0 else 0  # noqa: E731
+                    doc = min(so("cached_input_tokens"), so("input_tokens"))
+                    kq.append((str(p.get("session_id") or phien), luc, nhanh,
+                               so("input_tokens") - doc + so("output_tokens"), doc))
+    return kq
+
+
+def cong_theo_nhanh(cac_tep, goc_repo, nhanh_goc=("main",), doc_luot=_luot_goi):
     """{nhánh: {phien, luot, moi, doc_dem, moi_truoc}}. Lượt gọi ở nhánh gốc hay HEAD rời được tính cho nhánh
     kế tiếp mà cùng phiên chuyển sang (việc làm trước khi tạo nhánh); moi_truoc là phần đó.
-    Lượt ở nhánh gốc sau nhánh cuối của phiên không tính cho nhánh nào."""
+    Lượt ở nhánh gốc sau nhánh cuối của phiên không tính cho nhánh nào. doc_luot=_luot_goi_codex cho Codex."""
     goc_cung = set(nhanh_goc) | {"HEAD"}
     theo_phien = {}
-    for l in _luot_goi(cac_tep, str(goc_repo).rstrip("/")):
+    for l in doc_luot(cac_tep, str(goc_repo).rstrip("/")):
         theo_phien.setdefault(l[0], []).append(l)
     kq = {}
     for phien, ds in theo_phien.items():
@@ -125,8 +165,8 @@ def doc_comment(than):
 
 def than_comment(nhanh, theo_may):
     tong = {s: sum(v[s] for v in theo_may.values()) for s in _SO}
-    d = [DAU, "**Token máy ghi** cho nhánh `%s`: đọc từ bản ghi phiên Claude Code, không do agent tự báo. "
-         "Codex chưa tính. Cách ghi: `nghiem-thu/ghi_token.py`." % re.sub(r"[^\w./-]", "", nhanh), "",
+    d = [DAU, "**Token máy ghi** cho nhánh `%s`: đọc từ bản ghi phiên Claude Code và Codex, không do agent tự báo. "
+         "Cách ghi: `nghiem-thu/ghi_token.py`." % re.sub(r"[^\w./-]", "", nhanh), "",
          "| Máy | Phiên | Lượt gọi | Token mới | trong đó trước khi tạo nhánh | Đọc lại bộ đệm | Lúc ghi |",
          "|---|---|---|---|---|---|---|"]
     for may, v in sorted(theo_may.items()):
@@ -166,6 +206,7 @@ def main(argv=None):
     ap.add_argument("--pr", type=int)
     ap.add_argument("--goc", help="gốc repo trên đĩa; mặc định repo chứa thư mục đang đứng")
     ap.add_argument("--ban-ghi", help="thư mục chứa các thư mục bản ghi; mặc định ~/.claude/projects")
+    ap.add_argument("--ban-ghi-codex", help="thư mục bản ghi Codex; mặc định ~/.codex/sessions")
     ap.add_argument("--ngay", type=int, default=30, help="chỉ đọc bản ghi sửa trong ngần này ngày")
     ap.add_argument("--kho", action="store_true", help="chỉ in comment, không ghi lên GitHub")
     a = ap.parse_args(argv)
@@ -178,14 +219,18 @@ def main(argv=None):
         # Gốc của bản làm việc chính, để tính cả worktree nằm trong repo.
         goc = Path(a.goc or Path(_git(Path.cwd(), "rev-parse", "--path-format=absolute", "--git-common-dir")).parent).resolve()
         so_pr, nhanh, nhanh_goc = tim_pr(gh, a.repo, a.pr, None if a.pr else _git(Path.cwd(), "rev-parse", "--abbrev-ref", "HEAD"))
-        tep = cac_tep(goc, a.ban_ghi, time.time() - a.ngay * 86400)
-        moi = cong_theo_nhanh(tep, goc, (nhanh_goc,)).get(nhanh)
+        tu_luc = time.time() - a.ngay * 86400
+        moi = cong_theo_nhanh(cac_tep(goc, a.ban_ghi, tu_luc), goc, (nhanh_goc,)).get(nhanh)
+        tep_codex = cac_tep(goc, a.ban_ghi_codex or Path.home() / ".codex" / "sessions", tu_luc)
+        moi_codex = cong_theo_nhanh(tep_codex, goc, (nhanh_goc,), _luot_goi_codex).get(nhanh)
         ds = gh.goi("GET", "/issues/%d/comments?per_page=100" % so_pr)
         cu = comment_cu(ds)
         theo_may = doc_comment(cu["body"]) if cu else {}
         may = _TEN_MAY.sub("", platform.node())[:60] or "may-khong-ten"
-        if moi:
-            theo_may[may] = dict(moi, luc=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M"))
+        luc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M")
+        for ten, so in ((may, moi), (may + " codex", moi_codex)):
+            if so:
+                theo_may[ten] = dict(so, luc=luc)
         if not theo_may:
             print("Máy này không có lượt gọi nào trên nhánh %s; không ghi." % nhanh, file=sys.stderr)
             return 1
