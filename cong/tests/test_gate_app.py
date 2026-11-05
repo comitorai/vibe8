@@ -282,28 +282,26 @@ class TestLocLuotCi(unittest.TestCase):
         self.assertEqual(q["conclusion"], "failure")
         self.assertTrue(q["output"]["title"].startswith("cho "), q["output"]["title"])
 
-    def test_luot_truoc_lan_doi_base_cuoi_khong_tinh(self):
-        # Lượt test với base cũ, kể cả base có workflow in pass: API vẫn ghi base hiện tại nên chỉ thời điểm mới phân biệt được.
-        self._cho(self._xet({}, doi_base=("2026-11-01T00:00:10Z",)))
+    def test_pr_tung_doi_base_thi_khong_luot_nao_tinh(self):
+        # L8 trên GitHub thật: lượt tạo 2 giây sau khi đổi base vẫn chạy ref merge của base cũ, base đó có workflow in pass.
+        for luot in ({}, {"created_at": "2026-11-01T00:00:20Z"}, {"created_at": "2026-12-01T00:00:00Z"}):
+            self._cho(self._xet(luot, doi_base=("2026-11-01T00:00:10Z",)))
+        self._cho(self._xet({"created_at": "2026-11-01T00:00:20Z"}, doi_base=("2026-11-01T00:00:03Z", "2026-11-01T00:00:10Z")))
 
-    def test_luot_do_truoc_lan_doi_base_khong_lam_ket(self):
-        q = self._xet({"created_at": "2026-11-01T00:00:02Z", "conclusion": "failure"}, {"created_at": "2026-11-01T00:00:20Z"},
-                      doi_base=("2026-11-01T00:00:10Z",))
-        self.assertEqual(q["conclusion"], "success")
-
-    def test_luot_sau_lan_doi_base_cuoi_moi_tinh(self):
-        q = self._xet({"created_at": "2026-11-01T00:00:20Z"}, doi_base=("2026-11-01T00:00:03Z", "2026-11-01T00:00:10Z"))
-        self.assertEqual(q["conclusion"], "success")
+    def test_su_kien_khac_tren_pr_khong_chan(self):
+        d = du_lieu()
+        d["/issues/7/events"] += [{"event": "renamed", "created_at": "2026-11-01T00:00:10Z"}, {"event": "deployed", "created_at": "2026-11-01T00:00:11Z"}]
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
 
     def test_luot_truoc_khi_mo_pr_khong_tinh(self):
         self._cho(self._xet({"created_at": "2026-10-31T23:59:59Z"}))
 
-    def test_github_tu_doi_base_cung_la_moc(self):
-        # Nhánh cha merge và xoá: GitHub không ghi base_ref_changed. Lượt của nhánh cha không được tính, đỏ của nó không làm kẹt.
+    def test_github_tu_doi_base_cung_chan(self):
+        # Nhánh cha merge và xoá: GitHub không ghi base_ref_changed. Ref merge cũng có thể còn của nhánh cha.
         self._cho(self._xet({}, doi_tu_dong=("2026-11-01T00:00:10Z",)))
-        q = self._xet({"created_at": "2026-11-01T00:00:02Z", "conclusion": "failure"}, {"created_at": "2026-11-01T00:00:20Z"},
-                      doi_tu_dong=("2026-11-01T00:00:10Z",))
-        self.assertEqual(q["conclusion"], "success")
+        self._cho(self._xet({"created_at": "2026-11-01T00:00:20Z"}, doi_tu_dong=("2026-11-01T00:00:10Z",)))
 
     def test_nhanh_tung_co_pr_khac_thi_khong_luot_nao_tinh(self):
         # PR đóng rồi vẫn sinh lượt: sửa tiêu đề, hoặc lượt tạo trễ hơn lúc đóng. Thời điểm không phân biệt được, nên mọi PR khác đều chặn.

@@ -31,11 +31,13 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
 ## Luật
 
 - PR phải nhắm `main`, và là PR mở duy nhất vào `main` ở SHA đó.
-- Mọi lượt của tệp workflow `cong-nhanh`, sự kiện `pull_request`, trên đúng head SHA và nhánh đầu, tạo sau khi PR mở và sau lần đổi base
-  cuối, phải `success`. Lượt đỏ không bị lượt xanh che. Đỏ vì lỗi thoáng qua thì bấm chạy lại lượt đó; đỏ vì `main` lúc đó còn hỏng thì chạy
+- Mọi lượt của tệp workflow `cong-nhanh`, sự kiện `pull_request`, trên đúng head SHA và nhánh đầu, tạo sau khi PR mở, phải
+  `success`. Lượt đỏ không bị lượt xanh che. Đỏ vì lỗi thoáng qua thì bấm chạy lại lượt đó; đỏ vì `main` lúc đó còn hỏng thì chạy
   lại không chữa được, vì lượt chạy lại dùng commit merge cũ: đẩy một commit mới.
 - **Một nhánh đầu một PR:** nhánh từng có PR khác, kể cả đã đóng, thì không lượt nào được tính, vì PR đã đóng vẫn sinh lượt mới mà không biết
   lượt đó test với base nào. Cổng báo chờ. Đẩy sang nhánh tên mới rồi mở PR mới.
+- **PR từng đổi base không qua được,** kể cả đổi đi rồi đổi lại và GitHub tự đổi base của stacked PR: lượt sau khi đổi vẫn có thể chạy ref merge
+  của base cũ. Đẩy sang nhánh tên mới rồi mở PR mới thẳng vào `main`.
 - Đổi `.github/`, `xuong.yml`, thư mục `luat/`, `docs/bao-mat.md`, CODEOWNERS, script check, tệp khai phụ thuộc, lockfile: rủi ro cao, cần duyệt.
   Đổi README tự qua: tệp này chỉ mô tả, cổng không đọc nó.
 - **Test có sẵn là điều kiện nghiệm thu:** sửa, đổi tên, xoá đều là rủi ro cao, cần duyệt. Muốn thêm test thì tạo tệp mới, tự qua.

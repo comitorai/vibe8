@@ -115,16 +115,16 @@ def _pr_vao_goc(gh, sha):
 def _luot_cua_pr(gh, so_pr, pr, lan_chay):
     """Lượt được tính là đã test PR này với base hiện tại. Lượt không ghi nó test với base nào: `pull_requests[]` tính lúc đọc, còn
     PR đã đóng vẫn sinh lượt mới (sửa tiêu đề, tạo trễ). Nên nhánh đầu từng có PR khác thì không lượt nào tính, kể cả khi danh sách
-    không có chính PR này. Còn lại bỏ lượt của repo hay nhánh đầu khác, lượt trước khi PR mở hoặc trước lần đổi base cuối."""
+    không có chính PR này. PR từng đổi base cũng vậy: lượt sau khi đổi vẫn chạy ref merge của base trước (L8). Bỏ lượt của repo, nhánh đầu khác và lượt trước khi PR mở."""
     dau = pr["head"]
     if not (dau.get("repo") and dau.get("label")):
         return []
     if {str(p.get("number")) for p in _trang(gh, "/pulls?state=all&head=" + urllib.parse.quote(dau["label"], safe=":/"))} != {so_pr}:
         return []
-    moc = max([pr.get("created_at") or "~"] + [e.get("created_at") or "~" for e in _trang(gh, "/issues/%s/events" % so_pr)
-                                               if e.get("event") in ("base_ref_changed", "automatic_base_change_succeeded")])
+    if any(e.get("event") in ("base_ref_changed", "automatic_base_change_succeeded") for e in _trang(gh, "/issues/%s/events" % so_pr)):
+        return []
     return [r for r in lan_chay if (r.get("head_repository") or {}).get("full_name") == _repo(pr, "head")
-            and r.get("head_branch") == dau.get("ref") and (r.get("created_at") or "") >= moc]
+            and r.get("head_branch") == dau.get("ref") and (r.get("created_at") or "") >= (pr.get("created_at") or "~")]
 
 
 def _doc_theo_sha(gh, so_pr, pr):

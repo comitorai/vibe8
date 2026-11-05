@@ -19,7 +19,7 @@ def _xet_nhanh(lan_chay, sha):
     """Trả (xanh | do | cho, lý do). Mọi lượt của đúng SHA phải xanh: lượt xanh không che được lượt đỏ."""
     dung_sha = [c for c in (lan_chay or []) if c.get("head_sha") == sha]
     if not dung_sha:
-        return CHO, "chưa có lượt cong-nhanh tính được: CI chưa bắt đầu, PR xung đột, vừa đổi base, hoặc nhánh đầu từng có PR khác (dùng nhánh mới)"
+        return CHO, "chưa có lượt cong-nhanh tính được: CI chưa bắt đầu, PR xung đột, PR từng đổi base hoặc nhánh đầu từng có PR khác (hai trường hợp sau: mở PR mới từ nhánh mới)"
     if any(c.get("status") != "completed" for c in dung_sha):
         return CHO, "cong-nhanh chưa chạy xong"
     if all(c.get("conclusion") == "success" for c in dung_sha):

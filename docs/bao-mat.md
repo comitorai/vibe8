@@ -38,22 +38,21 @@ Cũng trên repo thử, bằng token giả:
 
 ## Chưa kiểm: cần khoá thật
 
-- L1-L4, L6 và phần `--admin` của L5 thực sự bị chặn; đổi base của PR đã xanh sang nhánh khác (L8, chưa có bản mẫu trong `nghiem-thu/loi/`).
-  Bài cục bộ không chứng minh được những lỗi này.
+- Phần `--admin` của L5. L1-L4, L6, L8 và các ca khác: kết quả từng lượt ghi ở `nghiem-thu/ket-qua.md`, tệp đó là nguồn duy nhất cho mục này.
+  Bài cục bộ không chứng minh được những lỗi này. L8 đã lọt trên GitHub thật ở bản trước: xem giới hạn 1.
 - Token App đọc được API quyền cộng tác viên không. Tài liệu ghi cần quyền Metadata đọc, App luôn có. Không đọc được thì mọi lượt có người xét sẽ đóng.
 - `head_sha` của lượt `workflow_run` có đúng là head của PR không, và GitHub chọn check mới nhất của App trên SHA thế nào.
 - Quyền Actions read và Pull requests read của App có đủ không. Checks write đã đủ: xem mục trên.
 - Trường `head_repository` của lượt chạy có đúng như cách cổng dùng để lọc PR fork không.
 - Hiệu lực của `can_admins_bypass: false` với chủ repo: API nhận và đọc lại đúng, chưa thử bằng tài khoản chủ.
-- `created_at` của lượt có giữ nguyên khi bấm chạy lại không. Cổng lọc lượt theo mốc này; nếu nó đổi thì lượt của base cũ có thể được tính.
-  Mốc đổi base so với lượt do chính lần đổi đó tạo ra có lệch giây không. Tìm `head=` có đúng với nhánh có ký tự lạ không; sai thì cổng đóng.
+- `created_at` của lượt có giữ nguyên khi bấm chạy lại không. Tìm `head=` có đúng với nhánh có ký tự lạ không; sai thì cổng đóng.
   Đổi tên nhánh đầu: PR đã đóng của tên cũ có lượt mới mang tên nhánh nào.
 - Token App quyền `issues: read` đọc được `/issues/N/events` trên PR không, hay chỉ cần `pull_requests: read`.
 - API có trễ không ngay sau `workflow_run`. `tin-hieu-duyet` trên PR fork có cần phê duyệt mới chạy không.
 - Status API và check run do token thường tạo cùng tên `cong-cuoi` có qua được required check gắn App không. Hai check cùng tên, một `failure`
   một `success`, GitHub chọn cái nào.
 - Giữ nhóm concurrency bằng lượt treo của PR, quyền xoá lượt, `/cancel`, secret cấp repo trùng tên trong environment.
-- `workflow_run.head_sha` của `tin-hieu-duyet` có đúng head PR không. Duyệt có còn tính sau đổi base không, kể cả stacked PR.
+- `workflow_run.head_sha` của `tin-hieu-duyet` có đúng head PR không.
 - Required check với `strict: False`: PR xanh trên base cũ có merge được không (là chủ ý, cần xác nhận).
 
 ## Giới hạn đã biết
@@ -61,9 +60,11 @@ Cũng trên repo thử, bằng token giả:
 1. **Cổng chống đi tắt, không chống cộng tác viên cố ý ác.** Trên repo cá nhân, cộng tác viên có quyền ghi và xoá được lượt
    CI đỏ. Repo cá nhân cũng không có danh sách giới hạn người push. PR đã lỡ được duyệt sai có thể làm hỏng cổng cho PR sau.
    Lượt chạy lọc theo repo đầu, nhánh đầu và thời điểm, không dùng `pull_requests[]` của API vì trường đó tính lúc đọc: ghi base hiện tại và mọi
-   PR mở cùng nhánh, kể cả khi lượt đã test với base khác. Nhánh đầu từng có PR khác thì không lượt nào tính. Còn một khe hẹp: sửa tiêu đề rồi đổi
-   base về `main` trong vài giây thì lượt của base cũ có thể tạo sau mốc. Lượt trên `main` vẫn phải xanh, nên khe này chỉ dùng được khi PR
-   xung đột (không có lượt trên `main`) và `main` sau đó hết xung đột mà SHA không đổi.
+   PR mở cùng nhánh, kể cả khi lượt đã test với base khác. Nhánh đầu từng có PR khác thì không lượt nào tính. PR từng đổi base cũng vậy: bản trước
+   lọc theo mốc đổi base và đã lọt trên GitHub thật, vì lượt tạo 2 giây sau khi đổi vẫn checkout ref merge của base cũ, base đó có workflow in pass.
+   Lượt không ghi nó chạy ref merge nào, nên `cong-nhanh` tin vào ref merge do GitHub dựng. Sửa tiêu đề ngay sau khi đẩy commit cũng có thể gặp
+   ref cũ, nhưng lượt `synchronize` của commit đó vẫn phải xanh. Lúc PR xung đột thì không có lượt `synchronize`: khe này còn mở khi `main` sau đó
+   hết xung đột mà SHA không đổi.
 2. **PR rủi ro thấp tự merge, không có người đọc.** Đây là chính sách, người dùng quyết. Trung bình cũng được đối xử như thấp về
    điều kiện qua. Muốn mọi PR phải có người duyệt thì phải đổi `kiem_pr.py`.
 3. **Khoảng hở nhỏ giữa yêu cầu sửa và lượt xét mới.** Check cũ còn `success` cho tới khi `tin-hieu-duyet` và `cong-cuoi` chạy xong.
@@ -74,7 +75,7 @@ Cũng trên repo thử, bằng token giả:
 5. **Repo private gói Free không có cổng.** Không đặt được required check.
 6. **Admin có thể vượt environment,** trừ khi bỏ tick «Allow administrators to bypass» trên giao diện. `enforce_admins` chỉ áp cho nhánh.
 7. **Force push A, B, rồi về A** làm lượt duyệt cũ trên A còn tính, và thu hồi trên A bị lượt xét mới ghi đè. Cây mã giống thứ đã duyệt,
-   nhưng `main` có thể đã khác, nên kết quả merge có thể khác thứ đã đọc. Đổi base đi rồi đổi lại cũng vậy, kể cả với stacked PR hợp lệ.
+   nhưng `main` có thể đã khác, nên kết quả merge có thể khác thứ đã đọc.
 8. **API files không cho biết mode của tệp.** Symlink mới hiện như tệp một dòng có nội dung là đích, nên chỉ bị bắt khi trùng tên mô-đun chuẩn.
    Đổi quyền tệp thuần không có diff dạng chữ: loại `changed` xếp trung bình. Tệp không có diff dạng chữ thì cần duyệt, trừ ảnh, PDF và phông chữ.
    Đổi tên kèm sửa tệp nhị phân trông giống hệt đổi tên thuần (0 dòng, không patch) nên tự qua.
@@ -86,7 +87,8 @@ Cũng trên repo thử, bằng token giả:
 10. **Agent lỡ dùng email của người duyệt để commit** thì người đó thành «tự duyệt». Cổng đóng và ghi lý do, không mở sai.
 11. **Xoá hoặc đổi tên `cong-nhanh.yml` không qua được:** cổng không có lượt CI để đọc, nên mọi PR kẹt. Đường thoát: chủ repo tạm gỡ bảo vệ nhánh.
 12. **Cổng báo chờ, không qua, khi không có lượt tính được:** PR xung đột với nhánh gốc, nhánh đầu từng có PR khác (kể cả đã đóng, nên PR lành dùng
-    lại nhánh cũ vẫn kẹt), hoặc vừa đổi base mà lượt mới chưa có. Giải xung đột rồi sửa tiêu đề để chạy CI và đánh thức; dùng lại nhánh thì đẩy sang nhánh tên mới.
+    lại nhánh cũ vẫn kẹt), hoặc PR từng đổi base, kể cả stacked PR do GitHub tự đổi. Giải xung đột rồi sửa tiêu đề để chạy CI và đánh thức; hai trường hợp sau thì
+    đẩy sang nhánh tên mới rồi mở PR mới.
 13. **Yêu cầu sửa gắn theo PR.** Mở PR mới cùng nội dung thì yêu cầu sửa cũ không theo; nếu là rủi ro thấp thì tự qua.
 14. **Hai PR trong repo cùng SHA vào `main` làm cả hai kẹt.** PR thứ hai mở có chủ ý thì giữ được SHA đó không qua được, đến khi đóng.
 15. **PR quá 3000 tệp bị chặn:** API không trả đủ, cổng đóng. Commit có author không gắn tài khoản, và commit merge, không tính vào «người có commit».

@@ -2,7 +2,7 @@ name: cong-nhanh
 
 on:
   pull_request:
-    # edited: đổi base phải sinh lượt mới, không được dùng lại lượt của base cũ.
+    # edited: sửa tiêu đề để chạy CI lại khi PR hết xung đột. PR từng đổi base thì cổng không tính lượt nào.
     types: [opened, synchronize, reopened, edited]
 
 permissions:
