@@ -29,6 +29,10 @@ python3 nghiem-thu/ghi_token.py --repo chu/repo --kho     # token máy ghi của
 
 Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bước tay script in ra.
 
+Mở repo bằng Claude Code thì `.claude/settings.json` tự chạy `ghi_token.py` sau mỗi `git push`, `gh pr create` và trước `gh pr merge`
+(`nghiem-thu/hook_ghi_token.py`), không chặn lệnh nào. Ghi hỏng thì hook báo cách chạy tay. Đổi `.claude/` hay `.mcp.json` là rủi ro cao,
+vì chúng chạy lệnh trên máy người mở repo.
+
 ## Luật
 
 - PR phải nhắm `main`, và là PR mở duy nhất vào `main` ở SHA đó.
