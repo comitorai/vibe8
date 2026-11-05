@@ -556,6 +556,13 @@ class TestGitHub(unittest.TestCase):
         self.assertEqual(ghi["url"], "https://api.github.com/repos/chu/repo/pulls/1")
         self.assertEqual(ghi["auth"], "Bearer " + TOKEN)
 
+    def test_tu_choi_token_co_ky_tu_la_khong_in_gia_tri(self):
+        # http.client ném ValueError in nguyên header nếu token có xuống dòng: phải chặn trước khi gửi.
+        for token in ("", TOKEN + "\n", TOKEN + " ", "Bearer " + TOKEN, TOKEN + "\x00"):
+            with self.subTest(repr(token)), self.assertRaises(gate_app.LoiApi) as ng:
+                gate_app.GitHub("chu/repo", token)
+            self.assertNotIn(TOKEN, str(ng.exception))
+
     def test_tu_choi_api_khong_https(self):
         with self.assertRaises(gate_app.LoiApi):
             gate_app.GitHub("chu/repo", TOKEN, "http://api.github.com")
@@ -659,6 +666,11 @@ class TestMain(unittest.TestCase):
     def test_thieu_token_khong_chay(self):
         ma, _ = self._main(["--sha", SHA], {"GITHUB_REPOSITORY": "chu/repo"})
         self.assertEqual(ma, 2)
+
+    def test_token_xuong_dong_khong_chay_khong_in(self):
+        ma, ra = self._main(["--sha", SHA], {"GITHUB_REPOSITORY": "chu/repo", ten.BIEN_TOKEN_APP: TOKEN + "\n"})
+        self.assertEqual(ma, 2)
+        self.assertNotIn(TOKEN, ra)
 
 
 class TestVungNhayCam(unittest.TestCase):

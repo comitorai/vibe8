@@ -15,6 +15,9 @@ import urllib.request
 from . import kiem_pr, rui_ro, ten
 
 API_GOC = "https://api.github.com"
+# Token chỉ gồm ký tự in được, không khoảng trắng. Ký tự lạ (vd xuống dòng cuối khi dán) làm http.client
+# ném ValueError có in nguyên header Authorization, tức in token: chặn trước khi gửi.
+TOKEN_HOP_LE = re.compile(r"[\x21-\x7e]+")
 _GIOI_HAN_TOM_TAT = 60000
 
 
@@ -34,6 +37,8 @@ class GitHub:
     def __init__(self, repo, token, goc=API_GOC):
         if not goc.startswith("https://"):
             raise LoiApi("API phải dùng https")
+        if not TOKEN_HOP_LE.fullmatch(token or ""):
+            raise LoiApi("token rỗng hoặc có ký tự lạ")  # không kèm giá trị
         self.goc_repo = "%s/repos/%s" % (goc.rstrip("/"), repo)
         self.token = token
         self._mo = urllib.request.build_opener(_KhongChuyenHuong).open
@@ -227,8 +232,8 @@ def main(argv=None):
         print("CHẠY KHÔ, không gọi GitHub. Sẽ gọi:\n" + json.dumps(gh.da_phat, ensure_ascii=False, indent=2))
         return ma
     repo, token = os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get(ten.BIEN_TOKEN_APP, "")
-    if not re.fullmatch(r"[\w.-]+/[\w.-]+", repo) or not token:
-        print("thiếu GITHUB_REPOSITORY hoặc %s" % ten.BIEN_TOKEN_APP)
+    if not re.fullmatch(r"[\w.-]+/[\w.-]+", repo) or not TOKEN_HOP_LE.fullmatch(token):
+        print("thiếu GITHUB_REPOSITORY, hoặc %s rỗng hay có ký tự lạ" % ten.BIEN_TOKEN_APP)
         return 2
     gh = GitHub(repo, token, os.environ.get("GITHUB_API_URL", API_GOC))
     return chay(gh, a.sha, ten.TEP_VUNG)

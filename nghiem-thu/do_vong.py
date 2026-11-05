@@ -21,7 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from cong import ten  # noqa: E402
-from cong.gate_app import GitHub, LoiApi  # noqa: E402
+from cong.gate_app import TOKEN_HOP_LE, GitHub, LoiApi  # noqa: E402
 
 NANG = ("N1", "N2", "N3")
 KHAU = ("dac-ta", "test", "phan-bac", "khong-phan-bac", "cong", "chay-that", "ngoai-tam")
@@ -62,6 +62,21 @@ def doc_check(ds_check):
                 if ly_do and not ly_do.startswith(_CHUNG):
                     nhom.add(ly_do)
     return muc, sorted(nhom)
+
+
+def app_ghim(gh):
+    """app_id mà bảo vệ nhánh gốc ghim cho check cổng cuối, None nếu chưa ghim.
+    Chỉ check của App này là thật: check cùng tên do workflow hay App khác phát thì branch protection cũng không nhận."""
+    bao_ve = (gh.goi("GET", "/branches/%s" % ten.NHANH_GOC) or {}).get("protection") or {}
+    cac_id = {c.get("app_id") for c in (bao_ve.get("required_status_checks") or {}).get("checks") or []
+              if c.get("context") == ten.CHECK_CUOI}
+    cac_id -= {None, -1}  # -1 là «nguồn nào cũng được»: chưa ghim
+    return cac_id.pop() if len(cac_id) == 1 else None
+
+
+def loc_app(ds_check, app_id):
+    """Giữ check do đúng App phát. Chưa biết App thì không tin check nào: số đo cổng để trống, không đoán."""
+    return [c for c in ds_check if app_id is not None and (c.get("app") or {}).get("id") == app_id]
 
 
 def _phan_loai(nhan):
@@ -173,12 +188,15 @@ def bang(k):
           for ly, o in sorted(k["do_dung"].items())] or ["- chưa có lần chặn"]
     if k["oan_tu_gan"]:
         d.append("- nhãn `chan-oan` do tác giả PR tự gắn, không tính: " + ", ".join("#%d" % s for s in k["oan_tu_gan"]))
+    if "app_cong" in k and k["app_cong"] is None:
+        d += ["", "**Cảnh báo:** nhánh %s chưa ghim App cho `%s` và không có `--app-id`: không tin check nào, "
+              "mức rủi ro và độ đúng của cổng để trống." % (ten.NHANH_GOC, ten.CHECK_CUOI)]
     if k.get("cham_tran"):
         d += ["", "**Cảnh báo:** danh sách chạm trần 100 mục, số có thể thiếu: " + ", ".join(k["cham_tran"])]
     return "\n".join(d)
 
 
-def thu_thap(gh, ngay, nay):
+def thu_thap(gh, ngay, nay, app_id):
     dau = (_gio(nay) - datetime.timedelta(days=ngay)).strftime("%Y-%m-%dT%H:%M:%SZ")
     tran = []
     # Sắp theo lần cập nhật: PR mở trước kỳ mà merge trong kỳ vẫn lọt vào trang đầu.
@@ -194,8 +212,7 @@ def thu_thap(gh, ngay, nay):
         check = []
         for sha in cac_sha:
             check += gh.goi("GET", "/commits/%s/check-runs?check_name=%s&filter=all&per_page=100" % (sha, ten.CHECK_CUOI))["check_runs"]
-        # Check cùng tên do workflow tự tạo là giả: chỉ tin check của App.
-        muc, ly_do = doc_check([c for c in check if (c.get("app") or {}).get("slug") != "github-actions"])
+        muc, ly_do = doc_check(loc_app(check, app_id))
         nhan = [n["name"] for n in p.get("labels") or []]
         oan_tu_gan = False
         if "chan-oan" in nhan:
@@ -221,20 +238,21 @@ def main(argv=None):
     ap.add_argument("--repo", required=True)
     ap.add_argument("--ngay", type=int, default=30)
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--app-id", type=int, help="App phát check cổng; mặc định đọc từ bảo vệ nhánh gốc")
     a = ap.parse_args(argv)
     token = (os.environ.get("GH_TOKEN") or "").strip()
-    # Ký tự lạ trong token làm http.client ném lỗi có in nguyên token: chặn từ đầu, không in giá trị.
-    if not re.fullmatch(r"[\x21-\x7e]+", token):
+    if not TOKEN_HOP_LE.fullmatch(token):  # không in giá trị
         print("Thiếu biến GH_TOKEN hoặc token có ký tự lạ.", file=sys.stderr)
         return 2
     gh = GitHub(a.repo, token)
     nay = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
-        ds_pr, ds_issue, tran = thu_thap(gh, a.ngay, nay)
+        app_id = a.app_id or app_ghim(gh)
+        ds_pr, ds_issue, tran = thu_thap(gh, a.ngay, nay, app_id)
     except LoiApi as loi:
         print(gh.che(str(loi)), file=sys.stderr)
         return 1
-    k = dict(tinh(ds_pr, ds_issue, nay, a.ngay, repo=a.repo), cham_tran=tran)
+    k = dict(tinh(ds_pr, ds_issue, nay, a.ngay, repo=a.repo), cham_tran=tran, app_cong=app_id)
     print(json.dumps(k, ensure_ascii=False, indent=1) if a.json else bang(k))
     return 0
 

@@ -20,7 +20,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from cong import ten  # noqa: E402
-from cong.gate_app import GitHub, LoiApi  # noqa: E402
+from cong.gate_app import TOKEN_HOP_LE, GitHub, LoiApi  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from do_vong import app_ghim, loc_app  # noqa: E402
 
 _WORKFLOW_CI = ".github/workflows/%s.yml" % ten.CHECK_NHANH
 _MUC = re.compile(r"\((thap|trung_binh|cao)\)")
@@ -68,11 +71,11 @@ def tong_hop(dong):
     return ket
 
 
-def doc_pr(gh, pr):
+def doc_pr(gh, pr, app_id):
     sha = pr["head"]["sha"]
     # filter=all: mặc định API chỉ trả check mới nhất, sẽ mất kết luận đầu của cổng.
     check = gh.goi("GET", "/commits/%s/check-runs?check_name=%s&filter=all&per_page=100" % (sha, ten.CHECK_CUOI))["check_runs"]
-    check = [c for c in check if (c.get("app") or {}).get("slug") != "github-actions"]
+    check = loc_app(check, app_id)
     luot = gh.goi("GET", "/actions/runs?head_sha=%s&event=pull_request&per_page=100" % sha)["workflow_runs"]
     luot = [r for r in luot if r.get("path") == _WORKFLOW_CI]
     return chi_so(pr, check, luot, gh.goi("GET", "/pulls/%d/reviews?per_page=100" % pr["number"]))
@@ -83,15 +86,20 @@ def main(argv=None):
     ap.add_argument("--repo", required=True)
     ap.add_argument("--so", type=int, default=30, help="số PR gần nhất, tối đa 100")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--app-id", type=int, help="App phát check cổng; mặc định đọc từ bảo vệ nhánh gốc")
     a = ap.parse_args(argv)
-    token = os.environ.get("GH_TOKEN")
-    if not token:
-        print("Thiếu biến GH_TOKEN.", file=sys.stderr)
+    token = (os.environ.get("GH_TOKEN") or "").strip()
+    if not TOKEN_HOP_LE.fullmatch(token):  # không in giá trị
+        print("Thiếu biến GH_TOKEN hoặc token có ký tự lạ.", file=sys.stderr)
         return 2
     gh = GitHub(a.repo, token)
     try:
         ds = gh.goi("GET", "/pulls?state=all&base=%s&sort=created&direction=desc&per_page=%d" % (ten.NHANH_GOC, min(a.so, 100)))
-        dong = [doc_pr(gh, pr) for pr in ds]
+        app_id = a.app_id or app_ghim(gh)
+        if app_id is None:
+            print("Cảnh báo: %s chưa ghim App cho %s: bỏ mọi check, cột mở→cổng và mức để trống." % (
+                ten.NHANH_GOC, ten.CHECK_CUOI), file=sys.stderr)
+        dong = [doc_pr(gh, pr, app_id) for pr in ds]
     except LoiApi as loi:
         print(gh.che(str(loi)), file=sys.stderr)
         return 1
