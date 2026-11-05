@@ -303,6 +303,28 @@ class TestLocLuotCi(unittest.TestCase):
         chay(gh)
         self._cho(gh.da_phat[0][2])
 
+    def test_su_kien_khac_sau_doi_base_khong_mo_lai(self):
+        # Gắn nhãn sau khi đổi base không được xoá dấu đổi base.
+        d = du_lieu()
+        d["/issues/7/events"] += [{"event": "base_ref_changed", "created_at": "2026-11-01T00:00:10Z"}, {"event": "labeled", "created_at": "2026-11-01T00:00:11Z"}]
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self._cho(gh.da_phat[0][2])
+
+    def test_trang_thieu_muc_van_doc_trang_sau(self):
+        d = du_lieu()
+        d["/issues/7/events"] = [{"event": "deployed", "created_at": "2026-11-01T00:00:11Z"}] * 99
+
+        class ThieuMuc(gate_app.GiaLap):
+            def goi(self, phuong_thuc, duong, body=None):
+                if phuong_thuc == "GET" and duong.endswith("/issues/7/events?per_page=100&page=2"):
+                    return [{"event": "base_ref_changed", "created_at": "2026-11-01T00:00:10Z"}]
+                return super().goi(phuong_thuc, duong, body)
+
+        gh = ThieuMuc(d)
+        chay(gh)
+        self._cho(gh.da_phat[0][2])
+
     def test_su_kien_khac_tren_pr_khong_chan(self):
         d = du_lieu()
         d["/issues/7/events"] += [{"event": "renamed", "created_at": "2026-11-01T00:00:10Z"}, {"event": "deployed", "created_at": "2026-11-01T00:00:11Z"}]
@@ -550,7 +572,7 @@ class TestGitHub(unittest.TestCase):
         self.assertIn("bi mat", ng.exception.than)
 
     def test_doc_het_cac_trang(self):
-        trang = {1: [{"n": i} for i in range(100)], 2: [{"n": 100}]}
+        trang = {1: [{"n": i} for i in range(100)], 2: [{"n": 100}], 3: []}
 
         def mo(yeu_cau, timeout):
             so = int(yeu_cau.full_url.rsplit("page=", 1)[1])

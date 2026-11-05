@@ -3,7 +3,7 @@
 Cổng chạy ở phía GitHub: quyết định chỉ dựa trên diff, kết quả CI và lượt duyệt theo đúng commit,
 không đọc lời khai trong thân PR. Tên `xuong` và `cong` là tên tạm, gom ở `cong/ten.py`.
 
-**Trạng thái: đã bật trên một repo thật, L1-L8 đã thử ở đó, L8 lọt ở bản trước và bản vá chưa thử lại.** Chưa dùng được làm cổng thật
+**Trạng thái: đã bật trên một repo thật, L1-L8 đã thử ở đó (riêng `--admin` của L5 chưa thử bằng admin thật), L8 lọt ở bản trước và bản vá chưa thử lại.** Chưa dùng được làm cổng thật
 khi chưa qua. Kết quả từng ca: [nghiem-thu/ket-qua.md](nghiem-thu/ket-qua.md). Đã kiểm gì, giới hạn gì: [docs/bao-mat.md](docs/bao-mat.md).
 
 ## Gồm gì
@@ -21,7 +21,7 @@ Python 3.9 trở lên, chỉ stdlib.
 ## Chạy
 
 ```sh
-sh ./kiem-tra.sh                                   # test lõi, test app mẫu, bài L1-L6 cục bộ
+sh ./kiem-tra.sh                                   # test lõi, test app mẫu, bài L1-L7 cục bộ
 python3 -m cong.gate_app --kho cong/tests/pr_mau.json --sha aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 python3 nghiem-thu/bat_cong.py --repo chu/repo --app-id 123 --kho
 ```
@@ -58,4 +58,4 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
 - PR quá 250 commit bị chặn, vì API chỉ trả tới đó nên không đọc đủ được người có commit.
 - Yêu cầu sửa của người có quyền admin chặn bất kể SHA và mức rủi ro trên **PR đó**. Lượt của họ bị gỡ thì vẫn chặn đến khi họ duyệt lại.
   Yêu cầu sửa không theo sang PR mới cùng nội dung; người duyệt phải đóng cả nhánh nếu không muốn nội dung đó vào.
-- SHA không còn là head của PR mở vào `main`: cổng thu hồi bằng `failure`, để `success` cũ không chờ sẵn khi đổi base đi rồi đổi lại.
+- Mỗi lần cổng được đánh thức mà SHA không còn là head của PR mở vào `main`, ví dụ PR vừa đóng: cổng ghi `failure` thay `success` cũ. Đổi base từ `main` đi nơi khác không đánh thức cổng; đổi về thì cổng xét lại và chặn, vì PR đã từng đổi base.

@@ -91,7 +91,7 @@ def _trang(gh, duong, khoa=None, toi_da=30):
         muc = (phan or {}).get(khoa, []) if khoa else phan
         ket.extend(muc)
         tong = max(tong, (phan or {}).get("total_count", 0) if khoa else 0)
-        if len(muc) < 100:
+        if not muc:  # đọc tới trang rỗng: trang thiếu mục giữa chừng không được làm rơi trang sau
             break
     else:
         raise LoiApi("GET %s: quá %d trang, không đọc đủ" % (duong, toi_da))
@@ -189,7 +189,7 @@ def chay(gh, sha):
     try:
         ds = _pr_vao_goc(gh, sha)
         du_lieu = thu_thap(gh, ds[0], sha) if ds else None
-        # Không còn PR: vẫn phát, `success` cũ không được ở lại vì đổi base đi rồi đổi lại là dùng được ngay nếu không thu hồi.
+        # Không còn PR: vẫn phát, để `success` cũ của SHA này không còn đứng sau khi PR đóng.
         q = kiem_pr.quyet_dinh(du_lieu) if du_lieu else {
             "ket_luan": "khong_xet", "rui_ro": "chua_ro", "so_dong": 0, "chi_tiet": [],
             "ly_do": ["SHA này không còn là head của PR mở vào nhánh gốc"]}

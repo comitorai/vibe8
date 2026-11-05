@@ -37,21 +37,29 @@ Cũng trên repo thử, bằng token giả:
 - Cổng tạo được token App và phát check đúng App. L1-L8 và các ca thêm: kết quả từng lượt ghi ở `nghiem-thu/ket-qua.md`.
 - Token App đọc được API quyền cộng tác viên, ít nhất với người quyền ghi: lượt bình luận của cộng tác viên cho ra `chan` đúng lý do, không lỗi API.
 - Job Actions phát check cùng tên `cong-cuoi` `success` bên cạnh `failure` của App: PR vẫn bị chặn. Status API cùng tên: GitHub nhận, PR vẫn bị chặn, merge bị từ chối.
-  Check run bằng token thường: 403. Cả ba do ghim `app_id`.
+  Check run bằng token thường: 403, vì phải là GitHub App. Hai ca kia có `failure` của App trên cùng SHA, nên riêng chúng không chứng minh được ghim `app_id`; bằng chứng tách riêng là ca trên repo thử ở trên.
+
+Đo trên repo đối chứng, token thường, không phải khoá thật:
+
 - `cong-nhanh` chỉ chạy lúc mở PR và đẩy commit: 11 lượt loại này, đẩy cách nhau 3 và 15 giây, đều checkout đúng merge của head mới. Mẫu nhỏ, không phải cam kết của GitHub.
+- Lượt `edited` 1-2 giây sau khi đổi base lại merge vào base cũ, trên base khác SHA với `main`: tái hiện đúng nguyên nhân L8.
+- Đổi base bằng REST và GraphQL: sự kiện hiện ở lần đọc đầu trong 6/6 lần đo. Mẫu nhỏ, token thường.
+- GitHub tự đổi base của stacked PR khi nhánh cha tự xoá sau merge: có sự kiện `automatic_base_change_succeeded`. Lần đọc 0,83 giây chưa đổi gì, lần 4,22 giây đã đổi cả base lẫn sự kiện. Xoá bằng `gh pr merge --delete-branch` thì PR con đóng, base không đổi.
+- Đẩy commit khi đã xung đột: 2/2 không có lượt trên SHA đó. Đẩy commit lúc PR đóng: 1/1 không có lượt.
+- Chạy lại lượt: giữ id và `created_at`, `run_attempt` thành 2, dùng commit merge cũ kể cả khi PR đã xung đột.
+- Đổi tên nhánh đầu: xem giới hạn 23.
 
 ## Chưa kiểm
 
-- L8 sau bản vá: bản trước đã lọt trên GitHub thật, xem giới hạn 1. Bản vá chỉ có tác dụng nếu token App đọc được `/issues/N/events`, phải thử lại trên mã đã merge.
+- L8 sau bản vá: bản trước đã lọt trên GitHub thật, xem giới hạn 1. Mã `2bf203e` đã đọc được `/issues/N/events` bằng token App; không đọc được thì mọi PR ra `failure`. Chưa kiểm là App có thấy sự kiện đổi base không, phải thử lại trên mã đã merge.
 - `--admin` của L5 bằng tài khoản admin thật. Tài khoản cộng tác viên đã bị từ chối.
 - Token App đọc quyền của người có quyền admin trên mã hiện tại: PR kế có người duyệt sẽ cho biết.
 - `head_sha` của lượt `workflow_run` có đúng là head của PR không, và GitHub chọn check mới nhất của App trên SHA thế nào.
 - Quyền Actions read và Pull requests read của App có đủ không. Checks write đã đủ: xem mục trên.
 - Trường `head_repository` của lượt chạy có đúng như cách cổng dùng để lọc PR fork không.
 - Hiệu lực của `can_admins_bypass: false` với chủ repo: API nhận và đọc lại đúng, chưa thử bằng tài khoản chủ.
-- `created_at` của lượt có giữ nguyên khi bấm chạy lại không. Tìm `head=` có đúng với nhánh có ký tự lạ không; sai thì cổng đóng.
-  Đổi tên nhánh đầu: PR đã đóng của tên cũ có lượt mới mang tên nhánh nào.
-- API có trễ không ngay sau `workflow_run`. Sự kiện đổi base hiện ngay ở lần đọc đầu trong 3/3 lần đo, 0,55-0,58 giây sau lệnh, bằng token thường, không phải token App.
+- Tìm `head=` có đúng với nhánh có ký tự lạ không; sai thì cổng đóng.
+- API có trễ không ngay sau `workflow_run`. Sự kiện đổi base hiện ở lần đọc đầu trong 6/6 lần đo, bằng token thường, không phải token App; chưa dựng được đúng lượt đang xếp hàng lúc đổi base. Nếu API trễ đúng lúc cổng đọc thì `success` sai không được sửa, vì sau khi đổi base `cong-nhanh` không chạy lại, cổng chỉ được đánh thức một lần.
   `tin-hieu-duyet` trên PR fork có cần phê duyệt mới chạy không.
 - Giữ nhóm concurrency bằng lượt treo của PR, quyền xoá lượt, `/cancel`, secret cấp repo trùng tên trong environment.
 - `workflow_run.head_sha` của `tin-hieu-duyet` có đúng head PR không.
@@ -107,6 +115,9 @@ Cũng trên repo thử, bằng token giả:
 22. **Hai PR xanh riêng có thể ghép lại gãy `main`.** `strict: False` nên PR không phải chạy lại khi `main` tiến. Hai PR rủi ro thấp, mỗi PR xanh trên `main` lúc nó chạy,
     có thể cùng vào và làm `main` đỏ. Không PR nào vượt cổng, và PR kế tiếp sẽ đỏ nên hỏng lộ ra ngay. Đổi lấy: `strict: True` buộc chạy lại và duyệt lại mỗi lần `main` tiến;
     hàng đợi merge chỉ có ở repo tổ chức.
+23. **Đổi tên nhánh đầu vòng qua được luật một nhánh một PR.** PR đã đóng vẫn mang tên cũ, nên tìm `head=` theo tên mới chỉ thấy PR mới. Đo trên repo đối chứng, 1 mẫu:
+    lượt cũ giữ tên cũ nên bị lọc, đẩy commit mới sinh đúng 1 lượt mang tên mới, merge đúng head mới. Chưa đo: PR đang mở khi đổi tên, và sửa PR đã đóng sau khi đổi tên;
+    đường sau cần workflow có `edited` ở ref merge, trùng khe ở giới hạn 1.
 
 ## Vì sao dùng hai sự kiện đặc quyền
 

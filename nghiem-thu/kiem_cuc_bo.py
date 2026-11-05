@@ -158,7 +158,7 @@ GIỚI HẠN: L3-L6 chủ yếu do thiết lập GitHub chặn, nên bài cục 
 - L4: check giả do job Actions phát; chỉ required check có expected source là App mới loại được.
 - L5: đẩy thẳng hoặc merge --admin không đi qua cổng; kiem_pr cho qua là đúng, branch protection phải chặn.
 - L6: job của PR vẫn chạy dù cổng chặn; chỉ environment `%s` giữ được khoá App.
-Bằng chứng cho L3-L6 phải lấy ở nghiệm thu trên repo thật (phần còn lại của C1), chưa có.""" % ten.MOI_TRUONG)
+Bằng chứng cho L3-L6 lấy ở repo thật: nghiem-thu/ket-qua.md.""" % ten.MOI_TRUONG)
     return 1 if sai else 0
 
 
