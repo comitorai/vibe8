@@ -2,8 +2,8 @@ name: cong-nhanh
 
 on:
   pull_request:
-    # edited: đổi base phải sinh lượt mới, không được dùng lại lượt của base cũ.
-    types: [opened, synchronize, reopened, edited]
+    # Chỉ lúc mở PR và đẩy commit. edited, reopened có thể chạy ref merge cũ mà mang SHA mới, cổng không phân biệt được (L8).
+    types: [opened, synchronize]
 
 permissions:
   contents: read

@@ -131,7 +131,7 @@ def main(argv=None):
     if sai:
         print("CHƯA BẬT ĐỦ:\n- " + "\n- ".join(sai))
         return 1
-    print("Đã đặt và đọc lại khớp. Việc này chưa chứng minh cổng chặn được: phải chạy bài L1-L6 trên repo thật.")
+    print("Đã đặt và đọc lại khớp. Việc này chưa chứng minh cổng chặn được: phải chạy bài L1-L8 trên repo thật.")
     in_buoc_tay(a.repo)
     return 0
 

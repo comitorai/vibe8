@@ -52,7 +52,13 @@ class TestCongNhanh(unittest.TestCase):
         self.assertEqual(q["ket_luan"], CHO)
 
     def test_chua_co_check_thi_cho(self):
-        self.assertEqual(quyet_dinh(pr(checks=[]))["ket_luan"], CHO)
+        q = quyet_dinh(pr(checks=[]))
+        self.assertEqual(q["ket_luan"], CHO)
+        # Chỉ mở PR và đẩy commit mới có lượt: thông điệp phải chỉ đúng đường thoát.
+        ly_do = " ".join(q["ly_do"])
+        for co in ("đẩy commit mới", "đẩy nhánh tên mới"):
+            self.assertIn(co, ly_do)
+        self.assertNotIn("sửa tiêu đề", ly_do)
 
     def test_dang_chay_thi_cho(self):
         c = check(status="in_progress", conclusion=None)

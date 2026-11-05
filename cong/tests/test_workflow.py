@@ -55,7 +55,7 @@ class TestChungCacWorkflow(unittest.TestCase):
 class TestCongNhanh(unittest.TestCase):
     def test_su_kien_va_quyen(self):
         self.assertIn("\n  pull_request:\n", NHANH)
-        self.assertRegex(NHANH, r"types: \[[^\]]*\bedited\b")  # đổi base phải sinh lượt mới
+        self.assertIn("types: [opened, synchronize]\n", re.sub(r"(?m)^\s*#.*\n", "", NHANH))  # edited, reopened có thể chạy ref merge cũ mà mang SHA mới
         self.assertNotIn("pull_request_target", NHANH)
         self.assertIn("permissions:\n  contents: read\n", NHANH)
 
@@ -82,6 +82,9 @@ class TestCongCuoi(unittest.TestCase):
         self.assertRegex(CUOI, r"\n  workflow_run:[^\n]*\n    workflows: \[%s, tin-hieu-duyet\]\n" % ten.CHECK_NHANH)
         self.assertNotRegex(CUOI, r"\n  pull_request(_review)?:")
         self.assertRegex(CUOI, r"types: \[[^\]]*\bclosed\b")  # đóng một PR trùng SHA thì PR còn lại phải hết kẹt
+        # edited, reopened của cong-nhanh đã bỏ, nên đây là đường duy nhất xét lại khi đổi base và mở lại PR.
+        for su_kien in ("edited", "reopened"):
+            self.assertRegex(CUOI, r"\n  pull_request_target:[^\n]*\n(?:    [^\n]*\n)*?    types: \[[^\]]*\b%s\b" % su_kien)
 
     def test_khong_cham_ma_pr(self):
         # Chỉ một chỗ được đụng dữ liệu PR: giá trị SHA, chuyển qua env và kiểm dạng trước khi dùng.

@@ -91,7 +91,7 @@ def _trang(gh, duong, khoa=None, toi_da=30):
         muc = (phan or {}).get(khoa, []) if khoa else phan
         ket.extend(muc)
         tong = max(tong, (phan or {}).get("total_count", 0) if khoa else 0)
-        if len(muc) < 100:
+        if not muc:  # đọc tới trang rỗng: trang thiếu mục giữa chừng không được làm rơi trang sau
             break
     else:
         raise LoiApi("GET %s: quá %d trang, không đọc đủ" % (duong, toi_da))
@@ -113,18 +113,18 @@ def _pr_vao_goc(gh, sha):
 
 
 def _luot_cua_pr(gh, so_pr, pr, lan_chay):
-    """Lượt được tính là đã test PR này với base hiện tại. Lượt không ghi nó test với base nào: `pull_requests[]` tính lúc đọc, còn
+    """Lượt không bị các lọc dưới đây loại; cổng không biết nó chạy ref merge nào. Lượt không ghi nó test với base nào: `pull_requests[]` tính lúc đọc, còn
     PR đã đóng vẫn sinh lượt mới (sửa tiêu đề, tạo trễ). Nên nhánh đầu từng có PR khác thì không lượt nào tính, kể cả khi danh sách
-    không có chính PR này. Còn lại bỏ lượt của repo hay nhánh đầu khác, lượt trước khi PR mở hoặc trước lần đổi base cuối."""
+    không có chính PR này. PR từng đổi base cũng vậy: lượt sau khi đổi vẫn chạy ref merge của base trước (L8). Bỏ lượt của repo, nhánh đầu khác và lượt trước khi PR mở."""
     dau = pr["head"]
     if not (dau.get("repo") and dau.get("label")):
         return []
     if {str(p.get("number")) for p in _trang(gh, "/pulls?state=all&head=" + urllib.parse.quote(dau["label"], safe=":/"))} != {so_pr}:
         return []
-    moc = max([pr.get("created_at") or "~"] + [e.get("created_at") or "~" for e in _trang(gh, "/issues/%s/events" % so_pr)
-                                               if e.get("event") in ("base_ref_changed", "automatic_base_change_succeeded")])
+    if any(e.get("event") in ("base_ref_changed", "automatic_base_change_succeeded") for e in _trang(gh, "/issues/%s/events" % so_pr)):
+        return []
     return [r for r in lan_chay if (r.get("head_repository") or {}).get("full_name") == _repo(pr, "head")
-            and r.get("head_branch") == dau.get("ref") and (r.get("created_at") or "") >= moc]
+            and r.get("head_branch") == dau.get("ref") and (r.get("created_at") or "") >= (pr.get("created_at") or "~")]
 
 
 def _doc_theo_sha(gh, so_pr, pr):
@@ -189,7 +189,7 @@ def chay(gh, sha):
     try:
         ds = _pr_vao_goc(gh, sha)
         du_lieu = thu_thap(gh, ds[0], sha) if ds else None
-        # Không còn PR: vẫn phát, `success` cũ không được ở lại vì đổi base đi rồi đổi lại là dùng được ngay nếu không thu hồi.
+        # Không còn PR: vẫn phát, để `success` cũ của SHA này không còn đứng sau khi PR đóng.
         q = kiem_pr.quyet_dinh(du_lieu) if du_lieu else {
             "ket_luan": "khong_xet", "rui_ro": "chua_ro", "so_dong": 0, "chi_tiet": [],
             "ly_do": ["SHA này không còn là head của PR mở vào nhánh gốc"]}
