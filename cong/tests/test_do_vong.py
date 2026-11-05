@@ -129,7 +129,40 @@ class TestDocCheck(unittest.TestCase):
         self.assertEqual(do_vong.doc_check([]), (None, []))
 
 
+class GhBaoVe:
+    def __init__(self, nhanh):
+        self.nhanh = nhanh
+
+    def goi(self, phuong_thuc, duong, body=None):
+        assert (phuong_thuc, duong) == ("GET", "/branches/main"), duong
+        return self.nhanh
+
+
+def bao_ve(*checks):
+    return {"protection": {"required_status_checks": {"checks": [{"context": c, "app_id": a} for c, a in checks]}}}
+
+
+class TestAppGhim(unittest.TestCase):
+    def test_doc_app_ghim_cua_cong_cuoi(self):
+        self.assertEqual(do_vong.app_ghim(GhBaoVe(bao_ve(("cong-nhanh", 15368), ("cong-cuoi", 5621104)))), 5621104)
+
+    def test_chua_ghim_hoac_nguon_nao_cung_duoc(self):
+        for nhanh in ({}, {"protection": {"enabled": False}}, bao_ve(("cong-cuoi", None)), bao_ve(("cong-cuoi", -1))):
+            with self.subTest(nhanh):
+                self.assertIsNone(do_vong.app_ghim(GhBaoVe(nhanh)))
+
+    def test_loc_dung_app(self):
+        ds = [{"app": {"id": 1}}, {"app": {"id": 15368, "slug": "github-actions"}}, {"app": None}, {}]
+        self.assertEqual(do_vong.loc_app(ds, 1), [{"app": {"id": 1}}])
+        self.assertEqual(do_vong.loc_app(ds, None), [])  # chưa biết App: không tin check nào
+
+
 class TestBang(unittest.TestCase):
+    def test_canh_bao_khi_chua_ghim_app(self):
+        k = do_vong.tinh([pr(1)], [], NAY, 30)
+        self.assertNotIn("chưa ghim App", do_vong.bang(dict(k, app_cong=5621104)))
+        self.assertIn("chưa ghim App", do_vong.bang(dict(k, app_cong=None)))
+
     def test_token_ghi_chua_do(self):
         k = do_vong.tinh([pr(1)], [], NAY, 30)
         self.assertEqual(k["token"], "chưa đo")

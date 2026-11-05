@@ -14,7 +14,7 @@ PR = {"number": 7, "state": "closed", "created_at": "2026-01-01T00:00:00Z", "mer
 
 
 def check(giay, tieu_de):
-    return {"completed_at": "2026-01-01T00:00:%02dZ" % giay, "output": {"title": tieu_de}, "app": {"slug": "cong"}}
+    return {"completed_at": "2026-01-01T00:00:%02dZ" % giay, "output": {"title": tieu_de}, "app": {"id": 42, "slug": "cong"}}
 
 
 def luot(ket, bat_dau="2026-01-01T00:00:01Z", xong="2026-01-01T00:00:11Z", trang_thai="completed"):
@@ -73,7 +73,8 @@ class GhGia:
         self.duong.append((phuong_thuc, duong))
         if "/check-runs" in duong:
             return {"check_runs": [check(10, "cho (thap)"),
-                                   dict(check(1, "gia"), app={"slug": "github-actions"})]}
+                                   dict(check(1, "gia"), app={"id": 15368, "slug": "github-actions"}),
+                                   dict(check(2, "gia"), app={"id": 7, "slug": "app-khac"})]}
         if "/actions/runs" in duong:
             return {"workflow_runs": [luot("success"), dict(luot("failure"), path=".github/workflows/khac.yml")]}
         return []
@@ -82,11 +83,24 @@ class GhGia:
 class TestDocPr(unittest.TestCase):
     def test_chi_doc_va_loc_dung(self):
         gh = GhGia()
-        d = do_nhip.doc_pr(gh, PR)
+        d = do_nhip.doc_pr(gh, PR, 42)
         self.assertEqual({p for p, _ in gh.duong}, {"GET"})
         self.assertTrue(any("filter=all" in x for _, x in gh.duong))  # mặc định API mất kết luận đầu
-        self.assertEqual(d["mo_toi_cong"], 10)  # check của Actions cùng tên không tính
+        self.assertEqual(d["mo_toi_cong"], 10)  # check cùng tên của Actions hay App khác không tính
         self.assertEqual(d["ci_do"], 0)  # lượt đỏ của tệp workflow khác không tính
+
+    def test_chua_ghim_app_thi_khong_tin_check_nao(self):
+        d = do_nhip.doc_pr(GhGia(), PR, None)
+        self.assertIsNone(d["mo_toi_cong"])
+        self.assertIsNone(d["muc"])
+
+    def test_token_co_ky_tu_la_khong_chay_khong_in(self):
+        import contextlib, io, os
+        from unittest import mock
+        loi = io.StringIO()
+        with mock.patch.dict(os.environ, {"GH_TOKEN": "ghs_bimat\ngia"}), contextlib.redirect_stderr(loi):
+            self.assertEqual(do_nhip.main(["--repo", "chu/repo"]), 2)
+        self.assertNotIn("bimat", loi.getvalue())
 
 
 if __name__ == "__main__":
