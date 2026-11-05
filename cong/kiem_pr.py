@@ -2,8 +2,9 @@
 
 Các khoá của du_lieu: sha_dau, trang_thai_pr, nhanh_dich, so_pr_vao_goc, tac_gia, nguoi_commit,
 so_commit_khai, so_commit_doc, so_tep_khai, tep, vung_nhay_cam [mẫu, đọc từ nhánh gốc], lan_chay_nhanh [{head_sha, status, conclusion}],
-nguoi_tin [login], duyet [{user, user_type, state, commit_id, submitted_at, body}].
+nguoi_tin [login], nguoi_ghi [login có quyền ghi], so_pr, duyet [{user, user_type, state, commit_id, submitted_at, body}].
 """
+import hashlib
 import re
 
 from . import rui_ro, ten
@@ -13,6 +14,49 @@ CHO_QUA, CHAN, CHO = "cho_qua", "chan", "cho"
 SHA_HOP_LE = re.compile(r"[0-9a-f]{40}")
 _TRANG_THAI_XET = {"APPROVED", "CHANGES_REQUESTED", "DISMISSED"}
 _NGOAI_LE = re.compile(r"^ngoai-le-co:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
+# Phiếu phản bác (luật L3): một lượt review, thân có hai dòng này. Tái hiện bắt buộc cả khi không bác: ghi đã thử gì.
+_PHIEU = re.compile(r"^phieu-phan-bac:[ \t]*(bac|khong-bac)[ \t\r]*$", re.M)
+_TAI_HIEN = re.compile(r"^tai-hien:[ \t]*\S.{8,}\S[ \t\r]*$", re.M)
+_TRANG_THAI_PHIEU = {"COMMENTED", "APPROVED", "CHANGES_REQUESTED"}
+TRAN_PHIEU_BAC = 2  # L4: quá hai vòng bác thì người quyết
+TI_LE_BOC_THAM = 5  # L3: máy bỏ phản bác ở 1/5 PR Vừa làm nhóm đối chứng
+
+
+def boc_tham_bo(so_pr):
+    """Rút thăm theo số PR, không theo SHA: đẩy commit mới không rút lại được. Không rõ số PR thì không bỏ."""
+    if not isinstance(so_pr, int) or isinstance(so_pr, bool):
+        return False
+    return int(hashlib.sha256(b"phieu-phan-bac:%d" % so_pr).hexdigest(), 16) % TI_LE_BOC_THAM == 0
+
+
+def _xet_phieu(du_lieu, sha):
+    """Trả (lý do chặn hoặc None, chi tiết). Chỉ người có quyền ghi được ghi phiếu: repo công khai thì ai cũng gửi được review.
+    Máy không phân biệt được hai agent dùng chung tài khoản, nên tác giả cũng ghi phiếu được (giới hạn ghi ở luật)."""
+    ghi = {str(x).casefold() for x in du_lieu.get("nguoi_ghi") or [] if x}
+    ds = []
+    for r in sorted(du_lieu.get("duyet") or [], key=lambda r: str(r.get("submitted_at") or "")):
+        than = str(r.get("body") or "")
+        m = _PHIEU.search(than)
+        if not m or r.get("state") not in _TRANG_THAI_PHIEU:  # PENDING là nháp, DISMISSED đã bị gỡ
+            continue
+        login = str(r.get("user") or "").casefold()
+        if login not in ghi or r.get("user_type") != "User" or login.endswith("[bot]") or not _TAI_HIEN.search(than):
+            continue
+        ds.append((m.group(1), r))
+    so_bac = sum(1 for ket, _ in ds if ket == "bac")
+    dung_sha = [(ket, r) for ket, r in ds if r.get("commit_id") == sha]
+    if boc_tham_bo(du_lieu.get("so_pr")):
+        return None, ["máy rút thăm bỏ phản bác cho PR này (nhóm đối chứng L3)"]
+    if so_bac >= TRAN_PHIEU_BAC:
+        return "đã %d phiếu phản bác bác (trần L4): cần người có quyền admin, khác tác giả, duyệt đúng SHA" % so_bac, []
+    if not dung_sha:
+        return ("mức Vừa: cần phiếu phản bác trên đúng SHA, là một review có dòng `phieu-phan-bac: bac|khong-bac` "
+                "và `tai-hien: <cách tái hiện hoặc đã thử gì>` (L3)"), []
+    ket, r = dung_sha[-1]
+    nguoi = rui_ro.hien_thi(r.get("user"))
+    if ket == "bac":
+        return "phiếu phản bác của %s trên SHA này bác: sửa rồi xin phiếu mới, lượt sau chỉ xét phần vừa sửa (L4)" % nguoi, []
+    return None, ["phiếu phản bác không bác của %s" % nguoi]
 
 
 def _xet_nhanh(lan_chay, sha):
@@ -93,6 +137,14 @@ def quyet_dinh(du_lieu):
         chan.append("người duyệt đang yêu cầu sửa hoặc lượt xét đã bị gỡ: " + ", ".join(dang_chan))
     if rr["muc"] == rui_ro.CAO and not hop_le:
         chan.append("rủi ro cao: cần người có quyền admin, khác tác giả, duyệt đúng SHA")
+    if rr["muc"] == rui_ro.TRUNG_BINH:
+        if hop_le:
+            bo.append("có người admin duyệt đúng SHA: không cần phiếu phản bác")
+        else:
+            ly_do_phieu, chi_tiet_phieu = _xet_phieu(du_lieu, sha)
+            bo += chi_tiet_phieu
+            if ly_do_phieu:
+                chan.append(ly_do_phieu)
     if rr["qua_co"]:
         ly_do_le = [m.group(1) for m in (_NGOAI_LE.search(str(r.get("body") or "")) for r in hop_le) if m]
         if not ly_do_le:

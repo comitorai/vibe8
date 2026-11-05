@@ -31,7 +31,7 @@ Khi va nhau: lỗi lọt mức nặng thắng tốc độ; tốc độ thắng t
 - Vừa: mọi tệp còn lại, gồm mã và cấu hình chạy được.
 - Thấp: chỉ tài liệu, thêm test mới, tệp tĩnh. Danh sách cho phép: tệp lạ thì xếp Vừa.
 
-`[ĐÃ KIỂM: test cổng · 05/11]` Cổng đã xếp ba mức như trên và đọc vùng từ nhánh gốc, nên PR không tự gỡ vùng được. Mức Vừa hôm nay mới là nhãn, chưa bắt lượt phản bác của L3.
+`[ĐÃ KIỂM: test cổng · 05/11]` Cổng đã xếp ba mức như trên và đọc vùng từ nhánh gốc, nên PR không tự gỡ vùng được. Mức Vừa bắt phiếu phản bác của L3 trên đúng SHA, rút thăm bỏ 1/5 theo số PR, trần 2 phiếu bác của L4; cách ghi phiếu ở README. Máy không phân biệt được hai agent chung tài khoản, nên «agent khác» vẫn là lời dặn, chưa là hàng rào. Mức Cao chưa bắt phiếu, chỉ bắt người duyệt.
 `[ĐÃ KIỂM: PR 28 · 05/11]` PR thật chỉ sửa một tệp tài liệu trong vùng đã khai ra `chan (cao)`, không có vùng thì là thấp.
 Giới hạn đã biết: tách một thay đổi lớn thành nhiều PR nhỏ vẫn lọt qua trần cỡ của L2.
 
@@ -43,7 +43,7 @@ Giới hạn đã biết: tách một thay đổi lớn thành nhiều PR nhỏ 
 | Người duyệt | không | không | admin, khác tác giả, đúng SHA |
 | Merge | tự, khi cổng xanh | tự, khi cổng xanh và phiếu không bác | sau duyệt |
 
-**Làn sửa gấp** (lỗi đang hại người dùng): mức nào vẫn giữ mức đó, nhưng lượt phản bác được chạy sau merge, trong 24 giờ; người duyệt của mức Cao vẫn bắt buộc trước merge.
+**Làn sửa gấp** (lỗi đang hại người dùng): mức nào vẫn giữ mức đó, nhưng lượt phản bác được chạy sau merge, trong 24 giờ; người duyệt của mức Cao vẫn bắt buộc trước merge. Cổng không biết PR nào là sửa gấp: PR Vừa muốn merge trước phiếu thì cần người admin duyệt đúng SHA.
 
 ## 3. Các luật
 
