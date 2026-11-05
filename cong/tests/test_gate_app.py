@@ -36,8 +36,8 @@ def lan_chay(d):
 
 
 def can_duyet(d, login="khac", **khac):
-    d["/pulls/7/files"][0]["filename"] = "CODEOWNERS"
-    d["/pulls/7/reviews"] = [dict({"user": {"login": login, "type": "User"}, "state": "APPROVED", "commit_id": SHA,
+    d["/pulls/4/files"][0]["filename"] = "CODEOWNERS"
+    d["/pulls/4/reviews"] = [dict({"user": {"login": login, "type": "User"}, "state": "APPROVED", "commit_id": SHA,
                                    "submitted_at": "2026-11-02T00:00:00Z", "body": ""}, **khac)]
     return d
 
@@ -61,7 +61,7 @@ class TestChay(unittest.TestCase):
 
     def test_rui_ro_cao_phat_failure(self):
         d = du_lieu()
-        d["/pulls/7/files"][0]["filename"] = ".github/workflows/x.yml"
+        d["/pulls/4/files"][0]["filename"] = ".github/workflows/x.yml"
         gh = gate_app.GiaLap(d)
         ma, _ = chay(gh)
         self.assertEqual(ma, 0)
@@ -98,17 +98,32 @@ class TestChay(unittest.TestCase):
                 self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
                 self.assertIn("không có quyền admin", gh.da_phat[0][2]["output"]["summary"])
 
+    def test_phieu_phan_bac_chi_tinh_nguoi_co_quyen_ghi(self):
+        # Repo công khai: ai cũng gửi được review, nên phiếu của người chỉ có quyền đọc không mở được cổng.
+        for quyen, ket in (("write", "success"), ("maintain", "success"), ("admin", "success"), ("read", "failure"), ("none", "failure")):
+            with self.subTest(quyen):
+                d = du_lieu()
+                d["/pulls/4"]["number"] = 7  # số PR không bị rút thăm bỏ phản bác
+                d["/pulls/4/files"][0]["filename"] = "app.py"
+                d["/pulls/4/reviews"] = [{"user": {"login": "phan-bac", "type": "User"}, "state": "COMMENTED", "commit_id": SHA,
+                                          "submitted_at": "2026-11-02T00:00:00Z",
+                                          "body": "phieu-phan-bac: khong-bac\ntai-hien: gọi API với id âm, trả 400 đúng"}]
+                d["/collaborators/phan-bac/permission"] = {"permission": quyen}
+                gh = gate_app.GiaLap(d)
+                chay(gh, nguoi_tin=())
+                self.assertEqual(gh.da_phat[0][2]["conclusion"], ket)
+
     def test_nguoi_la_gop_y_khong_chan_duoc(self):
         d = can_duyet(du_lieu(), state="CHANGES_REQUESTED")
         d["/collaborators/khac/permission"] = {"permission": "read"}
-        d["/pulls/7/files"][0]["filename"] = "app.py"
+        d["/pulls/4/files"][0]["filename"] = "app.py"
         gh = gate_app.GiaLap(d)
         chay(gh, nguoi_tin=())
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
 
     def test_admin_yeu_cau_sua_thi_chan(self):
         d = can_duyet(du_lieu(), state="CHANGES_REQUESTED")
-        d["/pulls/7/files"][0]["filename"] = "app.py"
+        d["/pulls/4/files"][0]["filename"] = "app.py"
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
@@ -122,7 +137,7 @@ class TestChay(unittest.TestCase):
 
     def test_nguoi_xet_khong_con_tai_khoan_khong_lam_sap(self):
         d = can_duyet(du_lieu())
-        d["/pulls/7/reviews"][0]["user"] = None
+        d["/pulls/4/reviews"][0]["user"] = None
         gh = gate_app.GiaLap(d)
         self.assertEqual(chay(gh, nguoi_tin=())[0], 0)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
@@ -132,8 +147,8 @@ class TestChay(unittest.TestCase):
         for login, loai in (("Copilot", "Bot"), ("github-actions[bot]", "Bot")):
             with self.subTest(login):
                 d = can_duyet(du_lieu(), login=login)
-                d["/pulls/7/reviews"][0]["user"]["type"] = loai
-                d["/pulls/7/files"][0]["filename"] = "app.py"
+                d["/pulls/4/reviews"][0]["user"]["type"] = loai
+                d["/pulls/4/files"][0]["filename"] = "app.py"
                 gh = gate_app.GiaLap(d)
                 chay(gh, nguoi_tin=())
                 self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
@@ -148,22 +163,22 @@ class TestChay(unittest.TestCase):
 
     def test_author_commit_khong_duyet_duoc(self):
         d = can_duyet(du_lieu())
-        d["/pulls/7/commits"][0]["author"] = {"login": "khac"}
+        d["/pulls/4/commits"][0]["author"] = {"login": "khac"}
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
 
     def test_committer_khong_duyet_duoc(self):
         d = can_duyet(du_lieu())
-        d["/pulls/7/commits"][0]["committer"] = {"login": "khac"}
+        d["/pulls/4/commits"][0]["committer"] = {"login": "khac"}
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
 
     def test_commit_merge_cua_chu_khong_thanh_tu_duyet(self):
         d = can_duyet(du_lieu())
-        d["/pulls/7"]["commits"] = 2
-        d["/pulls/7/commits"].append({"author": {"login": "khac"}, "committer": {"login": "khac"},
+        d["/pulls/4"]["commits"] = 2
+        d["/pulls/4/commits"].append({"author": {"login": "khac"}, "committer": {"login": "khac"},
                                       "parents": [{"sha": "1" * 40}, {"sha": "2" * 40}]})
         gh = gate_app.GiaLap(d)
         chay(gh)
@@ -171,22 +186,22 @@ class TestChay(unittest.TestCase):
 
     def test_commit_khong_ro_cha_van_tinh_la_commit_thuong(self):
         d = can_duyet(du_lieu())
-        del d["/pulls/7/commits"][0]["parents"]
-        d["/pulls/7/commits"][0]["author"] = {"login": "khac"}
+        del d["/pulls/4/commits"][0]["parents"]
+        d["/pulls/4/commits"][0]["author"] = {"login": "khac"}
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
 
     def test_doc_thieu_commit_phat_failure(self):
         d = du_lieu()
-        d["/pulls/7"]["commits"] = 300
+        d["/pulls/4"]["commits"] = 300
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
 
     def test_base_khac_goc_phat_failure(self):
         d = du_lieu()
-        d["/pulls/7"]["base"]["ref"] = "x"
+        d["/pulls/4"]["base"]["ref"] = "x"
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
@@ -242,8 +257,8 @@ class TestTimPr(unittest.TestCase):
         d = du_lieu()
         la = {"full_name": "la/repo"}
         d["/pulls?state=open&base=main"][0]["head"]["repo"] = la
-        d["/pulls/7"]["head"]["repo"] = la
-        d["/pulls/7"]["head"]["label"] = "la:nhanh"
+        d["/pulls/4"]["head"]["repo"] = la
+        d["/pulls/4"]["head"]["label"] = "la:nhanh"
         d["/pulls?state=all&head=la:nhanh"] = d.pop("/pulls?state=all&head=chu:nhanh")
         lan_chay(d)[0].update(head_repository=la)
         gh = gate_app.GiaLap(d)
@@ -271,8 +286,8 @@ class TestLocLuotCi(unittest.TestCase):
     def _xet(self, *luot, doi_base=(), doi_tu_dong=(), pr_khac=()):
         d = du_lieu()
         lan_chay(d)[:] = [dict(lan_chay(d)[0], **x) for x in luot]
-        d["/issues/7/events"] += [{"event": "base_ref_changed", "created_at": luc} for luc in doi_base]
-        d["/issues/7/events"] += [{"event": "automatic_base_change_succeeded", "created_at": luc} for luc in doi_tu_dong]
+        d["/issues/4/events"] += [{"event": "base_ref_changed", "created_at": luc} for luc in doi_base]
+        d["/issues/4/events"] += [{"event": "automatic_base_change_succeeded", "created_at": luc} for luc in doi_tu_dong]
         d["/pulls?state=all&head=chu:nhanh"] += [{"number": 9, "created_at": a, "closed_at": b} for a, b in pr_khac]
         gh = gate_app.GiaLap(d)
         chay(gh)
@@ -291,11 +306,11 @@ class TestLocLuotCi(unittest.TestCase):
     def test_su_kien_doi_base_o_trang_hai_van_tinh(self):
         # Sự kiện như `deployed` tích thêm mỗi lượt, nên đổi base có thể nằm ngoài trang đầu.
         d = du_lieu()
-        d["/issues/7/events"] = [{"event": "deployed", "created_at": "2026-11-01T00:00:11Z"}] * 100
+        d["/issues/4/events"] = [{"event": "deployed", "created_at": "2026-11-01T00:00:11Z"}] * 100
 
         class HaiTrang(gate_app.GiaLap):
             def goi(self, phuong_thuc, duong, body=None):
-                if phuong_thuc == "GET" and duong.endswith("/issues/7/events?per_page=100&page=2"):
+                if phuong_thuc == "GET" and duong.endswith("/issues/4/events?per_page=100&page=2"):
                     return [{"event": "base_ref_changed", "created_at": "2026-11-01T00:00:10Z"}]
                 return super().goi(phuong_thuc, duong, body)
 
@@ -306,18 +321,18 @@ class TestLocLuotCi(unittest.TestCase):
     def test_su_kien_khac_sau_doi_base_khong_mo_lai(self):
         # Gắn nhãn sau khi đổi base không được xoá dấu đổi base.
         d = du_lieu()
-        d["/issues/7/events"] += [{"event": "base_ref_changed", "created_at": "2026-11-01T00:00:10Z"}, {"event": "labeled", "created_at": "2026-11-01T00:00:11Z"}]
+        d["/issues/4/events"] += [{"event": "base_ref_changed", "created_at": "2026-11-01T00:00:10Z"}, {"event": "labeled", "created_at": "2026-11-01T00:00:11Z"}]
         gh = gate_app.GiaLap(d)
         chay(gh)
         self._cho(gh.da_phat[0][2])
 
     def test_trang_thieu_muc_van_doc_trang_sau(self):
         d = du_lieu()
-        d["/issues/7/events"] = [{"event": "deployed", "created_at": "2026-11-01T00:00:11Z"}] * 99
+        d["/issues/4/events"] = [{"event": "deployed", "created_at": "2026-11-01T00:00:11Z"}] * 99
 
         class ThieuMuc(gate_app.GiaLap):
             def goi(self, phuong_thuc, duong, body=None):
-                if phuong_thuc == "GET" and duong.endswith("/issues/7/events?per_page=100&page=2"):
+                if phuong_thuc == "GET" and duong.endswith("/issues/4/events?per_page=100&page=2"):
                     return [{"event": "base_ref_changed", "created_at": "2026-11-01T00:00:10Z"}]
                 return super().goi(phuong_thuc, duong, body)
 
@@ -327,7 +342,7 @@ class TestLocLuotCi(unittest.TestCase):
 
     def test_su_kien_khac_tren_pr_khong_chan(self):
         d = du_lieu()
-        d["/issues/7/events"] += [{"event": "renamed", "created_at": "2026-11-01T00:00:10Z"}, {"event": "deployed", "created_at": "2026-11-01T00:00:11Z"}]
+        d["/issues/4/events"] += [{"event": "renamed", "created_at": "2026-11-01T00:00:10Z"}, {"event": "deployed", "created_at": "2026-11-01T00:00:11Z"}]
         gh = gate_app.GiaLap(d)
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
@@ -375,14 +390,14 @@ class TestLocLuotCi(unittest.TestCase):
 
     def test_thieu_created_at_cua_pr_thi_dong(self):
         d = du_lieu()
-        del d["/pulls/7"]["created_at"]
+        del d["/pulls/4"]["created_at"]
         gh = gate_app.GiaLap(d)
         chay(gh)
         self._cho(gh.da_phat[0][2])
 
     def test_nhanh_co_ky_tu_dac_biet_duoc_ma_hoa(self):
         d = du_lieu()
-        d["/pulls/7"]["head"].update(label="chu:a&state=open", ref="a&state=open")
+        d["/pulls/4"]["head"].update(label="chu:a&state=open", ref="a&state=open")
         lan_chay(d)[0]["head_branch"] = "a&state=open"
         d["/pulls?state=all&head=chu:a%26state%3Dopen"] = d.pop("/pulls?state=all&head=chu:nhanh")
         gh = gate_app.GiaLap(d)
@@ -391,7 +406,7 @@ class TestLocLuotCi(unittest.TestCase):
 
     def test_khong_doc_duoc_su_kien_thi_bao_loi(self):
         d = du_lieu()
-        del d["/issues/7/events"]
+        del d["/issues/4/events"]
         gh = gate_app.GiaLap(d)
         ma, _ = chay(gh)
         self.assertEqual((ma, gh.da_phat[0][2]["conclusion"]), (1, "failure"))
@@ -400,8 +415,8 @@ class TestLocLuotCi(unittest.TestCase):
         d = du_lieu()
         la = {"full_name": "la/repo"}
         d["/pulls?state=open&base=main"][0]["head"]["repo"] = la
-        d["/pulls/7"]["head"]["repo"] = la
-        d["/pulls/7"]["head"]["label"] = "la:nhanh"
+        d["/pulls/4"]["head"]["repo"] = la
+        d["/pulls/4"]["head"]["label"] = "la:nhanh"
         d["/pulls?state=all&head=la:nhanh"] = d.pop("/pulls?state=all&head=chu:nhanh")
         del lan_chay(d)[0]["head_repository"]
         gh = gate_app.GiaLap(d)
@@ -429,12 +444,12 @@ class TestLocLuotCi(unittest.TestCase):
             def goi(self, phuong, duong, body=None):
                 return [{}] * 100
         with self.assertRaises(gate_app.LoiApi):
-            gate_app._trang(Day({}), "/pulls/7/files", toi_da=3)
+            gate_app._trang(Day({}), "/pulls/4/files", toi_da=3)
 
     def test_fork_da_xoa_thi_khong_co_luot_nao_tinh_duoc(self):
         # Không còn repo đầu để so: PR này chỉ qua được khi mở lại từ nhánh còn tồn tại.
         d = du_lieu()
-        d["/pulls/7"]["head"]["repo"] = None
+        d["/pulls/4"]["head"]["repo"] = None
         lan_chay(d)[0]["head_repository"] = None  # GitHub cũng để trống ở lượt: None == None không được tính là khớp.
         gh = gate_app.GiaLap(d)
         chay(gh)
@@ -449,19 +464,19 @@ class TestGiaLap(unittest.TestCase):
 
     def test_chi_trang_dau_co_du_lieu(self):
         gh = gate_app.GiaLap(du_lieu())
-        self.assertTrue(gh.goi("GET", "/pulls/7/files?per_page=100&page=1"))
-        self.assertEqual(gh.goi("GET", "/pulls/7/files?per_page=100&page=2"), [])
+        self.assertTrue(gh.goi("GET", "/pulls/4/files?per_page=100&page=1"))
+        self.assertEqual(gh.goi("GET", "/pulls/4/files?per_page=100&page=2"), [])
 
 
 class GitHubDoiSha(gate_app.GiaLap):
-    """Mỗi lần đọc /pulls/7 trả head kế tiếp trong danh sách."""
+    """Mỗi lần đọc /pulls/4 trả head kế tiếp trong danh sách."""
 
     def __init__(self, d, cac_sha):
         super().__init__(d)
         self.cac_sha = iter(cac_sha)
 
     def goi(self, phuong, duong, body=None):
-        if duong == "/pulls/7":
+        if duong == "/pulls/4":
             return dict(self.du_lieu[duong], head=dict(self.du_lieu[duong]["head"], sha=next(self.cac_sha)))
         return super().goi(phuong, duong, body)
 
@@ -517,14 +532,14 @@ class TestHong(unittest.TestCase):
 
     def test_khong_doc_duoc_pr_van_phat_failure_tren_sha_su_kien(self):
         # `success` cũ không được ở lại khi lần xét mới hỏng.
-        gh = GitHubHong(du_lieu(), "/pulls/7", gate_app.LoiApi("hỏng", 500))
+        gh = GitHubHong(du_lieu(), "/pulls/4", gate_app.LoiApi("hỏng", 500))
         ma, _ = chay(gh)
         self.assertEqual(ma, 1)
         self.assertEqual([(x[2]["head_sha"], x[2]["conclusion"]) for x in gh.da_phat], [(SHA, "failure")])
 
     def test_sha_rac_tu_api_khong_len_check(self):
         d = du_lieu()
-        d["/pulls/7"]["head"]["sha"] = "main"
+        d["/pulls/4"]["head"]["sha"] = "main"
         gh = gate_app.GiaLap(d)
         ma, _ = chay(gh)
         self.assertEqual(ma, 0)

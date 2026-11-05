@@ -54,8 +54,13 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
   `*` khớp cả `/`, `**/` là không hoặc nhiều thư mục, `[id]` là chữ thường. Mẫu khớp chính nó và mọi thứ bên dưới; mẫu không có `/` như `auth.py` khớp ở mọi tầng.
   Cổng đọc tệp ở nhánh gốc, nên PR không tự gỡ vùng được. Tệp hỏng, hay có mẫu không bao giờ khớp được (`!x`, dấu cách lạ), thì cổng báo lỗi.
   Khai vùng mới trên `main` không xét lại PR đang mở: PR đó xét lại ở lần đẩy kế tiếp.
-  Mức Thấp hay Vừa hôm nay chỉ là nhãn, cả hai đều tự qua. Một số tệp chạy được vẫn ra Thấp, vd `dev-requirements.txt`, tệp mới trong `tests/`.
-- Rủi ro thấp và trung bình tự qua khi đủ các điều kiện khác.
+  Một số tệp chạy được vẫn ra Thấp, vd `dev-requirements.txt`, tệp mới trong `tests/`.
+- Rủi ro thấp tự qua khi đủ các điều kiện khác.
+- **Rủi ro trung bình cần một phiếu phản bác** (luật L3) trên đúng head SHA: một lượt review, thường là `gh pr review <số> --comment`, thân có hai dòng đứng đầu dòng:
+  `phieu-phan-bac: khong-bac` (hoặc `bac`) và `tai-hien: <cách tái hiện, hay đã thử gì>`, tối thiểu 10 ký tự. Chỉ tính phiếu của người có quyền ghi trên repo, không tính máy.
+  Phiếu mới nhất trên SHA quyết. Đủ 2 phiếu `bac` trên PR (L4) thì chỉ người admin duyệt mới mở được. Người admin duyệt đúng SHA thì không cần phiếu.
+  Máy rút thăm theo số PR, bỏ phiếu ở khoảng 1/5 PR làm nhóm đối chứng; đẩy commit mới không rút lại được.
+  Giới hạn: máy không phân biệt được hai agent dùng chung một tài khoản, nên chính tác giả ghi phiếu cũng tính. Vì vậy phải có ô tái hiện để người đọc lại kiểm.
 - Merge kiểu rebase phải tắt: cổng xét theo diff, còn rebase phát lại từng commit. Chưa tái hiện được kết quả lệch, đây là biện pháp phòng. `bat_cong.py` tắt và đọc lại.
 - Quá 400 dòng (không tính lockfile): chặn, trừ khi người duyệt hợp lệ ghi dòng `ngoai-le-co: <lý do>` trong lượt duyệt.
   Dòng đó phải đứng đầu dòng, đúng chữ thường, không gạch đầu dòng hay in đậm; sai định dạng thì cổng coi như chưa ghi.

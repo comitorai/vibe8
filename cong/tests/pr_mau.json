@@ -1,5 +1,6 @@
 {
-  "/pulls/7": {
+  "/pulls/4": {
+    "number": 4,
     "state": "open",
     "changed_files": 1,
     "user": {
@@ -23,7 +24,7 @@
     "commits": 1,
     "created_at": "2026-11-01T00:00:00Z"
   },
-  "/pulls/7/files": [
+  "/pulls/4/files": [
     {
       "filename": "hoa_don/tinh.py",
       "status": "modified",
@@ -32,7 +33,7 @@
       "patch": "@@ -1 +1,2 @@\n-a\n+b\n+c"
     }
   ],
-  "/pulls/7/commits": [
+  "/pulls/4/commits": [
     {
       "author": {
         "login": "tac-gia"
@@ -47,10 +48,10 @@
       ]
     }
   ],
-  "/pulls/7/reviews": [],
+  "/pulls/4/reviews": [],
   "/pulls?state=open&base=main": [
     {
-      "number": 7,
+      "number": 4,
       "head": {
         "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "repo": {
@@ -80,7 +81,7 @@
       }
     ]
   },
-  "/issues/7/events": [
+  "/issues/4/events": [
     {
       "event": "labeled",
       "created_at": "2026-12-01T00:00:00Z"
@@ -88,7 +89,7 @@
   ],
   "/pulls?state=all&head=chu:nhanh": [
     {
-      "number": 7,
+      "number": 4,
       "created_at": "2026-11-01T00:00:00Z",
       "closed_at": null
     }

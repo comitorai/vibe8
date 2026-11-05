@@ -19,6 +19,7 @@ API_GOC = "https://api.github.com"
 # ném ValueError có in nguyên header Authorization, tức in token: chặn trước khi gửi.
 TOKEN_HOP_LE = re.compile(r"[\x21-\x7e]+")
 _GIOI_HAN_TOM_TAT = 60000
+_QUYEN_GHI = {"admin", "maintain", "write"}
 
 
 class LoiApi(Exception):
@@ -140,16 +141,19 @@ def _doc_theo_sha(gh, so_pr, pr):
     nguoi_commit = {(c.get(k) or {}).get("login") for c in commit if len(c.get("parents") or []) < 2
                     for k in ("author", "committer")}
     # Theo TỆP workflow và sự kiện: workflow tệp khác đặt cùng tên, hay chạy on: push, không vào đây.
+    quyen = {x: gh.goi("GET", "/collaborators/%s/permission" % urllib.parse.quote(x, safe=""))["permission"]
+             for x in sorted({r["user"]["login"] for r in duyet if (r.get("user") or {}).get("type") == "User"})}
     lan_chay = _luot_cua_pr(gh, so_pr, pr, _trang(
         gh, "/actions/workflows/%s.yml/runs?head_sha=%s&event=pull_request" % (ten.CHECK_NHANH, sha), "workflow_runs"))
     return {
         "sha_dau": sha, "trang_thai_pr": pr.get("state"), "nhanh_dich": (pr.get("base") or {}).get("ref"),
         "so_pr_vao_goc": len(_pr_vao_goc(gh, sha)), "so_tep_khai": pr.get("changed_files"),
         "so_commit_khai": pr.get("commits"), "so_commit_doc": len(commit),
-        "tac_gia": (pr.get("user") or {}).get("login"),
+        "tac_gia": (pr.get("user") or {}).get("login"), "so_pr": pr.get("number"),
         # Người duyệt là người có quyền admin. Không lấy từ biến environment: cộng tác viên quyền ghi sửa được biến đó.
-        "nguoi_tin": sorted(x for x in {r["user"]["login"] for r in duyet if (r.get("user") or {}).get("type") == "User"} if gh.goi(
-            "GET", "/collaborators/%s/permission" % urllib.parse.quote(x, safe=""))["permission"] == "admin"),
+        "nguoi_tin": sorted(x for x, q in quyen.items() if q == "admin"),
+        # Người ghi được phiếu phản bác: có quyền ghi. Repo công khai thì người lạ cũng gửi được review.
+        "nguoi_ghi": sorted(x for x, q in quyen.items() if q in _QUYEN_GHI),
         "nguoi_commit": sorted(x for x in nguoi_commit if x),
         "tep": _trang(gh, "/pulls/%s/files" % so_pr),
         "lan_chay_nhanh": [{"head_sha": r.get("head_sha"), "status": r.get("status"),
