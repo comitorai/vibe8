@@ -130,7 +130,7 @@ class TestCongCuoi(unittest.TestCase):
         self.assertIn("%s: ${{ steps.token.outputs.token }}" % ten.BIEN_TOKEN_APP, CUOI)
         self.assertIn("%s: %s" % (ten.BIEN_SHA, BIEU_THUC_SHA), CUOI)
         self.assertNotIn("pull_request.number", CUOI)
-        self.assertIn("%s: ${{ vars.%s }}" % (ten.BIEN_NGUOI_DUYET, ten.BIEN_NGUOI_DUYET), CUOI)
+        self.assertNotIn("NGUOI_DUYET", CUOI)  # L9: cộng tác viên quyền ghi sửa được biến environment.
         self.assertIn("python3 -m cong.gate_app", CUOI)
 
 

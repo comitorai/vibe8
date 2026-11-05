@@ -4,24 +4,32 @@
 
 Bằng unittest và `nghiem-thu/kiem_cuc_bo.py`, dữ liệu mô phỏng. Bộ test đã chạy trên Python 3.9, 3.10, 3.12, 3.13, 3.14:
 
-- Logic quyết định: SHA lệch, đổi base, tự duyệt, bot, người ngoài danh sách, yêu cầu sửa bị gỡ, thân PR chèn lệnh, tên tệp lạ, xoá test.
+- Logic quyết định: SHA lệch, đổi base, tự duyệt, bot, người không có quyền admin, yêu cầu sửa bị gỡ, thân PR chèn lệnh, tên tệp lạ, xoá test.
 - `gate_app`: phát đúng một check trên đúng SHA sự kiện, head đổi giữa chừng, PR fork cùng SHA, hỏng API, không đi theo chuyển hướng,
   che token, chỉ `success` hoặc `failure`.
-- Workflow: qua actionlint và zizmor. **Chưa chạy lần nào trên GitHub.**
+- Workflow: qua actionlint và zizmor.
 
-## Chưa kiểm: cần GitHub thật
+## Đã kiểm trên GitHub thật, bằng khoá giả
 
-- Mọi hành vi của Actions, GitHub App, environment, branch protection, gồm cả `bat_cong.py` khi chạy thật.
-- L3-L6 thực sự bị chặn. Bài cục bộ không chứng minh được những lỗi này.
-- `pull_request_target` và `workflow_run` có qua được environment `gate` chỉ cho nhánh `main` không.
+Vai cộng tác viên quyền ghi, trên repo thật đã bật cổng:
+
+- Đẩy thẳng `main`, kể cả `--force`, và xoá `main`: bị từ chối.
+- Workflow lạ đòi environment `gate` không lấy được secret, qua mọi đường đã thử: nhánh `main-2`, `Main`, `thu/main`, tag tên `main`,
+  PR thường, `workflow_dispatch`, `deployment` tạo bằng API với ref lạ.
+- `pull_request_target` và `workflow_run` của cổng trên `main` qua được `gate`, đến bước tạo token. Có khoá giả nên dừng ở đó.
+- **Cộng tác viên ghi được biến và secret trong `gate`.** Vì vậy cổng không đọc danh sách người duyệt từ biến nữa: hỏi GitHub ai có quyền admin.
+- Bật log chi tiết (`ACTIONS_STEP_DEBUG`, `ACTIONS_RUNNER_DEBUG`) không làm khoá nhiều dòng lộ qua `create-github-app-token`: không dòng nào của khoá giả xuất hiện trong log.
+
+Trên repo thử do agent làm chủ: ghim `app_id` chặn check và status giả cùng tên, kể cả `gh pr merge --admin` và API merge.
+
+## Chưa kiểm: cần khoá thật
+
+- `cong-cuoi` thật phát check, L1-L6 và L8 thực sự bị chặn. Bài cục bộ không chứng minh được những lỗi này.
+- Token App đọc được API quyền cộng tác viên không. Tài liệu ghi cần quyền Metadata đọc, App luôn có. Không đọc được thì mọi lượt có người xét sẽ đóng.
 - `head_sha` của lượt `workflow_run` có đúng là head của PR không, và GitHub chọn check mới nhất của App trên SHA thế nào.
 - Quyền Actions read, Checks write và Pull requests read của App có đủ không.
-- Request bảo vệ nhánh chỉ có `checks`, không có `contexts`, có được nhận không, và `app_id` có thực thi không khi có hai check cùng tên.
-- Environment `gate` có giữ được khoá trước nhánh tên `main-2`, `Main`, tag tên `main`, lượt `deployment` (tạo bằng `POST /deployments`
-  với `required_contexts: []`) và `deployment_status` không. Phải thử bằng secret giả trước khi đặt khoá thật.
 - Trường `head_repository` của lượt chạy có đúng như cách cổng dùng để lọc PR fork không.
-- Environment có nhận cấm admin vượt không (`can_admins_bypass` chưa thấy trong tài liệu, giao diện có ô tương ứng; API đã nhận và đọc lại đúng trên repo thử, hiệu lực với admin thì chưa thử).
-- Cộng tác viên quyền write tạo được biến cấp repo và đọc được khoá mã hoá secret: có ghi được biến, secret trong `gate`, xoá được chúng không; biến cấp repo trùng tên có đè được giá trị trong `gate` không.
+- Hiệu lực của `can_admins_bypass: false` với chủ repo: API nhận và đọc lại đúng, chưa thử bằng tài khoản chủ.
 - `created_at` của lượt có giữ nguyên khi bấm chạy lại không. Cổng lọc lượt theo mốc này; nếu nó đổi thì lượt của base cũ có thể được tính.
   Mốc đổi base so với lượt do chính lần đổi đó tạo ra có lệch giây không. Tìm `head=` có đúng với nhánh có ký tự lạ không; sai thì cổng đóng.
   Đổi tên nhánh đầu: PR đã đóng của tên cũ có lượt mới mang tên nhánh nào.
@@ -29,7 +37,7 @@ Bằng unittest và `nghiem-thu/kiem_cuc_bo.py`, dữ liệu mô phỏng. Bộ t
 - API có trễ không ngay sau `workflow_run`. `tin-hieu-duyet` trên PR fork có cần phê duyệt mới chạy không.
 - Status API và check run do token thường tạo cùng tên `cong-cuoi` có qua được required check gắn App không. Hai check cùng tên, một `failure`
   một `success`, GitHub chọn cái nào.
-- Giữ nhóm concurrency bằng lượt treo của PR, quyền xoá lượt, `/cancel`, `workflow_dispatch`, secret cấp repo trùng tên trong environment.
+- Giữ nhóm concurrency bằng lượt treo của PR, quyền xoá lượt, `/cancel`, secret cấp repo trùng tên trong environment.
 - `workflow_run.head_sha` của `tin-hieu-duyet` có đúng head PR không. Duyệt có còn tính sau đổi base không, kể cả stacked PR.
 - Required check với `strict: False`: PR xanh trên base cũ có merge được không (là chủ ý, cần xác nhận).
 
@@ -64,6 +72,10 @@ Bằng unittest và `nghiem-thu/kiem_cuc_bo.py`, dữ liệu mô phỏng. Bộ t
 15. **PR quá 3000 tệp bị chặn:** API không trả đủ, cổng đóng. Commit có author không gắn tài khoản, và commit merge, không tính vào «người có commit».
 16. **`workflow_run` trễ sau khi PR đã merge** có thể ghi `failure` lên commit đã vào `main`. Chỉ là hiển thị, không ảnh hưởng PR khác có SHA khác.
 17. **PR từ fork đã xoá** không có repo đầu để so nên không lượt nào được tính, PR kẹt. Mở lại từ nhánh còn tồn tại.
+18. **Cộng tác viên quyền ghi làm kẹt được cổng.** Họ ghi đè được `XUONG_APP_KEY`, `XUONG_APP_CLIENT_ID` dù không đọc được khoá.
+    Check do App khác phát không được tính vì ghim `app_id`, nên hậu quả là không PR nào qua, không phải qua sai. Chủ repo đặt lại khoá.
+19. **Chỉ quyền admin mới duyệt được.** Trên repo tổ chức, vai `maintain` không tính. Quyền đọc lúc xét: mất quyền admin thì lượt duyệt cũ hết tính.
+20. **Lỗi đọc quyền làm cổng đóng.** API quyền hỏng thì lượt đó ra `failure`, tự lành ở sự kiện sau.
 
 ## Vì sao dùng hai sự kiện đặc quyền
 

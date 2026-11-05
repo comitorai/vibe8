@@ -22,9 +22,12 @@ def du_lieu():
 
 
 def chay(gh, sha=SHA, nguoi_tin=("khac", "tac-gia")):
+    # Người duyệt là ai có quyền admin: danh sách này là phía GitHub trả về, không phải cấu hình.
+    if isinstance(gh, gate_app.GiaLap):
+        gh.du_lieu.update({"/collaborators/%s/permission" % x: {"permission": "admin"} for x in nguoi_tin})
     ra = io.StringIO()
     with contextlib.redirect_stdout(ra):
-        ma = gate_app.chay(gh, list(nguoi_tin), sha)
+        ma = gate_app.chay(gh, sha)
     return ma, ra.getvalue()
 
 
@@ -85,9 +88,62 @@ class TestChay(unittest.TestCase):
         chay(gh)
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
 
-    def test_nguoi_ngoai_danh_sach_khong_duyet_duoc(self):
-        gh = gate_app.GiaLap(can_duyet(du_lieu()))
-        chay(gh, nguoi_tin=("nguoi-khac",))
+    def test_quyen_ghi_khong_duyet_duoc(self):
+        for quyen in ("write", "maintain", "read", "none"):
+            with self.subTest(quyen):
+                d = can_duyet(du_lieu())
+                d["/collaborators/khac/permission"] = {"permission": quyen}
+                gh = gate_app.GiaLap(d)
+                chay(gh, nguoi_tin=())
+                self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+                self.assertIn("không có quyền admin", gh.da_phat[0][2]["output"]["summary"])
+
+    def test_nguoi_la_gop_y_khong_chan_duoc(self):
+        d = can_duyet(du_lieu(), state="CHANGES_REQUESTED")
+        d["/collaborators/khac/permission"] = {"permission": "read"}
+        d["/pulls/7/files"][0]["filename"] = "app.py"
+        gh = gate_app.GiaLap(d)
+        chay(gh, nguoi_tin=())
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
+
+    def test_admin_yeu_cau_sua_thi_chan(self):
+        d = can_duyet(du_lieu(), state="CHANGES_REQUESTED")
+        d["/pulls/7/files"][0]["filename"] = "app.py"
+        gh = gate_app.GiaLap(d)
+        chay(gh)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_khong_doc_duoc_quyen_thi_dong(self):
+        for ma in (403, 404, 500):
+            with self.subTest(ma):
+                gh = GitHubHong(can_duyet(du_lieu()), "/collaborators/", gate_app.LoiApi("hỏng", ma))
+                self.assertEqual(chay(gh, nguoi_tin=())[0], 1)
+                self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_nguoi_xet_khong_con_tai_khoan_khong_lam_sap(self):
+        d = can_duyet(du_lieu())
+        d["/pulls/7/reviews"][0]["user"] = None
+        gh = gate_app.GiaLap(d)
+        self.assertEqual(chay(gh, nguoi_tin=())[0], 0)
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_bot_gop_y_khong_hoi_quyen_khong_lam_ket_cong(self):
+        # GitHub trả 404 «is not a user» cho vài tài khoản bot: hỏi quyền của chúng sẽ làm mọi PR có bot góp ý kẹt.
+        for login, loai in (("Copilot", "Bot"), ("github-actions[bot]", "Bot")):
+            with self.subTest(login):
+                d = can_duyet(du_lieu(), login=login)
+                d["/pulls/7/reviews"][0]["user"]["type"] = loai
+                d["/pulls/7/files"][0]["filename"] = "app.py"
+                gh = gate_app.GiaLap(d)
+                chay(gh, nguoi_tin=())
+                self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
+
+    def test_khong_doc_bien_nguoi_duyet_cu(self):
+        d = can_duyet(du_lieu())
+        d["/collaborators/khac/permission"] = {"permission": "write"}
+        gh = gate_app.GiaLap(d)
+        with mock.patch.dict(os.environ, {"XUONG_NGUOI_DUYET": "khac"}):
+            chay(gh, nguoi_tin=())
         self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
 
     def test_author_commit_khong_duyet_duoc(self):
@@ -560,21 +616,10 @@ class TestMain(unittest.TestCase):
     def test_phai_co_sha(self):
         self.assertEqual(self._main(["--kho", str(MAU)])[0], 2)
 
-    def test_tach_danh_sach_nguoi_duyet(self):
-        with mock.patch.object(gate_app, "chay", return_value=0) as gia:
-            self._main(["--kho", str(MAU), "--sha", SHA], {ten.BIEN_NGUOI_DUYET: "a, b  c,d\ne"})
-        self.assertEqual(gia.call_args[0][1], ["a", "b", "c", "d", "e"])
-
     def test_doc_bien_moi_truong_theo_sha(self):
-        env = {ten.BIEN_SHA: SHA, ten.BIEN_NGUOI_DUYET: "a, b  c"}
-        ma, ra = self._main(["--kho", str(MAU)], env)
+        ma, ra = self._main(["--kho", str(MAU)], {ten.BIEN_SHA: SHA})
         self.assertEqual(ma, 0)
         self.assertIn("%s: success" % ten.CHECK_CUOI, ra)
-
-    def test_khong_khai_nguoi_duyet_thi_failure(self):
-        ma, ra = self._main(["--kho", str(MAU), "--sha", SHA])
-        self.assertEqual(ma, 0)
-        self.assertIn("%s: failure" % ten.CHECK_CUOI, ra)
 
     def test_thieu_token_khong_chay(self):
         ma, _ = self._main(["--sha", SHA], {"GITHUB_REPOSITORY": "chu/repo"})

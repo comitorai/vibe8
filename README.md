@@ -47,9 +47,9 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
 - Rủi ro thấp và trung bình tự qua khi đủ các điều kiện khác.
 - Quá 400 dòng (không tính lockfile): chặn, trừ khi người duyệt hợp lệ ghi dòng `ngoai-le-co: <lý do>` trong lượt duyệt.
   Dòng đó phải đứng đầu dòng, đúng chữ thường, không gạch đầu dòng hay in đậm; sai định dạng thì cổng coi như chưa ghi.
-- Duyệt hợp lệ: người trong biến `XUONG_NGUOI_DUYET` của environment `gate`, không phải tác giả hay người có commit
-  trong PR (không tính commit merge, ví dụ bấm Update branch), không phải bot, đúng SHA. Danh sách rỗng thì mọi PR đều bị chặn.
+- Duyệt hợp lệ: người có quyền admin trên repo (cổng hỏi GitHub lúc xét), không phải tác giả hay người có commit
+  trong PR (không tính commit merge, ví dụ bấm Update branch), không phải bot, đúng SHA.
 - PR quá 250 commit bị chặn, vì API chỉ trả tới đó nên không đọc đủ được người có commit.
-- Yêu cầu sửa của người trong danh sách chặn bất kể SHA và mức rủi ro trên **PR đó**. Lượt của họ bị gỡ thì vẫn chặn đến khi họ duyệt lại.
+- Yêu cầu sửa của người có quyền admin chặn bất kể SHA và mức rủi ro trên **PR đó**. Lượt của họ bị gỡ thì vẫn chặn đến khi họ duyệt lại.
   Yêu cầu sửa không theo sang PR mới cùng nội dung; người duyệt phải đóng cả nhánh nếu không muốn nội dung đó vào.
 - SHA không còn là head của PR mở vào `main`: cổng thu hồi bằng `failure`, để `success` cũ không chờ sẵn khi đổi base đi rồi đổi lại.

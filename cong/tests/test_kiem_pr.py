@@ -110,17 +110,16 @@ class TestDuyet(unittest.TestCase):
     def test_ngoai_danh_sach_khong_duyet_duoc(self):
         q = quyet_dinh(pr(CAO, ds_duyet=[duyet(user="agent-khac")]))
         self.assertEqual(q["ket_luan"], CHAN)
-        self.assertIn("không có trong danh sách", " ".join(q["chi_tiet"]))
+        self.assertIn("không có quyền admin", " ".join(q["chi_tiet"]))
 
     def test_ngoai_danh_sach_khong_mo_duoc_ngoai_le_co(self):
         ds = [duyet(user="agent-khac", body="ngoai-le-co: máy sinh, tôi đã đọc rồi")]
         self.assertEqual(quyet_dinh(pr([tep(them=900)], ds_duyet=ds))["ket_luan"], CHAN)
 
-    def test_danh_sach_rong_chan_moi_pr(self):
+    def test_khong_ai_co_quyen_thi_rui_ro_cao_chan_rui_ro_thap_qua(self):
         for rong in ([], None):
-            q = quyet_dinh(pr(nguoi_tin=rong))
-            self.assertEqual(q["ket_luan"], CHAN)
-            self.assertIn("chưa khai", " ".join(q["ly_do"]))
+            self.assertEqual(quyet_dinh(pr(nguoi_tin=rong))["ket_luan"], CHO_QUA)
+            self.assertEqual(quyet_dinh(pr(CAO, nguoi_tin=rong))["ket_luan"], CHAN)
 
     def test_danh_sach_khong_phan_biet_hoa_thuong(self):
         self.assertEqual(quyet_dinh(pr(CAO, ds_duyet=[duyet(user="Nguoi-Duyet")]))["ket_luan"], CHO_QUA)

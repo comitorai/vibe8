@@ -86,10 +86,8 @@ def in_buoc_tay(repo):
 Việc script không làm thay được (App đã tạo trước, cài vào %(repo)s):
 1. gh secret set %(khoa)s --env %(mt)s --repo %(repo)s
 2. gh variable set %(id)s --env %(mt)s --repo %(repo)s
-3. gh variable set %(duyet)s --env %(mt)s --repo %(repo)s --body "<login người duyệt, cách nhau dấu phẩy>"
-4. Chạy thử một PR rồi xem check `%(check)s` có nguồn là App.""" % {
-        "repo": repo, "khoa": ten.BIEN_KHOA_APP, "id": ten.BIEN_APP_CLIENT_ID, "mt": ten.MOI_TRUONG,
-        "duyet": ten.BIEN_NGUOI_DUYET, "check": ten.CHECK_CUOI})
+3. Chạy thử một PR rồi xem check `%(check)s` có nguồn là App.""" % {
+        "repo": repo, "khoa": ten.BIEN_KHOA_APP, "id": ten.BIEN_APP_CLIENT_ID, "mt": ten.MOI_TRUONG, "check": ten.CHECK_CUOI})
 
 
 def main(argv=None):

@@ -55,5 +55,4 @@ jobs:
         env:
           XUONG_TOKEN_APP: ${{ steps.token.outputs.token }}
           XUONG_SHA: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
-          XUONG_NGUOI_DUYET: ${{ vars.XUONG_NGUOI_DUYET }}
         run: python3 -m cong.gate_app

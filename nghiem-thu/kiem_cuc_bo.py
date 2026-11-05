@@ -37,7 +37,7 @@ CAC_CA = [
     ("L6", "L6-doi-khoa", None, kiem_pr.CHAN, "KHÔNG: quyết định này không dừng được job; chỉ environment giữ khoá."),
     ("ĐC-duyet", "L2-xoa-test", _duyet("nguoi-khac"), kiem_pr.CHO_QUA, "CÓ: duyệt hợp lệ mở được rủi ro cao."),
     ("ĐC-tu-duyet", "L2-xoa-test", _duyet(TAC_GIA), kiem_pr.CHAN, "CÓ: tác giả tự duyệt không tính."),
-    ("ĐC-agent-duyet", "L2-xoa-test", _duyet("agent-khac"), kiem_pr.CHAN, "CÓ: người ngoài danh sách không duyệt được."),
+    ("ĐC-agent-duyet", "L2-xoa-test", _duyet("agent-khac"), kiem_pr.CHAN, "CÓ: người không có quyền admin không duyệt được."),
 ]
 
 
