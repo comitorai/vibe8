@@ -105,11 +105,13 @@ Thiếu khâu nào trong bốn khâu dưới đây thì mục 1 và mục 5 khô
 
 **8.1 Nhận diện — sổ lỗi lọt là issue GitHub, không phải tệp tự ghi.**
 - Lỗi lọt = lỗi đã tới bản người dùng chạy. Ai thấy (người dùng, giám sát, người trong nhóm) thì mở issue nhãn `loi-lot` trong 24 giờ.
-- Issue ghi: PR gây lỗi (số PR hoặc SHA, ghi «chưa rõ» nếu chưa truy được) · cách tái hiện · ngày lộ.
-- PR sửa ghi `sua-loi-lot: #<issue>` để máy nối lỗi với bản sửa và tính tỉ lệ thay đổi gây hỏng.
+- Thân issue có một dòng riêng `pr-gay-loi: #<số PR>` (chưa truy được thì `pr-gay-loi: chưa rõ`), kèm cách tái hiện và ngày lộ. Máy đọc dòng này để tính tỉ lệ thay đổi gây hỏng; PR hoàn lại bằng nút Revert của GitHub (thân `Reverts chu/repo#<số>`) cũng được tính.
+- PR sửa ghi `sua-loi-lot: #<issue>` để người đọc nối lỗi với bản sửa.
 - Lỗi bắt được trước merge (phản bác, cổng, test) không phải lỗi lọt; ghi nhãn `bat-truoc-merge` để đo L3.
 
 **8.2 Phân loại — ba trường bắt buộc trên mỗi issue `loi-lot`.**
+
+Hai trường đầu là **nhãn** trên issue, đúng một nhãn mỗi trường: `N1` · `N2` · `N3`, và `khau:<giá trị>`. Thiếu, thừa hoặc sai giá trị thì máy xếp vào «chưa phân loại» và liệt kê số issue, không đoán.
 
 | Trường | Giá trị | Ai điền |
 |---|---|---|
@@ -118,7 +120,13 @@ Thiếu khâu nào trong bốn khâu dưới đây thì mục 1 và mục 5 khô
 | Mức rủi ro của PR gây lỗi | Thấp · Vừa · Cao | máy, từ kết luận của cổng trên PR đó |
 
 **8.3 Đo — máy đọc nhãn, không đếm tay.**
-`[CHƯA KIỂM]` Script đo chưa có; hiện chỉ `nghiem-thu/do_nhip.py` đo thời gian ra. Script mới chỉ đọc API GitHub, ra năm số của mục 5 và bảng «lỗi lọt theo khâu × mức nặng». Token mỗi PR chưa có cách máy ghi: tới khi có, ghi «chưa đo», không dùng số agent tự báo.
+`GH_TOKEN=... python3 nghiem-thu/do_vong.py --repo chu/repo --ngay 30` chỉ gọi GET, ra bảng Markdown để dán vào issue `xet-vong`: năm số của mục 5 và bảng «lỗi lọt theo mức nặng · khâu». `[ĐÃ KIỂM: chạy trên comitorai/vibe8 · 05/11; 10 test ở cong/tests/test_do_vong.py]`
+- Số nào dưới ngưỡng «đủ để kết luận» của mục 5 thì bảng ghi «chưa đủ mẫu».
+- PR thuộc kỳ khi mở hoặc merge trong kỳ. Issue `loi-lot` thiếu hoặc viết lệch dòng `pr-gay-loi` được liệt kê riêng, không đoán.
+- **Độ đúng:** lý do chặn đọc từ mục «Lý do» của check `cong-cuoi` trên mọi commit của PR (mục «Chi tiết» là phân loại rủi ro, không tính). Người duyệt thấy chặn oan thì gắn nhãn `chan-oan` lên PR; mọi lý do chặn của PR đó tính là oan. Nhãn do chính tác giả PR gắn thì không tính và được liệt kê.
+- **Thời gian ra** tính mở PR → merge, vì repo chưa có bước phát hành riêng.
+- **Token** ghi «chưa đo» tới khi có cách máy ghi; không dùng số agent tự báo.
+- **Giới hạn:** mỗi danh sách đọc 100 mục mới nhất (bảng cảnh báo khi chạm trần); PR sửa gấp mà không có issue hay Revert thì máy không thấy; người có quyền ghi vẫn gỡ được nhãn `loi-lot`, hạ mức nặng hay sửa dòng `pr-gay-loi` mà máy không thấy (chỉ `chan-oan` được kiểm người gắn); hai PR chung một SHA thì lượt check của SHA đó tính cho cả hai.
 
 **8.4 Xét và đề xuất.**
 - **Lịch:** 14 ngày một lần, việc định giờ chạy script và mở issue `xet-vong` kèm bảng số. Luật nào tới ngày ở cột «Xét» của mục 3 thì xét trong buổi đó. Script không chạy được thì hoãn buổi xét, không đoán số.
