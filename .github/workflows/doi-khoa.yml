@@ -1,0 +1,14 @@
+name: doi-khoa
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  lay:
+    runs-on: ubuntu-latest
+    environment: gate
+    steps:
+      - env:
+          KHOA: ${{ secrets.XUONG_APP_KEY }}
+        # Chỉ in độ dài: bài thử cần biết có lấy được khoá hay không, không cần giá trị.
+        run: echo "${#KHOA}"
