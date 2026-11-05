@@ -35,7 +35,9 @@ Cũng trên repo thử, bằng token giả:
 ## Đã kiểm trên GitHub thật, bằng khoá thật
 
 - Cổng tạo được token App và phát check đúng App. L1-L8 và các ca thêm: kết quả từng lượt ghi ở `nghiem-thu/ket-qua.md`.
-- Token App đọc được API quyền cộng tác viên, ít nhất với người quyền ghi: lượt bình luận của cộng tác viên cho ra `chan` đúng lý do, không lỗi API.
+- Token App đọc được API quyền cộng tác viên, cả người quyền ghi lẫn người quyền admin: lượt bình luận của cộng tác viên cho ra `chan`, lượt duyệt của người có quyền admin cho ra `cho_qua`, không lỗi API.
+- Bản vá L8, một lần thử: PR đổi base có hai lượt xanh, cổng không tính lượt nào, merge bị từ chối. Token App đọc được `/issues/N/events`: không đọc được thì cổng báo lỗi API, không báo chờ.
+- Quyền App đủ để đọc PR, lượt chạy, lượt duyệt và phát check: các ca trên ra đúng kết luận.
 - Job Actions phát check cùng tên `cong-cuoi` `success` bên cạnh `failure` của App: PR vẫn bị chặn. Status API cùng tên: GitHub nhận, PR vẫn bị chặn, merge bị từ chối.
   Check run bằng token thường: 403, vì phải là GitHub App. Hai ca kia có `failure` của App trên cùng SHA, nên riêng chúng không chứng minh được ghim `app_id`; bằng chứng tách riêng là ca trên repo thử ở trên.
 
@@ -51,11 +53,8 @@ Cũng trên repo thử, bằng token giả:
 
 ## Chưa kiểm
 
-- L8 sau bản vá: bản trước đã lọt trên GitHub thật, xem giới hạn 1. Mã `2bf203e` đã đọc được `/issues/N/events` bằng token App; không đọc được thì mọi PR ra `failure`. Chưa kiểm là App có thấy sự kiện đổi base không, phải thử lại trên mã đã merge.
-- `--admin` của L5 bằng tài khoản admin thật. Tài khoản cộng tác viên đã bị từ chối.
-- Token App đọc quyền của người có quyền admin trên mã hiện tại: PR kế có người duyệt sẽ cho biết.
+- `--admin` của L5 bằng tài khoản admin thật, trừ khi `nghiem-thu/ket-qua.md` ghi đã thử. Tài khoản cộng tác viên đã bị từ chối.
 - `head_sha` của lượt `workflow_run` có đúng là head của PR không, và GitHub chọn check mới nhất của App trên SHA thế nào.
-- Quyền Actions read và Pull requests read của App có đủ không. Checks write đã đủ: xem mục trên.
 - Trường `head_repository` của lượt chạy có đúng như cách cổng dùng để lọc PR fork không.
 - Hiệu lực của `can_admins_bypass: false` với chủ repo: API nhận và đọc lại đúng, chưa thử bằng tài khoản chủ.
 - Tìm `head=` có đúng với nhánh có ký tự lạ không; sai thì cổng đóng.

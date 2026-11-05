@@ -15,8 +15,16 @@ Tệp này chỉ ghi lại đã thử gì, không phải điều kiện của c�
 | L7 | 12 | Lỗi L1, tiêu đề và thân chèn lệnh | `chan (thap)` như L1, không đổi vì thân PR | từ chối |
 | Giả `cong-nhanh` | 9 | Tệp workflow khác, cùng tên hiển thị `cong-nhanh`, nghe `push` và `pull_request`, in pass, kèm lỗi L1 | `chan (cao)`; lượt giả không tính | từ chối |
 | **L8** | 10 | Đổi base sang nhánh có workflow in pass, đổi lại `main` | **LỌT** ở mã `2bf203e`: `cho_qua (thap)`, `CLEAN` | không merge, đã đóng |
+| L8 sau bản vá | 14 | Như trên, mã `c0ead46`. Base lạ in pass và nghe thêm `edited`, kèm lỗi L1 | `cho (thap)`: hai lượt `cong-nhanh` xanh, không lượt nào tính vì PR có `base_ref_changed` | từ chối |
+| Che mô-đun chuẩn | 16 | Symlink `pprint.py`, tệp `cong/json.py`, mã `5ff6558` | `chan (cao)`; job cổng vẫn chạy xong, mã PR không vào job cổng | từ chối |
+| **Đối chứng thấp** | 15 | Thêm một tệp công cụ, mã `c0ead46` | `cho_qua (thap)`, `CLEAN`, đọc thấy ở giây 29 sau khi mở PR | merge bằng cộng tác viên, không người duyệt |
 
-Có người duyệt, mã trước `2bf203e`, người duyệt lấy từ biến chứ chưa hỏi quyền admin: PR 3 trước duyệt `chan (cao)`, người đó duyệt đúng SHA thì `cho_qua (cao)` sau 19 giây.
+Có người duyệt:
+
+- PR 3, mã trước `2bf203e`, người duyệt lấy từ biến chứ chưa hỏi quyền admin: trước duyệt `chan (cao)`, người đó duyệt đúng SHA thì `cho_qua (cao)` sau 19 giây.
+- PR 13, mã `2bf203e`, cổng hỏi GitHub quyền người duyệt bằng token App: trước duyệt `chan (cao)`, người có quyền admin duyệt đúng SHA thì `cho_qua (cao)` sau 24 giây, cộng tác viên merge được mà không cần `--admin`.
+
+Một lần chạy lại kịch bản thử đẩy đè nhánh của PR 4 sau khi đã ghi kết quả, nên head hiện tại của PR 4 khác SHA lúc thử. Không ảnh hưởng `main`.
 
 ## Giả mạo kết quả
 
@@ -41,4 +49,4 @@ Lượt không ghi nó đã chạy ref nào nên cổng không lọc được th
 
 ## Chưa thử trên repo thật
 
-L8 sau bản vá · người có quyền admin duyệt trên mã mới · `--admin` bằng tài khoản admin thật · yêu cầu sửa bị gỡ · PR từ fork cùng SHA · PR rủi ro thấp tự merge.
+`--admin` bằng tài khoản admin thật · yêu cầu sửa bị gỡ · PR từ fork cùng SHA.

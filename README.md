@@ -3,8 +3,8 @@
 Cổng chạy ở phía GitHub: quyết định chỉ dựa trên diff, kết quả CI và lượt duyệt theo đúng commit,
 không đọc lời khai trong thân PR. Tên `xuong` và `cong` là tên tạm, gom ở `cong/ten.py`.
 
-**Trạng thái: đã bật trên một repo thật, L1-L8 đã thử ở đó (riêng `--admin` của L5 chưa thử bằng admin thật), L8 lọt ở bản trước và bản vá chưa thử lại.** Chưa dùng được làm cổng thật
-khi chưa qua. Kết quả từng ca: [nghiem-thu/ket-qua.md](nghiem-thu/ket-qua.md). Đã kiểm gì, giới hạn gì: [docs/bao-mat.md](docs/bao-mat.md).
+**Trạng thái: đã bật trên một repo thật. L1-L8 bị chặn ở đó, L8 sau bản vá cũng vậy, PR rủi ro thấp tự qua đúng. Riêng `--admin` của L5 chưa thử bằng admin thật.**
+Mới chạy với các ca thử và PR của chính repo này, chưa qua PR việc thật của sản phẩm nào. Kết quả từng ca: [nghiem-thu/ket-qua.md](nghiem-thu/ket-qua.md). Đã kiểm gì, giới hạn gì: [docs/bao-mat.md](docs/bao-mat.md).
 
 ## Gồm gì
 
@@ -14,7 +14,7 @@ khi chưa qua. Kết quả từng ca: [nghiem-thu/ket-qua.md](nghiem-thu/ket-qua
 | `cong/kiem_pr.py` | Hàm thuần: dữ liệu PR vào, quyết định và lý do ra |
 | `cong/gate_app.py` | Đọc REST, phát một check run `cong-cuoi` |
 | `.github/workflows/` | `cong-nhanh` chạy test, `cong-cuoi` chạy cổng, `tin-hieu-duyet` đánh thức cổng khi có lượt duyệt |
-| `nghiem-thu/` | App mẫu, bản vá lỗi L1-L7, bài cục bộ, script bật cổng, kết quả trên GitHub thật |
+| `nghiem-thu/` | App mẫu, bản vá lỗi L1-L7, bài cục bộ, script bật cổng, công cụ đo nhịp PR, kết quả trên GitHub thật |
 
 Python 3.9 trở lên, chỉ stdlib.
 
