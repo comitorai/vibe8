@@ -1,0 +1,12 @@
+name: cong-nhanh
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  cong-nhanh:
+    name: cong-nhanh
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo pass
