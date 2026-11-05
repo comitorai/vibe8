@@ -10,4 +10,4 @@ def tong_tien(dong, giam_pt=0):
         if don_gia < 0 or so_luong < 0:
             raise ValueError("đơn giá và số lượng không được âm")
         tong += don_gia * so_luong
-    return tong * (100 - giam_pt) // 100
+    return tong * giam_pt // 100
