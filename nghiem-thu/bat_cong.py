@@ -23,7 +23,7 @@ def ke_hoach(app_id):
     moi_truong = "/environments/" + ten.MOI_TRUONG
     return [
         {"phuong_thuc": "PUT", "duong": moi_truong, "body": {
-            "wait_timer": 0, "reviewers": None,
+            "wait_timer": 0, "reviewers": None, "can_admins_bypass": False,
             "deployment_branch_policy": {"protected_branches": False, "custom_branch_policies": True}}},
         {"phuong_thuc": "POST", "duong": moi_truong + "/deployment-branch-policies",
          "body": {"name": ten.NHANH_GOC, "type": "branch"}},
@@ -55,6 +55,8 @@ def kiem_lai(bao_ve, moi_truong, chinh_sach, quyen, app_id):
     for khoa in ("allow_force_pushes", "allow_deletions"):
         if (bao_ve.get(khoa) or {}).get("enabled") is not False:
             sai.append(khoa + " chưa tắt")
+    if moi_truong.get("can_admins_bypass") is not False:
+        sai.append("admin vẫn được vượt luật environment")
     nhanh = (moi_truong.get("deployment_branch_policy") or {})
     if nhanh.get("custom_branch_policies") is not True or nhanh.get("protected_branches") is not False:
         sai.append("environment chưa giới hạn theo danh sách nhánh")

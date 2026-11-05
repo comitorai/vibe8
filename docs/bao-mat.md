@@ -20,7 +20,8 @@ Bằng unittest và `nghiem-thu/kiem_cuc_bo.py`, dữ liệu mô phỏng. Bộ t
 - Environment `gate` có giữ được khoá trước nhánh tên `main-2`, `Main`, tag tên `main`, lượt `deployment` (tạo bằng `POST /deployments`
   với `required_contexts: []`) và `deployment_status` không. Phải thử bằng secret giả trước khi đặt khoá thật.
 - Trường `head_repository` của lượt chạy có đúng như cách cổng dùng để lọc PR fork không.
-- Environment có nhận cấm admin vượt không (`can_admins_bypass` chưa thấy trong tài liệu, giao diện có ô tương ứng).
+- Environment có nhận cấm admin vượt không (`can_admins_bypass` chưa thấy trong tài liệu, giao diện có ô tương ứng; API đã nhận và đọc lại đúng trên repo thử, hiệu lực với admin thì chưa thử).
+- Cộng tác viên quyền write tạo được biến cấp repo và đọc được khoá mã hoá secret: có ghi được biến, secret trong `gate`, xoá được chúng không; biến cấp repo trùng tên có đè được giá trị trong `gate` không.
 - `created_at` của lượt có giữ nguyên khi bấm chạy lại không. Cổng lọc lượt theo mốc này; nếu nó đổi thì lượt của base cũ có thể được tính.
   Mốc đổi base so với lượt do chính lần đổi đó tạo ra có lệch giây không. Tìm `head=` có đúng với nhánh có ký tự lạ không; sai thì cổng đóng.
   Đổi tên nhánh đầu: PR đã đóng của tên cũ có lượt mới mang tên nhánh nào.

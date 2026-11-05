@@ -20,7 +20,8 @@ DUNG_BV = {
     "enforce_admins": {"enabled": True}, "required_pull_request_reviews": {"url": "x"},
     "allow_force_pushes": {"enabled": False}, "allow_deletions": {"enabled": False},
 }
-DUNG_MT = {"deployment_branch_policy": {"custom_branch_policies": True, "protected_branches": False}}
+DUNG_MT = {"can_admins_bypass": False,
+           "deployment_branch_policy": {"custom_branch_policies": True, "protected_branches": False}}
 DUNG_CS = {"branch_policies": [{"name": ten.NHANH_GOC, "type": "branch"}]}
 DUNG_QUYEN = {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": False}
 
@@ -43,6 +44,7 @@ class TestKeHoach(unittest.TestCase):
         ke = bat_cong.ke_hoach(APP)
         self.assertTrue(ke[0]["body"]["deployment_branch_policy"]["custom_branch_policies"])
         self.assertFalse(ke[0]["body"]["deployment_branch_policy"]["protected_branches"])
+        self.assertIs(ke[0]["body"]["can_admins_bypass"], False)
         self.assertEqual(ke[1]["body"], {"name": ten.NHANH_GOC, "type": "branch"})
 
     def test_github_token_chi_doc_khong_duyet_pr(self):
@@ -92,6 +94,7 @@ class TestKiemLai(unittest.TestCase):
             ({"allow_force_pushes": {"enabled": True}}, {}, {}, {}),
             ({"allow_deletions": {"enabled": True}}, {}, {}, {}),
             ({}, {"deployment_branch_policy": None}, {}, {}),
+            ({}, {"can_admins_bypass": True}, {}, {}),
             ({}, {}, {"branch_policies": [{"name": "*", "type": "branch"}]}, {}),
             ({}, {}, {"branch_policies": [{"name": ten.NHANH_GOC, "type": "tag"}]}, {}),
             ({}, {}, {"branch_policies": DUNG_CS["branch_policies"] + [{"name": "dev", "type": "branch"}]}, {}),
