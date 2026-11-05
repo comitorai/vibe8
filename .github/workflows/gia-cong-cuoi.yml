@@ -1,0 +1,11 @@
+name: gia-cong-cuoi
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  gia:
+    name: cong-cuoi
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo pass
