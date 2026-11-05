@@ -23,6 +23,11 @@ Có người duyệt:
 
 - PR 3, mã trước `2bf203e`, người duyệt lấy từ biến chứ chưa hỏi quyền admin: trước duyệt `chan (cao)`, người đó duyệt đúng SHA thì `cho_qua (cao)` sau 19 giây.
 - PR 13, mã `2bf203e`, cổng hỏi GitHub quyền người duyệt bằng token App: trước duyệt `chan (cao)`, người có quyền admin duyệt đúng SHA thì `cho_qua (cao)` sau 24 giây, cộng tác viên merge được mà không cần `--admin`.
+- PR 17, mã `5ff6558`: trước duyệt `chan (cao)`, người có quyền admin duyệt đúng SHA thì `cho_qua (cao)` sau 32 giây, cộng tác viên merge được mà không cần `--admin`.
+
+Yêu cầu sửa bị gỡ, PR 18, rủi ro thấp, logic cổng không đổi: trước đó `cho_qua (thap)`. Người có quyền admin yêu cầu sửa thì `chan (thap)` sau 28 giây. Cộng tác viên gỡ được lượt đó, GitHub ghi `DISMISSED`, cổng xét lại 24 giây sau và vẫn `chan (thap)`, merge bị từ chối. Đóng PR, không merge.
+
+Ô merge của PR 17 khi `cong-cuoi` còn đỏ, xem bằng tài khoản chủ repo: nút merge bị khoá, không hiện ô bỏ qua yêu cầu. Đây là ảnh giao diện, chưa phải lần chạy `gh pr merge --admin`.
 
 Một lần chạy lại kịch bản thử đẩy đè nhánh của PR 4 sau khi đã ghi kết quả, nên head hiện tại của PR 4 khác SHA lúc thử. Không ảnh hưởng `main`.
 
@@ -49,4 +54,4 @@ Lượt không ghi nó đã chạy ref nào nên cổng không lọc được th
 
 ## Chưa thử trên repo thật
 
-`--admin` bằng tài khoản admin thật · yêu cầu sửa bị gỡ · PR từ fork cùng SHA.
+Lệnh `gh pr merge --admin` bằng tài khoản admin thật · PR từ fork cùng SHA.
