@@ -31,6 +31,8 @@ Yêu cầu sửa bị gỡ, PR 18, rủi ro thấp, logic cổng không đổi: 
 
 Một lần chạy lại kịch bản thử đẩy đè nhánh của PR 4 sau khi đã ghi kết quả, nên head hiện tại của PR 4 khác SHA lúc thử. Không ảnh hưởng `main`.
 
+PR từ fork cùng SHA, PR 20 (fork của cộng tác viên) và PR 21 (nội bộ), một tệp rủi ro thấp: PR 20 mở một mình thì `cong-nhanh` chạy không cần phê duyệt, lượt ghi đúng `head_repository` của fork, cổng `cho_qua (thap)` sau 35 giây. Mở PR 21 cùng SHA thì cổng xét lại, vẫn `cho_qua (thap)`, cả hai `CLEAN`. Check gắn theo SHA nên hai PR dùng chung một kết quả, nội dung merge như nhau. Không merge, đã đóng cả hai. Fork từ người không phải cộng tác viên chưa thử.
+
 ## Giả mạo kết quả
 
 - Tác giả tự duyệt, tự yêu cầu sửa: GitHub từ chối.
@@ -54,4 +56,4 @@ Lượt không ghi nó đã chạy ref nào nên cổng không lọc được th
 
 ## Chưa thử trên repo thật
 
-Lệnh `gh pr merge --admin` bằng tài khoản admin thật · PR từ fork cùng SHA.
+Lệnh `gh pr merge --admin` bằng tài khoản admin thật · PR từ fork của người không phải cộng tác viên.
