@@ -32,7 +32,7 @@ Khi va nhau: lỗi lọt mức nặng thắng tốc độ; tốc độ thắng t
 - Thấp: chỉ tài liệu, thêm test mới, tệp tĩnh. Danh sách cho phép: tệp lạ thì xếp Vừa.
 
 `[ĐÃ KIỂM: test cổng · 05/11]` Cổng đã xếp ba mức như trên và đọc vùng từ nhánh gốc, nên PR không tự gỡ vùng được. Mức Vừa hôm nay mới là nhãn, chưa bắt lượt phản bác của L3.
-`[CHƯA KIỂM]` Chưa thử trên PR thật chạm vùng đã khai.
+`[ĐÃ KIỂM: PR 28 · 05/11]` PR thật chỉ sửa một tệp tài liệu trong vùng đã khai ra `chan (cao)`, không có vùng thì là thấp.
 Giới hạn đã biết: tách một thay đổi lớn thành nhiều PR nhỏ vẫn lọt qua trần cỡ của L2.
 
 | | Thấp | Vừa | Cao |

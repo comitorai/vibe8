@@ -19,6 +19,7 @@ Tệp này chỉ ghi lại đã thử gì, không phải điều kiện của c�
 | L8 sau bản vá | 14 | Như trên, mã `c0ead46`. Base lạ in pass và nghe thêm `edited`, kèm lỗi L1 | `cho (thap)`: hai lượt `cong-nhanh` xanh, không lượt nào tính vì PR có `base_ref_changed` | từ chối |
 | Che mô-đun chuẩn | 16 | Symlink `pprint.py`, tệp `cong/json.py`, mã `5ff6558` | `chan (cao)`; job cổng vẫn chạy xong, mã PR không vào job cổng | từ chối |
 | **Đối chứng thấp** | 15 | Thêm một tệp công cụ, mã `c0ead46` | `cho_qua (thap)`, `CLEAN`, đọc thấy ở giây 29 sau khi mở PR | merge bằng cộng tác viên, không người duyệt |
+| Vùng nhạy cảm | 28 | Sửa `nghiem-thu/ket-qua.md`, vùng khai ở `main` từ PR 27, mã `35dc4cf`. Không có vùng thì tệp tài liệu này là thấp | `chan (cao)` sau ~22 giây: «chạm vùng nhạy cảm `nghiem-thu/ket-qua.md`», summary «2 mẫu» | chờ người duyệt |
 
 Có người duyệt:
 
