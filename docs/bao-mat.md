@@ -50,10 +50,10 @@ Cũng trên repo thử, bằng token giả:
 - Đẩy commit khi đã xung đột: 2/2 không có lượt trên SHA đó. Đẩy commit lúc PR đóng: 1/1 không có lượt.
 - Chạy lại lượt: giữ id và `created_at`, `run_attempt` thành 2, dùng commit merge cũ kể cả khi PR đã xung đột.
 - Đổi tên nhánh đầu: xem giới hạn 23.
+- `gh pr merge --admin` bằng tài khoản chủ repo thật, PR 23 cổng đỏ: GitHub từ chối vì required check `cong-cuoi` đỏ, `enforce_admins` chặn cả admin. Một lần thử.
 
 ## Chưa kiểm
 
-- `--admin` của L5 bằng tài khoản admin thật, trừ khi `nghiem-thu/ket-qua.md` ghi đã thử. Tài khoản cộng tác viên đã bị từ chối.
 - `head_sha` của lượt `workflow_run` có đúng là head của PR không, và GitHub chọn check mới nhất của App trên SHA thế nào.
 - Trường `head_repository` của lượt chạy có đúng như cách cổng dùng để lọc PR fork không.
 - Hiệu lực của `can_admins_bypass: false` với chủ repo: API nhận và đọc lại đúng, chưa thử bằng tài khoản chủ.
