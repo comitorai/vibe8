@@ -28,6 +28,7 @@ import re
 import subprocess
 import sys
 import time
+import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -198,7 +199,7 @@ def tim_pr(gh, repo, so_pr, nhanh_dang_mo):
     if so_pr:
         p = gh.goi("GET", "/pulls/%d" % so_pr)
     else:
-        ds = gh.goi("GET", "/pulls?state=all&head=%s:%s&per_page=100" % (repo.split("/")[0], nhanh_dang_mo))
+        ds = gh.goi("GET", _hoi_nhanh(repo, nhanh_dang_mo))
         if not ds:
             raise LoiApi("nhánh %s chưa có PR" % nhanh_dang_mo)
         p = max(ds, key=lambda x: x.get("created_at") or "")
@@ -207,12 +208,22 @@ def tim_pr(gh, repo, so_pr, nhanh_dang_mo):
     return p["number"], p["head"]["ref"], p["base"]["ref"]
 
 
+def _hoi_nhanh(repo, nhanh):
+    """Đường hỏi các PR của một nhánh; tên nhánh được mã hoá để `#`, `&`, `+` không cắt hay đổi câu hỏi."""
+    return "/pulls?state=all&head=%s:%s&per_page=100" % (
+        urllib.parse.quote(repo.split("/")[0], safe=""), urllib.parse.quote(nhanh, safe="/"))
+
+
 def moc_dung_lai(gh, repo, so_pr, nhanh):
     """(số PR, lúc đóng) của PR trước mới nhất đã đóng mà cùng tên nhánh, None nếu nhánh chưa từng dùng.
-    PR số nhỏ hơn là PR mở trước."""
-    ds = gh.goi("GET", "/pulls?state=all&head=%s:%s&per_page=100" % (repo.split("/")[0], nhanh)) or []
-    cu = [(p["number"], p["closed_at"]) for p in ds if isinstance(p, dict) and type(p.get("number")) is int
-          and p["number"] < so_pr and isinstance(p.get("closed_at"), str) and p["closed_at"]]
+    PR số nhỏ hơn là PR mở trước. Chỉ nhận PR đóng trước lúc PR này được tạo: PR cùng nhánh mở song song
+    mà đóng sau thì không được cắt mất lượt gọi của PR này."""
+    ds = [p for p in (gh.goi("GET", _hoi_nhanh(repo, nhanh)) or []) if isinstance(p, dict)]
+    tao = next((p.get("created_at") for p in ds if p.get("number") == so_pr and type(p.get("number")) is int), None)
+    tao = tao if isinstance(tao, str) and tao else None
+    cu = [(p["number"], p["closed_at"]) for p in ds if type(p.get("number")) is int
+          and p["number"] < so_pr and isinstance(p.get("closed_at"), str) and p["closed_at"]
+          and (tao is None or p["closed_at"][:19] <= tao[:19])]
     return max(cu, key=lambda x: x[1]) if cu else None
 
 

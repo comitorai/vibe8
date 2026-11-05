@@ -28,8 +28,8 @@ def luot(id_, nhanh, luc, vao=10):
             "requestId": "r" + id_, "message": {"id": id_, "usage": {"input_tokens": vao}}}
 
 
-def pr(so, dong=None, ref="a"):
-    return {"number": so, "closed_at": dong, "head": {"ref": ref, "repo": {"full_name": "chu/repo"}},
+def pr(so, dong=None, ref="a", tao=None):
+    return {"number": so, "closed_at": dong, "created_at": tao, "head": {"ref": ref, "repo": {"full_name": "chu/repo"}},
             "base": {"ref": "main"}}
 
 
@@ -65,6 +65,27 @@ class TestMoc(unittest.TestCase):
     def test_bo_qua_muc_hong(self):
         gh = GhGia([None, {"number": "3", "closed_at": DONG_CU}, {"number": 4, "closed_at": 7}, pr(5, "")])
         self.assertIsNone(ghi_token.moc_dung_lai(gh, "chu/repo", 9, "a"))
+
+
+    def test_pr_song_song_dong_sau_luc_pr_nay_tao_thi_khong_lam_moc(self):
+        gh = GhGia([pr(9, tao="2026-01-02T11:00:00Z"), pr(8, "2026-01-02T12:00:00Z"), pr(3, DONG_CU)])
+        self.assertEqual(ghi_token.moc_dung_lai(gh, "chu/repo", 9, "a"), (3, DONG_CU))
+        gh = GhGia([pr(9, tao="2026-01-02T11:00:00Z"), pr(8, "2026-01-02T12:00:00Z")])
+        self.assertIsNone(ghi_token.moc_dung_lai(gh, "chu/repo", 9, "a"))
+
+    def test_pr_dong_dung_luc_pr_nay_tao_van_lam_moc(self):
+        gh = GhGia([pr(9, tao=DONG_CU), pr(3, DONG_CU)])
+        self.assertEqual(ghi_token.moc_dung_lai(gh, "chu/repo", 9, "a"), (3, DONG_CU))
+
+    def test_ten_nhanh_ky_tu_dac_biet_duoc_ma_hoa(self):
+        import urllib.parse
+        for nhanh in ("fix#12", "a&state=open", "c++", "tinh/nang"):
+            gh = GhGia([])
+            ghi_token.moc_dung_lai(gh, "chu/repo", 9, nhanh)
+            hoi = urllib.parse.parse_qs(urllib.parse.urlsplit("https://x" + gh.hoi).query)
+            self.assertEqual(hoi["head"], ["chu:" + nhanh])
+            self.assertEqual(hoi["state"], ["all"])
+            self.assertEqual(hoi["per_page"], ["100"])
 
 
 class TestSauLuc(unittest.TestCase):
