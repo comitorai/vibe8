@@ -120,7 +120,7 @@ Hai trường đầu là **nhãn** trên issue, đúng một nhãn mỗi trườ
 | Mức rủi ro của PR gây lỗi | Thấp · Vừa · Cao | máy, từ kết luận của cổng trên PR đó |
 
 **8.3 Đo — máy đọc nhãn, không đếm tay.**
-`GH_TOKEN=... python3 nghiem-thu/do_vong.py --repo chu/repo --ngay 30` chỉ gọi GET, ra bảng Markdown để dán vào issue `xet-vong`: năm số của mục 5 và bảng «lỗi lọt theo mức nặng · khâu». `[ĐÃ KIỂM: chạy trên comitorai/vibe8 · 05/11; 10 test ở cong/tests/test_do_vong.py]`
+`GH_TOKEN=... python3 nghiem-thu/do_vong.py --repo chu/repo --ngay 30` chỉ gọi GET, ra bảng Markdown để dán vào issue `xet-vong`: năm số của mục 5 và bảng «lỗi lọt theo mức nặng · khâu». `[ĐÃ KIỂM: chạy trên comitorai/vibe8 · 05/11; 10 test ở nghiem-thu/tests/test_do_vong.py]`
 - Số nào dưới ngưỡng «đủ để kết luận» của mục 5 thì bảng ghi «chưa đủ mẫu».
 - PR thuộc kỳ khi mở hoặc merge trong kỳ. Issue `loi-lot` thiếu hoặc viết lệch dòng `pr-gay-loi` được liệt kê riêng, không đoán.
 - **Độ đúng:** lý do chặn đọc từ mục «Lý do» của check `cong-cuoi` trên mọi commit của PR (mục «Chi tiết» là phân loại rủi ro, không tính). Người duyệt thấy chặn oan thì gắn nhãn `chan-oan` lên PR; mọi lý do chặn của PR đó tính là oan. Nhãn do chính tác giả PR gắn thì không tính và được liệt kê.
