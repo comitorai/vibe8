@@ -127,8 +127,9 @@ def _luot_cua_pr(gh, so_pr, pr, lan_chay):
             and r.get("head_branch") == dau.get("ref") and (r.get("created_at") or "") >= moc]
 
 
-def _doc_theo_sha(gh, so_pr, pr, nguoi_tin):
+def _doc_theo_sha(gh, so_pr, pr):
     sha = pr["head"]["sha"]
+    duyet = _trang(gh, "/pulls/%s/reviews" % so_pr)
     commit = _trang(gh, "/pulls/%s/commits" % so_pr)
     # Commit merge từ nhánh gốc (chủ bấm Update branch) không làm họ thành đồng tác giả.
     nguoi_commit = {(c.get(k) or {}).get("login") for c in commit if len(c.get("parents") or []) < 2
@@ -140,7 +141,10 @@ def _doc_theo_sha(gh, so_pr, pr, nguoi_tin):
         "sha_dau": sha, "trang_thai_pr": pr.get("state"), "nhanh_dich": (pr.get("base") or {}).get("ref"),
         "so_pr_vao_goc": len(_pr_vao_goc(gh, sha)), "so_tep_khai": pr.get("changed_files"),
         "so_commit_khai": pr.get("commits"), "so_commit_doc": len(commit),
-        "tac_gia": (pr.get("user") or {}).get("login"), "nguoi_tin": nguoi_tin,
+        "tac_gia": (pr.get("user") or {}).get("login"),
+        # Người duyệt là người có quyền admin. Không lấy từ biến environment: cộng tác viên quyền ghi sửa được biến đó.
+        "nguoi_tin": sorted(x for x in {r["user"]["login"] for r in duyet if (r.get("user") or {}).get("type") == "User"} if gh.goi(
+            "GET", "/collaborators/%s/permission" % urllib.parse.quote(x, safe=""))["permission"] == "admin"),
         "nguoi_commit": sorted(x for x in nguoi_commit if x),
         "tep": _trang(gh, "/pulls/%s/files" % so_pr),
         "lan_chay_nhanh": [{"head_sha": r.get("head_sha"), "status": r.get("status"),
@@ -148,16 +152,16 @@ def _doc_theo_sha(gh, so_pr, pr, nguoi_tin):
         "duyet": [{
             "user": (r.get("user") or {}).get("login"), "user_type": (r.get("user") or {}).get("type"),
             "state": r.get("state"), "commit_id": r.get("commit_id"), "submitted_at": r.get("submitted_at"), "body": r.get("body"),
-        } for r in _trang(gh, "/pulls/%s/reviews" % so_pr)],
+        } for r in duyet],
     }
 
 
-def thu_thap(gh, so_pr, sha, nguoi_tin):
+def thu_thap(gh, so_pr, sha):
     """/files trả theo head hiện tại, nên đọc PR hai lần kẹp giữa. Head đã đổi thì trả None: lượt của head mới tự xét."""
     pr = gh.goi("GET", "/pulls/%s" % so_pr)
     if pr["head"]["sha"] != sha:
         return None
-    du_lieu = _doc_theo_sha(gh, so_pr, pr, nguoi_tin)
+    du_lieu = _doc_theo_sha(gh, so_pr, pr)
     return du_lieu if gh.goi("GET", "/pulls/%s" % so_pr)["head"]["sha"] == sha else None
 
 
@@ -180,11 +184,11 @@ def phat_check(gh, sha, q):
     return ket_luan
 
 
-def chay(gh, nguoi_tin, sha):
+def chay(gh, sha):
     """Chỉ xét và phát trên SHA sự kiện. 0: đã phát, hoặc SHA không còn là head PR nào. 1: hỏng hạ tầng."""
     try:
         ds = _pr_vao_goc(gh, sha)
-        du_lieu = thu_thap(gh, ds[0], sha, nguoi_tin) if ds else None
+        du_lieu = thu_thap(gh, ds[0], sha) if ds else None
         # Không còn PR: vẫn phát, `success` cũ không được ở lại vì đổi base đi rồi đổi lại là dùng được ngay nếu không thu hồi.
         q = kiem_pr.quyet_dinh(du_lieu) if du_lieu else {
             "ket_luan": "khong_xet", "rui_ro": "chua_ro", "so_dong": 0, "chi_tiet": [],
@@ -211,11 +215,10 @@ def main(argv=None):
     if not kiem_pr.SHA_HOP_LE.fullmatch(a.sha):
         print("SHA không hợp lệ")
         return 2
-    nguoi_tin = re.findall(r"[^\s,]+", os.environ.get(ten.BIEN_NGUOI_DUYET, ""))
     if a.kho:
         with open(a.kho, encoding="utf-8") as tep:
             gh = GiaLap(json.load(tep))
-        ma = chay(gh, nguoi_tin, a.sha)
+        ma = chay(gh, a.sha)
         print("CHẠY KHÔ, không gọi GitHub. Sẽ gọi:\n" + json.dumps(gh.da_phat, ensure_ascii=False, indent=2))
         return ma
     repo, token = os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get(ten.BIEN_TOKEN_APP, "")
@@ -223,7 +226,7 @@ def main(argv=None):
         print("thiếu GITHUB_REPOSITORY hoặc %s" % ten.BIEN_TOKEN_APP)
         return 2
     gh = GitHub(repo, token, os.environ.get("GITHUB_API_URL", API_GOC))
-    return chay(gh, nguoi_tin, a.sha)
+    return chay(gh, a.sha)
 
 
 if __name__ == "__main__":

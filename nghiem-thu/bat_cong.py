@@ -39,10 +39,12 @@ def ke_hoach(app_id):
                 "require_code_owner_reviews": False, "require_last_push_approval": False},
             "restrictions": None, "required_linear_history": False,
             "allow_force_pushes": False, "allow_deletions": False, "lock_branch": False}},
+        # Cổng đọc diff so với điểm rẽ nhánh, rebase phát lại từng commit. Chưa tái hiện được kết quả lệch: tắt để phòng. Đặt cuối để lỗi ở đây không làm mất bảo vệ nhánh.
+        {"phuong_thuc": "PATCH", "duong": "", "body": {"allow_rebase_merge": False}},
     ]
 
 
-def kiem_lai(bao_ve, moi_truong, chinh_sach, quyen, app_id):
+def kiem_lai(bao_ve, moi_truong, chinh_sach, quyen, kho, app_id):
     """Hàm thuần: đọc lại rồi so, trả danh sách chỗ sai. Ghi được chưa có nghĩa là đã có hiệu lực."""
     sai = []
     checks = (bao_ve.get("required_status_checks") or {}).get("checks")
@@ -65,6 +67,8 @@ def kiem_lai(bao_ve, moi_truong, chinh_sach, quyen, app_id):
         sai.append("environment phải chỉ cho đúng nhánh %s" % ten.NHANH_GOC)
     if quyen.get("default_workflow_permissions") != "read" or quyen.get("can_approve_pull_request_reviews") is not False:
         sai.append("GITHUB_TOKEN mặc định phải chỉ đọc và không được duyệt PR")
+    if kho.get("allow_rebase_merge") is not False:
+        sai.append("repo vẫn cho merge kiểu rebase")
     return sai
 
 
@@ -78,7 +82,7 @@ def ap_dung(gh, app_id):
     moi_truong = "/environments/" + ten.MOI_TRUONG
     return kiem_lai(gh.goi("GET", "/branches/%s/protection" % ten.NHANH_GOC), gh.goi("GET", moi_truong),
                     gh.goi("GET", moi_truong + "/deployment-branch-policies"),
-                    gh.goi("GET", "/actions/permissions/workflow"), app_id)
+                    gh.goi("GET", "/actions/permissions/workflow"), gh.goi("GET", ""), app_id)
 
 
 def in_buoc_tay(repo):
@@ -86,10 +90,8 @@ def in_buoc_tay(repo):
 Việc script không làm thay được (App đã tạo trước, cài vào %(repo)s):
 1. gh secret set %(khoa)s --env %(mt)s --repo %(repo)s
 2. gh variable set %(id)s --env %(mt)s --repo %(repo)s
-3. gh variable set %(duyet)s --env %(mt)s --repo %(repo)s --body "<login người duyệt, cách nhau dấu phẩy>"
-4. Chạy thử một PR rồi xem check `%(check)s` có nguồn là App.""" % {
-        "repo": repo, "khoa": ten.BIEN_KHOA_APP, "id": ten.BIEN_APP_CLIENT_ID, "mt": ten.MOI_TRUONG,
-        "duyet": ten.BIEN_NGUOI_DUYET, "check": ten.CHECK_CUOI})
+3. Chạy thử một PR rồi xem check `%(check)s` có nguồn là App.""" % {
+        "repo": repo, "khoa": ten.BIEN_KHOA_APP, "id": ten.BIEN_APP_CLIENT_ID, "mt": ten.MOI_TRUONG, "check": ten.CHECK_CUOI})
 
 
 def main(argv=None):

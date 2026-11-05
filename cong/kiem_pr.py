@@ -41,7 +41,7 @@ def _vi_sao_bo(r, sha, tac_gia):
 
 
 def _xet_duyet(du_lieu, sha):
-    """Trả (lần duyệt hợp lệ, lý do đã bỏ, người đang chặn). Chỉ người trong danh sách mới có tiếng nói."""
+    """Trả (lần duyệt hợp lệ, lý do đã bỏ, người đang chặn). Chỉ người trong nguoi_tin (có quyền admin) mới có tiếng nói."""
     goc = [du_lieu.get("tac_gia")] + list(du_lieu.get("nguoi_commit") or [])
     tac_gia = {str(x).casefold() for x in goc if x} if du_lieu.get("tac_gia") else set()
     tin = {str(x).casefold() for x in du_lieu.get("nguoi_tin") or [] if x}
@@ -54,7 +54,7 @@ def _xet_duyet(du_lieu, sha):
         ten_nguoi = rui_ro.hien_thi(r.get("user"))
         if login not in tin:
             if r["state"] == "APPROVED":
-                bo.append("bỏ duyệt của %s: không có trong danh sách người duyệt" % ten_nguoi)
+                bo.append("bỏ duyệt của %s: không có quyền admin trên repo" % ten_nguoi)
         elif r["state"] != "APPROVED":
             # Lượt bị gỡ cũng chặn: người khác không được xoá yêu cầu sửa của người duyệt.
             dang_chan.append(ten_nguoi)
@@ -82,8 +82,6 @@ def quyet_dinh(du_lieu):
         chan.append("PR không nhắm vào nhánh gốc")
     if du_lieu.get("so_pr_vao_goc") != 1:
         chan.append("phải có đúng một PR mở vào nhánh gốc ở SHA này")
-    if not du_lieu.get("nguoi_tin"):
-        chan.append("chưa khai danh sách người duyệt")
     if not isinstance(ds_tep, list) or du_lieu.get("so_tep_khai") != len(ds_tep):
         chan.append("danh sách tệp không đủ so với PR")
     if du_lieu.get("so_commit_khai") != du_lieu.get("so_commit_doc"):
@@ -91,7 +89,7 @@ def quyet_dinh(du_lieu):
     if dang_chan:
         chan.append("người duyệt đang yêu cầu sửa hoặc lượt xét đã bị gỡ: " + ", ".join(dang_chan))
     if rr["muc"] == rui_ro.CAO and not hop_le:
-        chan.append("rủi ro cao: cần người trong danh sách, khác tác giả, duyệt đúng SHA")
+        chan.append("rủi ro cao: cần người có quyền admin, khác tác giả, duyệt đúng SHA")
     if rr["qua_co"]:
         ly_do_le = [m.group(1) for m in (_NGOAI_LE.search(str(r.get("body") or "")) for r in hop_le) if m]
         if not ly_do_le:

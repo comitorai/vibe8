@@ -1,4 +1,8 @@
+import importlib
+import pkgutil
+import sys
 import unittest
+from unittest import mock
 
 from cong import rui_ro
 from cong.rui_ro import CAO, THAP, TRUNG_BINH, phan_loai
@@ -39,6 +43,59 @@ class TestMuc(unittest.TestCase):
                     "traceback.pyc", "signal.so"):
             with self.subTest(ten):
                 self.assertEqual(phan_loai([tep(ten, "added")])["muc"], CAO)
+
+    def test_symlink_trung_mo_dun_chuan_la_cao(self):
+        # GitHub trả symlink mới đúng dạng này: một dòng thêm, patch là đích, không có mode.
+        for ten in ("json", "unittest", "app/argparse", "JSON"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "added", 1, 0, "@@ -0,0 +1 @@\n+evilpkg")])["muc"], CAO)
+
+    def test_doi_ten_thanh_symlink_mo_dun_chuan_la_cao(self):
+        # Đổi tên thuần: 0 dòng thay đổi, vẫn có thể là symlink.
+        self.assertEqual(phan_loai([tep("json", "renamed", 0, 0, None, previous_filename="evilpkg")])["muc"], CAO)
+
+    def test_tep_nhieu_dong_khong_duoi_khong_oan(self):
+        for ten in ("bin/code", "scripts/trace", "token", "secrets"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "added", 2, 0)])["muc"], THAP)
+
+    def test_ten_co_chu_hoa_trong_danh_sach_chuan(self):
+        self.assertEqual(phan_loai([tep("cProfile.py", "added")])["muc"], CAO)
+
+    def test_tep_ten_test_tu_qua_tren_moi_ban_python(self):
+        for ten in ("test.py", "tests/test.py", "bin/test"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "added")])["muc"], THAP)
+
+    def _nap_nhu_python_39(self, **gia):
+        self.addCleanup(importlib.reload, rui_ro)
+        with mock.patch.object(sys, "stdlib_module_names", None, create=True), mock.patch.object(pkgutil, "iter_modules", **gia):
+            importlib.reload(rui_ro)
+
+    def test_python_cu_quet_thu_muc_va_bo_test(self):
+        self.addCleanup(importlib.reload, rui_ro)
+        with mock.patch.object(sys, "stdlib_module_names", None, create=True):
+            importlib.reload(rui_ro)
+        for ten in ("subprocess", "unicodedata", "cprofile"):
+            self.assertIn(ten, rui_ro._MO_DUN_CHUAN)
+        self.assertNotIn("test", rui_ro._MO_DUN_CHUAN)
+
+    def test_python_cu_quet_rong_van_giu_ten_co_ban(self):
+        self._nap_nhu_python_39(return_value=[])
+        self.assertEqual(rui_ro.phan_loai([tep("json.py", "added")])["muc"], CAO)
+
+    def test_ten_khong_duoi_khac_khong_oan(self):
+        for ten in ("LICENSE", "docs/VERSION", "evilpkg"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "added")])["muc"], THAP)
+
+    def test_python_cu_van_du_danh_sach_mo_dun_chuan(self):
+        # Trên 3.9 danh sách phải lấy được từ thư mục thư viện chuẩn, gồm cả mô-đun biên dịch.
+        for ten in ("unicodedata", "subprocess", "re", "os", "sys", "json", "pytest"):
+            with self.subTest(ten):
+                self.assertIn(ten, rui_ro._MO_DUN_CHUAN)
+                self.assertEqual(phan_loai([tep(ten + ".py", "added")])["muc"], CAO)
+        self.assertNotIn("site-packages", rui_ro._MO_DUN_CHUAN)
 
     def test_doi_ten_thanh_mo_dun_chuan_la_cao(self):
         t = tep("pprint.py", "renamed", 0, 0, None, previous_filename="a.py")
@@ -106,6 +163,20 @@ class TestMuc(unittest.TestCase):
 
     def test_trang_thai_la_thuong_la_trung_binh(self):
         self.assertEqual(phan_loai([tep("a.py", "changed", 0, 0, None)])["muc"], TRUNG_BINH)
+
+    def test_tep_khai_moi_truong_chay_khac_la_cao(self):
+        for ten in (".yarnrc", ".pnpmfile.cjs", ".ruby-version", "rust-toolchain", "rust-toolchain.toml", "bunfig.toml", ".bun-version"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "added", 5, 0)])["muc"], CAO)
+
+    def test_tep_khai_moi_truong_chay_la_cao(self):
+        for ten in (".node-version", ".yarnrc.yml", "web/.yarnrc.yml", ".nvmrc"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten)])["muc"], CAO)
+
+    def test_tai_lieu_bao_mat_la_cao(self):
+        self.assertEqual(phan_loai([tep("docs/bao-mat.md")])["muc"], CAO)
+        self.assertEqual(phan_loai([tep("docs/khac.md")])["muc"], THAP)
 
 
 class TestPhuThuoc(unittest.TestCase):

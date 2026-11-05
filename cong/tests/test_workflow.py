@@ -92,6 +92,11 @@ class TestCongCuoi(unittest.TestCase):
     def test_pr_da_merge_khong_danh_do_commit(self):
         self.assertIn(KHONG_XET_PR_DA_MERGE, CUOI)
 
+    def test_chi_lay_thu_muc_cong(self):
+        # F1: symlink `json` ở gốc repo nạp thay thư viện chuẩn trong job cầm token, đã tái hiện trên runner thật.
+        self.assertIn("sparse-checkout: /cong/\n", CUOI)
+        self.assertIn("sparse-checkout-cone-mode: false\n", CUOI)
+
     def test_checkout_nhanh_goc(self):
         self.assertEqual(CUOI.count("actions/checkout@"), 1)
         self.assertIn("ref: ${{ github.event.repository.default_branch }}", CUOI)
@@ -130,7 +135,7 @@ class TestCongCuoi(unittest.TestCase):
         self.assertIn("%s: ${{ steps.token.outputs.token }}" % ten.BIEN_TOKEN_APP, CUOI)
         self.assertIn("%s: %s" % (ten.BIEN_SHA, BIEU_THUC_SHA), CUOI)
         self.assertNotIn("pull_request.number", CUOI)
-        self.assertIn("%s: ${{ vars.%s }}" % (ten.BIEN_NGUOI_DUYET, ten.BIEN_NGUOI_DUYET), CUOI)
+        self.assertNotIn("NGUOI_DUYET", CUOI)  # L9: cộng tác viên quyền ghi sửa được biến environment.
         self.assertIn("python3 -m cong.gate_app", CUOI)
 
 

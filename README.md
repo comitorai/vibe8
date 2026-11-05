@@ -3,8 +3,8 @@
 Cổng chạy ở phía GitHub: quyết định chỉ dựa trên diff, kết quả CI và lượt duyệt theo đúng commit,
 không đọc lời khai trong thân PR. Tên `xuong` và `cong` là tên tạm, gom ở `cong/ten.py`.
 
-**Trạng thái: mới kiểm cục bộ, CHƯA chạy trên GitHub thật.** Chưa dùng được làm cổng thật khi chưa qua
-nghiệm thu trên repo thật. Đã kiểm gì, giới hạn gì: [docs/bao-mat.md](docs/bao-mat.md).
+**Trạng thái: đã bật trên một repo thật, chưa qua hết bài nghiệm thu L1-L6 ở đó.** Chưa dùng được làm cổng thật
+khi chưa qua. Đã kiểm gì, giới hạn gì: [docs/bao-mat.md](docs/bao-mat.md).
 
 ## Gồm gì
 
@@ -36,20 +36,23 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
   lại không chữa được, vì lượt chạy lại dùng commit merge cũ: đẩy một commit mới.
 - **Một nhánh đầu một PR:** nhánh từng có PR khác, kể cả đã đóng, thì không lượt nào được tính, vì PR đã đóng vẫn sinh lượt mới mà không biết
   lượt đó test với base nào. Cổng báo chờ. Đẩy sang nhánh tên mới rồi mở PR mới.
-- Đổi `.github/`, `xuong.yml`, luật, CODEOWNERS, script check, tệp khai phụ thuộc, lockfile: rủi ro cao, cần duyệt.
+- Đổi `.github/`, `xuong.yml`, thư mục `luat/`, `docs/bao-mat.md`, CODEOWNERS, script check, tệp khai phụ thuộc, lockfile: rủi ro cao, cần duyệt.
+  Đổi README tự qua: tệp này chỉ mô tả, cổng không đọc nó.
 - **Test có sẵn là điều kiện nghiệm thu:** sửa, đổi tên, xoá đều là rủi ro cao, cần duyệt. Muốn thêm test thì tạo tệp mới, tự qua.
   Thêm `__init__.py` trong vùng test cũng cần duyệt, vì nó quyết định test nào được nạp.
-- Thêm tệp trùng tên mô-đun chuẩn của Python (`pprint.py`, `app/json.py`) cũng cần duyệt, vì đủ làm CI xanh giả. Có thể báo oan
-  với tệp vô hại như `app/calendar.py`; người duyệt bấm qua.
+- Thêm tệp hay symlink trùng tên mô-đun chuẩn của Python (`pprint.py`, `app/json.py`, symlink `json`; tệp không đuôi nhiều dòng thì không tính) cũng cần duyệt, vì đủ làm CI xanh giả.
+  Có thể báo oan với tệp vô hại như `app/calendar.py`; người duyệt bấm qua. Gói bên thứ ba thì không bắt được: xem giới hạn 9.
 - Tệp không có diff dạng chữ cần duyệt, vì không ai đọc được bên trong: tệp nhị phân, tệp rỗng, và mọi mã máy như `.pyc`, `.so`, `.wasm`.
   Trừ ảnh, PDF, phông chữ: rủi ro trung bình. Thêm `__init__.py` thì ghi một dòng chú thích để khỏi phải duyệt.
+  Đổi tên kèm sửa tệp nhị phân thì tự qua, vì API không phân biệt được với đổi tên thuần: xem giới hạn 8.
 - Một số tệp vô hại có thể bị báo oan vì trùng tên tệp nhạy cảm (`docs/check.md`, `docs/requirements-q4.txt`, thư mục `docs/specs/`); người duyệt bấm qua.
 - Rủi ro thấp và trung bình tự qua khi đủ các điều kiện khác.
+- Merge kiểu rebase phải tắt: cổng xét theo diff, còn rebase phát lại từng commit. Chưa tái hiện được kết quả lệch, đây là biện pháp phòng. `bat_cong.py` tắt và đọc lại.
 - Quá 400 dòng (không tính lockfile): chặn, trừ khi người duyệt hợp lệ ghi dòng `ngoai-le-co: <lý do>` trong lượt duyệt.
   Dòng đó phải đứng đầu dòng, đúng chữ thường, không gạch đầu dòng hay in đậm; sai định dạng thì cổng coi như chưa ghi.
-- Duyệt hợp lệ: người trong biến `XUONG_NGUOI_DUYET` của environment `gate`, không phải tác giả hay người có commit
-  trong PR (không tính commit merge, ví dụ bấm Update branch), không phải bot, đúng SHA. Danh sách rỗng thì mọi PR đều bị chặn.
+- Duyệt hợp lệ: người có quyền admin trên repo (cổng hỏi GitHub lúc xét), không phải tác giả hay người có commit
+  trong PR (không tính commit merge, ví dụ bấm Update branch), không phải bot, đúng SHA.
 - PR quá 250 commit bị chặn, vì API chỉ trả tới đó nên không đọc đủ được người có commit.
-- Yêu cầu sửa của người trong danh sách chặn bất kể SHA và mức rủi ro trên **PR đó**. Lượt của họ bị gỡ thì vẫn chặn đến khi họ duyệt lại.
+- Yêu cầu sửa của người có quyền admin chặn bất kể SHA và mức rủi ro trên **PR đó**. Lượt của họ bị gỡ thì vẫn chặn đến khi họ duyệt lại.
   Yêu cầu sửa không theo sang PR mới cùng nội dung; người duyệt phải đóng cả nhánh nếu không muốn nội dung đó vào.
 - SHA không còn là head của PR mở vào `main`: cổng thu hồi bằng `failure`, để `success` cũ không chờ sẵn khi đổi base đi rồi đổi lại.
