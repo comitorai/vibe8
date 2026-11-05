@@ -3,8 +3,8 @@
 Cổng chạy ở phía GitHub: quyết định chỉ dựa trên diff, kết quả CI và lượt duyệt theo đúng commit,
 không đọc lời khai trong thân PR. Tên `xuong` và `cong` là tên tạm, gom ở `cong/ten.py`.
 
-**Trạng thái: đã bật trên một repo thật, chưa qua hết bài nghiệm thu L1-L6 ở đó.** Chưa dùng được làm cổng thật
-khi chưa qua. Đã kiểm gì, giới hạn gì: [docs/bao-mat.md](docs/bao-mat.md).
+**Trạng thái: đã bật trên một repo thật, L1-L8 đã thử ở đó, L8 lọt ở bản trước và bản vá chưa thử lại.** Chưa dùng được làm cổng thật
+khi chưa qua. Kết quả từng ca: [nghiem-thu/ket-qua.md](nghiem-thu/ket-qua.md). Đã kiểm gì, giới hạn gì: [docs/bao-mat.md](docs/bao-mat.md).
 
 ## Gồm gì
 
@@ -14,7 +14,7 @@ khi chưa qua. Đã kiểm gì, giới hạn gì: [docs/bao-mat.md](docs/bao-mat
 | `cong/kiem_pr.py` | Hàm thuần: dữ liệu PR vào, quyết định và lý do ra |
 | `cong/gate_app.py` | Đọc REST, phát một check run `cong-cuoi` |
 | `.github/workflows/` | `cong-nhanh` chạy test, `cong-cuoi` chạy cổng, `tin-hieu-duyet` đánh thức cổng khi có lượt duyệt |
-| `nghiem-thu/` | App mẫu, bản vá lỗi L1-L6, bài cục bộ, script bật cổng |
+| `nghiem-thu/` | App mẫu, bản vá lỗi L1-L7, bài cục bộ, script bật cổng, kết quả trên GitHub thật |
 
 Python 3.9 trở lên, chỉ stdlib.
 
@@ -34,10 +34,11 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
 - Mọi lượt của tệp workflow `cong-nhanh`, sự kiện `pull_request`, trên đúng head SHA và nhánh đầu, tạo sau khi PR mở, phải
   `success`. Lượt đỏ không bị lượt xanh che. Đỏ vì lỗi thoáng qua thì bấm chạy lại lượt đó; đỏ vì `main` lúc đó còn hỏng thì chạy
   lại không chữa được, vì lượt chạy lại dùng commit merge cũ: đẩy một commit mới.
+- `cong-nhanh` chỉ chạy lúc mở PR và đẩy commit. PR xung đột, hoặc đẩy commit lúc PR đang đóng, thì không có lượt trên SHA đó: cổng báo chờ, đẩy một commit mới.
 - **Một nhánh đầu một PR:** nhánh từng có PR khác, kể cả đã đóng, thì không lượt nào được tính, vì PR đã đóng vẫn sinh lượt mới mà không biết
-  lượt đó test với base nào. Cổng báo chờ. Đẩy sang nhánh tên mới rồi mở PR mới.
+  lượt đó test với base nào. Cổng báo chờ. Đóng PR đó nếu còn mở, đẩy sang nhánh tên mới rồi mở PR mới.
 - **PR từng đổi base không qua được,** kể cả đổi đi rồi đổi lại và GitHub tự đổi base của stacked PR: lượt sau khi đổi vẫn có thể chạy ref merge
-  của base cũ. Đẩy sang nhánh tên mới rồi mở PR mới thẳng vào `main`.
+  của base cũ. Đóng PR đó, đẩy sang nhánh tên mới rồi mở PR mới thẳng vào `main`.
 - Đổi `.github/`, `xuong.yml`, thư mục `luat/`, `docs/bao-mat.md`, CODEOWNERS, script check, tệp khai phụ thuộc, lockfile: rủi ro cao, cần duyệt.
   Đổi README tự qua: tệp này chỉ mô tả, cổng không đọc nó.
 - **Test có sẵn là điều kiện nghiệm thu:** sửa, đổi tên, xoá đều là rủi ro cao, cần duyệt. Muốn thêm test thì tạo tệp mới, tự qua.

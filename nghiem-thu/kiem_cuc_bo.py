@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Áp từng bản vá lỗi L1-L6 lên bản sao tạm của app mẫu, chạy kiem_pr với dữ liệu mô phỏng, in bảng.
+"""Áp từng bản vá lỗi L1-L7 lên bản sao tạm của app mẫu, chạy kiem_pr với dữ liệu mô phỏng, in bảng.
 
 Chỉ kiểm LOGIC quyết định, không kiểm GitHub. Không có mạng, không có LLM, tất định.
 """
@@ -35,6 +35,7 @@ CAC_CA = [
     ("L4", "L4-gia-check", None, kiem_pr.CHAN, "KHÔNG: phải là expected source trên GitHub mới chặn check giả."),
     ("L5", "L5-day-thang", None, kiem_pr.CHO_QUA, "KHÔNG: diff vô hại nên logic cho qua; chỉ branch protection chặn."),
     ("L6", "L6-doi-khoa", None, kiem_pr.CHAN, "KHÔNG: quyết định này không dừng được job; chỉ environment giữ khoá."),
+    ("L7", "L7-chen-lenh", None, kiem_pr.CHAN, "CÓ: cổng không đọc thân PR, test thật đỏ như L1."),
     ("ĐC-duyet", "L2-xoa-test", _duyet("nguoi-khac"), kiem_pr.CHO_QUA, "CÓ: duyệt hợp lệ mở được rủi ro cao."),
     ("ĐC-tu-duyet", "L2-xoa-test", _duyet(TAC_GIA), kiem_pr.CHAN, "CÓ: tác giả tự duyệt không tính."),
     ("ĐC-agent-duyet", "L2-xoa-test", _duyet("agent-khac"), kiem_pr.CHAN, "CÓ: người không có quyền admin không duyệt được."),

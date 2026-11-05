@@ -55,7 +55,7 @@ class TestChungCacWorkflow(unittest.TestCase):
 class TestCongNhanh(unittest.TestCase):
     def test_su_kien_va_quyen(self):
         self.assertIn("\n  pull_request:\n", NHANH)
-        self.assertRegex(NHANH, r"types: \[[^\]]*\bedited\b")  # sửa tiêu đề để chạy CI lại
+        self.assertIn("types: [opened, synchronize]\n", NHANH)  # edited, reopened có thể chạy ref merge cũ mà mang SHA mới
         self.assertNotIn("pull_request_target", NHANH)
         self.assertIn("permissions:\n  contents: read\n", NHANH)
 

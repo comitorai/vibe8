@@ -113,7 +113,7 @@ def _pr_vao_goc(gh, sha):
 
 
 def _luot_cua_pr(gh, so_pr, pr, lan_chay):
-    """Lượt được tính là đã test PR này với base hiện tại. Lượt không ghi nó test với base nào: `pull_requests[]` tính lúc đọc, còn
+    """Lượt không bị các lọc dưới đây loại; cổng không biết nó chạy ref merge nào. Lượt không ghi nó test với base nào: `pull_requests[]` tính lúc đọc, còn
     PR đã đóng vẫn sinh lượt mới (sửa tiêu đề, tạo trễ). Nên nhánh đầu từng có PR khác thì không lượt nào tính, kể cả khi danh sách
     không có chính PR này. PR từng đổi base cũng vậy: lượt sau khi đổi vẫn chạy ref merge của base trước (L8). Bỏ lượt của repo, nhánh đầu khác và lượt trước khi PR mở."""
     dau = pr["head"]

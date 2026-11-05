@@ -34,23 +34,25 @@ Cũng trên repo thử, bằng token giả:
 
 ## Đã kiểm trên GitHub thật, bằng khoá thật
 
-- Cổng tạo được token App và phát check `failure` đúng App trên một PR.
+- Cổng tạo được token App và phát check đúng App. L1-L8 và các ca thêm: kết quả từng lượt ghi ở `nghiem-thu/ket-qua.md`.
+- Token App đọc được API quyền cộng tác viên, ít nhất với người quyền ghi: lượt bình luận của cộng tác viên cho ra `chan` đúng lý do, không lỗi API.
+- Job Actions phát check cùng tên `cong-cuoi` `success` bên cạnh `failure` của App: PR vẫn bị chặn. Status API cùng tên: GitHub nhận, PR vẫn bị chặn, merge bị từ chối.
+  Check run bằng token thường: 403. Cả ba do ghim `app_id`.
+- `cong-nhanh` chỉ chạy lúc mở PR và đẩy commit: 11 lượt loại này, đẩy cách nhau 3 và 15 giây, đều checkout đúng merge của head mới. Mẫu nhỏ, không phải cam kết của GitHub.
 
-## Chưa kiểm: cần khoá thật
+## Chưa kiểm
 
-- Phần `--admin` của L5. L1-L4, L6, L8 và các ca khác: kết quả từng lượt ghi ở `nghiem-thu/ket-qua.md`, tệp đó là nguồn duy nhất cho mục này.
-  Bài cục bộ không chứng minh được những lỗi này. L8 đã lọt trên GitHub thật ở bản trước: xem giới hạn 1.
-- Token App đọc được API quyền cộng tác viên không. Tài liệu ghi cần quyền Metadata đọc, App luôn có. Không đọc được thì mọi lượt có người xét sẽ đóng.
+- L8 sau bản vá: bản trước đã lọt trên GitHub thật, xem giới hạn 1. Bản vá chỉ có tác dụng nếu token App đọc được `/issues/N/events`, phải thử lại trên mã đã merge.
+- `--admin` của L5 bằng tài khoản admin thật. Tài khoản cộng tác viên đã bị từ chối.
+- Token App đọc quyền của người có quyền admin trên mã hiện tại: PR kế có người duyệt sẽ cho biết.
 - `head_sha` của lượt `workflow_run` có đúng là head của PR không, và GitHub chọn check mới nhất của App trên SHA thế nào.
 - Quyền Actions read và Pull requests read của App có đủ không. Checks write đã đủ: xem mục trên.
 - Trường `head_repository` của lượt chạy có đúng như cách cổng dùng để lọc PR fork không.
 - Hiệu lực của `can_admins_bypass: false` với chủ repo: API nhận và đọc lại đúng, chưa thử bằng tài khoản chủ.
 - `created_at` của lượt có giữ nguyên khi bấm chạy lại không. Tìm `head=` có đúng với nhánh có ký tự lạ không; sai thì cổng đóng.
   Đổi tên nhánh đầu: PR đã đóng của tên cũ có lượt mới mang tên nhánh nào.
-- Token App quyền `issues: read` đọc được `/issues/N/events` trên PR không, hay chỉ cần `pull_requests: read`.
-- API có trễ không ngay sau `workflow_run`. `tin-hieu-duyet` trên PR fork có cần phê duyệt mới chạy không.
-- Status API và check run do token thường tạo cùng tên `cong-cuoi` có qua được required check gắn App không. Hai check cùng tên, một `failure`
-  một `success`, GitHub chọn cái nào.
+- API có trễ không ngay sau `workflow_run`. Sự kiện đổi base hiện ngay ở lần đọc đầu trong 3/3 lần đo, 0,55-0,58 giây sau lệnh, bằng token thường, không phải token App.
+  `tin-hieu-duyet` trên PR fork có cần phê duyệt mới chạy không.
 - Giữ nhóm concurrency bằng lượt treo của PR, quyền xoá lượt, `/cancel`, secret cấp repo trùng tên trong environment.
 - `workflow_run.head_sha` của `tin-hieu-duyet` có đúng head PR không.
 - Required check với `strict: False`: PR xanh trên base cũ có merge được không (là chủ ý, cần xác nhận).
@@ -62,9 +64,10 @@ Cũng trên repo thử, bằng token giả:
    Lượt chạy lọc theo repo đầu, nhánh đầu và thời điểm, không dùng `pull_requests[]` của API vì trường đó tính lúc đọc: ghi base hiện tại và mọi
    PR mở cùng nhánh, kể cả khi lượt đã test với base khác. Nhánh đầu từng có PR khác thì không lượt nào tính. PR từng đổi base cũng vậy: bản trước
    lọc theo mốc đổi base và đã lọt trên GitHub thật, vì lượt tạo 2 giây sau khi đổi vẫn checkout ref merge của base cũ, base đó có workflow in pass.
-   Lượt không ghi nó chạy ref merge nào, nên `cong-nhanh` tin vào ref merge do GitHub dựng. Sửa tiêu đề ngay sau khi đẩy commit cũng có thể gặp
-   ref cũ, nhưng lượt `synchronize` của commit đó vẫn phải xanh. Lúc PR xung đột thì không có lượt `synchronize`: khe này còn mở khi `main` sau đó
-   hết xung đột mà SHA không đổi.
+   Lượt không ghi nó chạy ref merge nào, và cổng không có cách đọc: log do workflow của ref đó viết. Nên `cong-nhanh` chỉ chạy lúc mở PR và đẩy commit, và
+   tin vào ref merge do GitHub dựng. PR xung đột hoặc đẩy commit lúc đang đóng thì không có lượt trên SHA đó, cổng báo chờ. Khe cố ý còn lại, chưa thử trên GitHub:
+   commit trung gian thêm `edited` vào workflow, commit cuối xung đột và trả workflow về như cũ nên diff không thấy gì, PR khác merge làm hết xung đột, rồi sửa
+   tiêu đề. Lượt đó chạy workflow của ref cũ mà mang SHA cuối. Cần cộng tác viên cố ý và nhiều bước.
 2. **PR rủi ro thấp tự merge, không có người đọc.** Đây là chính sách, người dùng quyết. Trung bình cũng được đối xử như thấp về
    điều kiện qua. Muốn mọi PR phải có người duyệt thì phải đổi `kiem_pr.py`.
 3. **Khoảng hở nhỏ giữa yêu cầu sửa và lượt xét mới.** Check cũ còn `success` cho tới khi `tin-hieu-duyet` và `cong-cuoi` chạy xong.
@@ -86,9 +89,9 @@ Cũng trên repo thử, bằng token giả:
    nặng hơn `os._exit(0)` ở trên. Job cổng không bị ảnh hưởng, vì chỉ dùng thư viện chuẩn và chỉ lấy thư mục `cong/`.
 10. **Agent lỡ dùng email của người duyệt để commit** thì người đó thành «tự duyệt». Cổng đóng và ghi lý do, không mở sai.
 11. **Xoá hoặc đổi tên `cong-nhanh.yml` không qua được:** cổng không có lượt CI để đọc, nên mọi PR kẹt. Đường thoát: chủ repo tạm gỡ bảo vệ nhánh.
-12. **Cổng báo chờ, không qua, khi không có lượt tính được:** PR xung đột với nhánh gốc, nhánh đầu từng có PR khác (kể cả đã đóng, nên PR lành dùng
-    lại nhánh cũ vẫn kẹt), hoặc PR từng đổi base, kể cả stacked PR do GitHub tự đổi. Giải xung đột rồi sửa tiêu đề để chạy CI và đánh thức; hai trường hợp sau thì
-    đẩy sang nhánh tên mới rồi mở PR mới.
+12. **Cổng báo chờ, không qua, khi không có lượt tính được:** PR xung đột với nhánh gốc, PR mở lại sau khi đẩy commit lúc đóng, nhánh đầu từng có PR khác (kể cả đã
+    đóng, nên PR lành dùng lại nhánh cũ vẫn kẹt), hoặc PR từng đổi base, kể cả stacked PR do GitHub tự đổi. Hai trường hợp đầu thì đẩy một commit mới, kể cả khi
+    xung đột tự hết vì PR khác đã merge. Hai trường hợp sau thì đóng PR đó, đẩy sang nhánh tên mới rồi mở PR mới: PR cũ còn mở cùng SHA sẽ làm PR mới kẹt, xem giới hạn 14.
 13. **Yêu cầu sửa gắn theo PR.** Mở PR mới cùng nội dung thì yêu cầu sửa cũ không theo; nếu là rủi ro thấp thì tự qua.
 14. **Hai PR trong repo cùng SHA vào `main` làm cả hai kẹt.** PR thứ hai mở có chủ ý thì giữ được SHA đó không qua được, đến khi đóng.
 15. **PR quá 3000 tệp bị chặn:** API không trả đủ, cổng đóng. Commit có author không gắn tài khoản, và commit merge, không tính vào «người có commit».
@@ -101,6 +104,9 @@ Cũng trên repo thử, bằng token giả:
 20. **Lỗi đọc quyền làm cổng đóng.** API quyền hỏng thì lượt đó ra `failure`, tự lành ở sự kiện sau.
 21. **Merge kiểu rebase phải tắt.** Cổng đọc diff so với điểm rẽ nhánh; rebase phát lại từng commit nên có thể đảo thay đổi đã vào `main` mà diff không
     cho thấy. Chưa tái hiện được trên GitHub: đây là biện pháp phòng, vì điều kiện GitHub từ chối chỉ thấy ghi ở tài liệu Enterprise Server. `bat_cong.py` tắt và đọc lại.
+22. **Hai PR xanh riêng có thể ghép lại gãy `main`.** `strict: False` nên PR không phải chạy lại khi `main` tiến. Hai PR rủi ro thấp, mỗi PR xanh trên `main` lúc nó chạy,
+    có thể cùng vào và làm `main` đỏ. Không PR nào vượt cổng, và PR kế tiếp sẽ đỏ nên hỏng lộ ra ngay. Đổi lấy: `strict: True` buộc chạy lại và duyệt lại mỗi lần `main` tiến;
+    hàng đợi merge chỉ có ở repo tổ chức.
 
 ## Vì sao dùng hai sự kiện đặc quyền
 

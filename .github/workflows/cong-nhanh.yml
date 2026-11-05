@@ -2,8 +2,8 @@ name: cong-nhanh
 
 on:
   pull_request:
-    # edited: sửa tiêu đề để chạy CI lại khi PR hết xung đột. PR từng đổi base thì cổng không tính lượt nào.
-    types: [opened, synchronize, reopened, edited]
+    # Chỉ lúc mở PR và đẩy commit. edited, reopened có thể chạy ref merge cũ mà mang SHA mới, cổng không phân biệt được (L8).
+    types: [opened, synchronize]
 
 permissions:
   contents: read

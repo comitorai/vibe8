@@ -288,6 +288,21 @@ class TestLocLuotCi(unittest.TestCase):
             self._cho(self._xet(luot, doi_base=("2026-11-01T00:00:10Z",)))
         self._cho(self._xet({"created_at": "2026-11-01T00:00:20Z"}, doi_base=("2026-11-01T00:00:03Z", "2026-11-01T00:00:10Z")))
 
+    def test_su_kien_doi_base_o_trang_hai_van_tinh(self):
+        # Sự kiện như `deployed` tích thêm mỗi lượt, nên đổi base có thể nằm ngoài trang đầu.
+        d = du_lieu()
+        d["/issues/7/events"] = [{"event": "deployed", "created_at": "2026-11-01T00:00:11Z"}] * 100
+
+        class HaiTrang(gate_app.GiaLap):
+            def goi(self, phuong_thuc, duong, body=None):
+                if phuong_thuc == "GET" and duong.endswith("/issues/7/events?per_page=100&page=2"):
+                    return [{"event": "base_ref_changed", "created_at": "2026-11-01T00:00:10Z"}]
+                return super().goi(phuong_thuc, duong, body)
+
+        gh = HaiTrang(d)
+        chay(gh)
+        self._cho(gh.da_phat[0][2])
+
     def test_su_kien_khac_tren_pr_khong_chan(self):
         d = du_lieu()
         d["/issues/7/events"] += [{"event": "renamed", "created_at": "2026-11-01T00:00:10Z"}, {"event": "deployed", "created_at": "2026-11-01T00:00:11Z"}]
