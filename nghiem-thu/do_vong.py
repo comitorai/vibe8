@@ -26,11 +26,14 @@ from cong.gate_app import TOKEN_HOP_LE, GitHub, LoiApi  # noqa: E402
 NANG = ("N1", "N2", "N3")
 KHAU = ("dac-ta", "test", "phan-bac", "khong-phan-bac", "cong", "chay-that", "ngoai-tam")
 MUC = ("thap", "trung_binh", "cao")
-DU_MAU = {"loi_lot": 10, "ti_le_hong": 30, "thoi_gian_ra": 30, "do_dung": 30}
+DU_MAU = {"loi_lot": 10, "ti_le_hong": 30, "thoi_gian_ra": 30, "do_dung": 30, "token": 30}
 _MUC_TIEU_DE = re.compile(r"\((thap|trung_binh|cao)\)")
 _GAY_LOI = re.compile(r"^pr-gay-loi:\s*#(\d+)\s*$", re.M)
 _CHUA_RO = re.compile(r"^pr-gay-loi:\s*chưa rõ\s*$", re.M)
 _HOAN_LAI = re.compile(r"^Reverts ([\w.-]+/[\w.-]+)#(\d+)\s*$", re.M)  # thân mặc định của nút Revert trên GitHub
+_TOKEN = re.compile(r"^token-moi: (\d+)$", re.M)  # dòng do nghiem-thu/ghi_token.py ghi
+_DAU_TOKEN = "<!-- token-may-ghi -->"
+_TIN = {"OWNER", "MEMBER", "COLLABORATOR"}  # repo công khai: ai cũng comment được
 _CHUNG = "rủi ro cao"  # dòng lý do chung của mọi PR mức cao, không phải một luật
 
 
@@ -85,12 +88,21 @@ def _phan_loai(nhan):
     return ("%s · %s" % (nang[0], khau[0])) if len(nang) == 1 and len(khau) == 1 and khau[0] in KHAU else None
 
 
+def doc_token(ds_comment):
+    """Token mới máy ghi cho một PR: comment `token-may-ghi` mới nhất của người trong repo, None nếu chưa có."""
+    hop = [c for c in ds_comment if _DAU_TOKEN in (c.get("body") or "") and c.get("author_association") in _TIN]
+    if not hop:
+        return None
+    m = _TOKEN.search(max(hop, key=lambda c: c.get("updated_at") or "")["body"])
+    return int(m.group(1)) if m else None
+
+
 def _p90(so):
     return sorted(so)[math.ceil(0.9 * len(so)) - 1]
 
 
 def tinh(ds_pr, ds_issue, nay, ngay, repo=None):
-    """Hàm thuần. ds_pr: {so, mo, merge, muc, ly_do_chan, nhan, than, oan_tu_gan?};
+    """Hàm thuần. ds_pr: {so, mo, merge, muc, ly_do_chan, nhan, than, oan_tu_gan?, dong?, token?};
     ds_issue: {so, mo, nhan, than, la_pr?}; thời điểm ISO. PR thuộc kỳ khi mở HOẶC merge trong kỳ."""
     nay = _gio(nay)
     dau = nay - datetime.timedelta(days=ngay)
@@ -148,9 +160,17 @@ def tinh(ds_pr, ds_issue, nay, ngay, repo=None):
         o["do_dung"] = round(1 - o["so_oan"] / o["so_chan"], 2)
         o["du_mau"] = o["so_chan"] >= DU_MAU["do_dung"]
 
+    # Token: trung vị theo PR đã merge, và bình quân tính cả PR bị bỏ (đóng không merge) chia cho số PR merge.
+    co = [p for p in merged if p.get("token") is not None]
+    bo = [p for p in ds_pr if p.get("dong") and not p["merge"] and p.get("token") is not None]
+    token = {"co_ghi": len(co), "so_merge": len(merged), "thieu": sorted(p["so"] for p in merged if p.get("token") is None),
+             "trung_vi": round(statistics.median(p["token"] for p in co)) if co else None,
+             "binh_quan_ca_bo": round(sum(p["token"] for p in co + bo) / len(co)) if co else None,
+             "so_bo": len(bo), "du_mau": len(co) >= DU_MAU["token"]}
+
     return {"ky": [dau.date().isoformat(), nay.date().isoformat()], "so_pr": len(ds_pr), "so_merged": len(merged),
             "loi_lot": loi_lot, "bat_truoc_merge": sum("bat-truoc-merge" in i["nhan"] for i in ds_issue),
-            "ti_le_hong": ti_le_hong, "thoi_gian_ra": thoi_gian_ra, "token": "chưa đo", "do_dung": do_dung,
+            "ti_le_hong": ti_le_hong, "thoi_gian_ra": thoi_gian_ra, "token": token, "do_dung": do_dung,
             "oan_tu_gan": sorted(p["so"] for p in ds_pr if p.get("oan_tu_gan"))}
 
 
@@ -173,7 +193,11 @@ def bang(k):
             continue
         d.append("| Thời gian ra · %s | %s |" % (muc, "không có PR" if not o else "trung vị %s giờ, 1/10 chậm nhất %s giờ, %d PR%s" % (
             o["trung_vi_gio"], o["p90_gio"], o["so"], _mau(o))))
-    d.append("| Token mỗi PR đã merge | %s: chưa có cách máy ghi |" % k["token"])
+    tk = k["token"]
+    d.append("| Token mỗi PR đã merge | %s |" % (
+        "chưa đo: 0 / %d PR merge có comment `token-may-ghi`" % tk["so_merge"] if not tk["co_ghi"] else
+        "trung vị %d token mới, bình quân %d khi tính cả %d PR bị bỏ, %d / %d PR merge có số máy ghi%s" % (
+            tk["trung_vi"], tk["binh_quan_ca_bo"], tk["so_bo"], tk["co_ghi"], tk["so_merge"], _mau(tk))))
     d += ["", "**Lỗi lọt theo mức nặng · khâu lẽ ra chặn**", ""]
     d += ["- %s: %d" % (o, n) for o, n in sorted(ll["bang"].items())] or ["- chưa có"]
     if ll["chua_phan_loai"]:
@@ -183,6 +207,8 @@ def bang(k):
     if th["khong_doc_duoc"]:
         d.append("- không đọc được dòng `pr-gay-loi: #N | chưa rõ`, tỉ lệ hỏng có thể thiếu: "
                  + ", ".join("#%d" % s for s in th["khong_doc_duoc"]))
+    if tk["co_ghi"] and tk["thieu"]:
+        d += ["", "**PR merge chưa có token máy ghi** (không vào trung vị): " + ", ".join("#%d" % s for s in tk["thieu"])]
     d += ["", "**Độ đúng của cổng theo lý do chặn** (chặn oan = PR có nhãn `chan-oan`)", ""]
     d += ["- %s: %d lần chặn, %d oan, đúng %d%%%s" % (ly, o["so_chan"], o["so_oan"], round(100 * o["do_dung"]), _mau(o))
           for ly, o in sorted(k["do_dung"].items())] or ["- chưa có lần chặn"]
@@ -219,8 +245,10 @@ def thu_thap(gh, ngay, nay, app_id):
             gan = [e for e in gh.goi("GET", "/issues/%d/events?per_page=100" % p["number"])
                    if e.get("event") == "labeled" and (e.get("label") or {}).get("name") == "chan-oan"]
             oan_tu_gan = not gan or (gan[-1].get("actor") or {}).get("login") == (p.get("user") or {}).get("login")
+        token = doc_token(gh.goi("GET", "/issues/%d/comments?per_page=100" % p["number"]))
         ds_pr.append({"so": p["number"], "mo": p["created_at"], "merge": p.get("merged_at"), "muc": muc, "ly_do_chan": ly_do,
-                      "nhan": nhan, "than": p.get("body") or "", "oan_tu_gan": oan_tu_gan})
+                      "nhan": nhan, "than": p.get("body") or "", "oan_tu_gan": oan_tu_gan,
+                      "dong": p.get("state") == "closed", "token": token})
     ds_issue = []
     for nhan in ("loi-lot", "bat-truoc-merge"):
         ds = gh.goi("GET", "/issues?labels=%s&state=all&since=%s&per_page=100" % (nhan, dau))

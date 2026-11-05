@@ -69,7 +69,7 @@ Trích dẫn cho bảng: lượt phản bác có bắt lỗi thật trước mer
 - Đọc nhiều tệp, tìm kiếm: agent con model rẻ; quyết định, viết mã khó: model mạnh.
 - File nạp sẵn mỗi phiên (`CLAUDE.md`, `AGENTS.md`) càng ngắn càng tốt; trần đặt theo số đo «token nạp sẵn mỗi phiên» `[CHƯA KIỂM: chưa có số]`.
 - Một phiên một việc; xong thì đóng. Phiên dài chiếm phần lớn chi phí `[SUY LUẬN từ số đo theo bước · nội bộ · 04/11]`.
-- Token ghi theo PR, máy ghi từ lúc chạy; không dùng số agent tự báo.
+- Token ghi theo PR, máy ghi từ bản ghi phiên (mục 8.3); không dùng số agent tự báo.
 
 ## 5. Đo — năm con số, máy tính
 
@@ -125,7 +125,7 @@ Hai trường đầu là **nhãn** trên issue, đúng một nhãn mỗi trườ
 - PR thuộc kỳ khi mở hoặc merge trong kỳ. Issue `loi-lot` thiếu hoặc viết lệch dòng `pr-gay-loi` được liệt kê riêng, không đoán.
 - **Độ đúng:** lý do chặn đọc từ mục «Lý do» của check `cong-cuoi` trên mọi commit của PR (mục «Chi tiết» là phân loại rủi ro, không tính). Người duyệt thấy chặn oan thì gắn nhãn `chan-oan` lên PR; mọi lý do chặn của PR đó tính là oan. Nhãn do chính tác giả PR gắn thì không tính và được liệt kê.
 - **Thời gian ra** tính mở PR → merge, vì repo chưa có bước phát hành riêng.
-- **Token** ghi «chưa đo» tới khi có cách máy ghi; không dùng số agent tự báo.
+- **Token:** agent chạy `GH_TOKEN=... python3 nghiem-thu/ghi_token.py --repo chu/repo` sau khi đẩy commit cuối và một lần nữa ngay trước khi merge. Script đọc bản ghi phiên Claude Code trên máy, cộng token mới của các lượt gọi trong repo theo nhánh của PR, ghi vào một comment có dấu `token-may-ghi`; việc làm ở `main` trước khi tạo nhánh tính cho nhánh đó. Mỗi máy một dòng. `do_vong.py` lấy trung vị trên PR merge có comment, liệt kê PR merge chưa có, và chỉ tin comment của người trong repo. Codex và lượt tóm tắt ngữ cảnh chưa tính; người có quyền ghi vẫn sửa tay được comment.
 - **Giới hạn:** mỗi danh sách đọc 100 mục mới nhất (bảng cảnh báo khi chạm trần); PR sửa gấp mà không có issue hay Revert thì máy không thấy; người có quyền ghi vẫn gỡ được nhãn `loi-lot`, hạ mức nặng hay sửa dòng `pr-gay-loi` mà máy không thấy (chỉ `chan-oan` được kiểm người gắn); hai PR chung một SHA thì lượt check của SHA đó tính cho cả hai.
 
 **8.4 Xét và đề xuất.**
