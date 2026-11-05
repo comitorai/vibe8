@@ -1,0 +1,128 @@
+# Phương pháp làm phần mềm với agent — bản 1 (nháp, 05/11/2026)
+
+Áp cho mọi repo cài vibe8, từ một PR lẻ tới cả một module (mô-đun) hay một phase (giai đoạn).
+Nhãn căn cứ: `[ĐÃ KIỂM: …]` · `[SUY LUẬN từ …]` · `[CHƯA KIỂM]`. «Nội bộ» là số đo trên repo riêng của chủ dự án, không đăng ở đây.
+
+## 0. Mục tiêu (chủ dự án chốt 05/11, xếp theo thứ tự)
+
+1. **Ít lỗi lọt tới người dùng**, tốc độ không chậm hơn mốc của repo trước khi áp.
+2. **Nhanh ra bản bán được**: việc nào đẩy bản bán được tới gần hơn thì làm trước.
+3. **Token tối ưu nhất**: chi tiêu theo mức rủi ro, không chi đều cho mọi PR.
+
+Khi va nhau: lỗi lọt mức nặng thắng tốc độ; tốc độ thắng token; token thắng sự đầy đủ của giấy tờ.
+
+## 1. Luật về luật
+
+- **Một luật chỉ vào file này khi ghi đủ bốn thứ:** chặn loại lỗi nào · đo bằng gì (máy đo, không tự khai) · mức giữ và mức bỏ · ngày xét.
+  Thiếu một thứ thì là lời khuyên, đưa vào mục 7.
+- **Mức giữ, mức bỏ khoá trước khi xem số.** Đến ngày xét, luật nhận một trong ba kết quả:
+  **GIỮ** (đủ mẫu, đạt) · **BỎ** (đủ mẫu, không đạt) · **CHƯA ĐỦ MẪU** (giữ nguyên, gia hạn một lần; lần sau vẫn thiếu mẫu thì chủ dự án quyết).
+  Không bỏ luật chỉ vì thiếu dữ liệu.
+- **Không đo tuân thủ thay cho tác dụng.** «Agent có làm theo không» chỉ để biết luật có chạy; giữ hay bỏ xét theo lỗi chặn được.
+  Bảng chấm bộ cách cũ: «không mã nào đạt GIU», phần lớn chỉ có số tuân thủ `[ĐÃ KIỂM: nội bộ · 04/11]`.
+- **Luật máy kiểm được thì giao cho máy phía GitHub.** Hook trên máy agent chỉ là trợ giúp, không tính là hàng rào.
+- **Luật nền** (L1, L5, L10) giữ an toàn cho cổng nên không bỏ theo số; vẫn đo độ đúng để chỉnh.
+- **Trần: 15 luật.** Muốn thêm luật thứ 16 thì bỏ một luật có số kém nhất.
+
+## 2. Ba mức việc — chi tiêu theo rủi ro
+
+**Mức do máy xếp theo đường dẫn tệp, agent không tự khai.**
+- Cao: những gì `cong/rui_ro.py` đã xếp cao (tệp của cổng, CI (tích hợp liên tục), sửa test có sẵn, phụ thuộc, mã máy) **cộng** các mẫu đường dẫn repo tự khai là nhạy cảm: quyền, xoá dữ liệu, migration (di chuyển cơ sở dữ liệu), thanh toán.
+- Vừa: mọi tệp mã chạy được còn lại.
+- Thấp: tài liệu, thêm test mới, tệp tĩnh.
+
+`[CHƯA KIỂM]` Phần «repo tự khai mẫu đường dẫn» và mức Vừa cho mã chạy chưa có trong cổng: hôm nay cổng xếp mọi mã thường là thấp. Đây là việc phải làm trước khi áp vào repo thật.
+Giới hạn đã biết: tách một thay đổi lớn thành nhiều PR nhỏ vẫn lọt qua trần cỡ của L2.
+
+| | Thấp | Vừa | Cao |
+|---|---|---|---|
+| Trước khi code | không | 3–5 dòng tiêu chí nghiệm thu trong thân PR | như Vừa + mục «KHÔNG được phá» |
+| Test | test có sẵn xanh | thêm test cho hành vi mới | như Vừa; sửa lỗi thì có test đỏ trước khi sửa |
+| Phản bác của agent | không | 1 lượt, trừ PR bị máy rút thăm bỏ qua (L3) | 1 lượt + 1 lượt hẹp sau khi sửa logic |
+| Người duyệt | không | không | admin, khác tác giả, đúng SHA |
+| Merge | tự, khi cổng xanh | tự, khi cổng xanh và phiếu không bác | sau duyệt |
+
+**Làn sửa gấp** (lỗi đang hại người dùng): mức nào vẫn giữ mức đó, nhưng lượt phản bác được chạy sau merge, trong 24 giờ; người duyệt của mức Cao vẫn bắt buộc trước merge.
+
+## 3. Các luật
+
+| # | Luật | Chặn lỗi gì | Đo bằng | Giữ nếu · Bỏ nếu | Xét |
+|---|---|---|---|---|---|
+| L1 | Mọi thay đổi vào `main` qua PR và qua cổng `cong-cuoi` | đẩy thẳng, CI giả xanh, tự duyệt | sổ chặn của cổng | luật nền | 30 ngày |
+| L2 | PR ≤ 400 dòng, trừ khi người duyệt ghi `ngoai-le-co:` | PR lớn không ai đọc nổi | số vòng sửa và lỗi bắt trước merge theo cỡ PR | PR nhỏ ít vòng sửa hơn · không khác; cần ≥ 60 PR | 60 ngày |
+| L3 | Một lượt **phản bác** cho PR mức Vừa trở lên: agent khác tìm cách làm hỏng, phải kèm cách tái hiện. Máy rút thăm bỏ qua 1/5 PR Vừa làm nhóm đối chứng | lỗi hành vi, lỗi quyền mà test xanh | lỗi thật bắt được / lượt; sửa gấp trong 7 ngày: nhóm có so nhóm rút thăm | ≥ 1 lỗi thật / 10 lượt, cần ≥ 30 lượt · dưới mức đó | 60 ngày |
+| L4 | Trần 2 vòng phản bác mỗi PR; lượt sau khi sửa chỉ xét phần vừa sửa | vòng sửa không dứt, token đọc lại | token mới / PR và số vòng, máy ghi | trung vị token không tăng, L3 không giảm · ngược lại | 30 ngày |
+| L5 | Test có sẵn là điều kiện nghiệm thu; sửa, đổi tên, xoá cần người duyệt | agent sửa test cho xanh | cổng đã chặn | luật nền | 30 ngày |
+| L6 | Sửa lỗi có test đỏ trước khi sửa, xanh sau khi sửa, cùng PR | sửa sai chỗ, lỗi tái phát | lỗi tái phát trong 30 ngày | tái phát thấp hơn nhóm không có · không khác; cần ≥ 20 đơn mỗi nhóm | 90 ngày |
+| L7 | Chạy thật sớm: ngay lát đầu, chạy trên môi trường thật nhất có được (app thật, GitHub thật), không đợi xong vòng cục bộ | lỗi chỉ lộ ở môi trường thật | lỗi thấy lần đầu ở môi trường thật / 10 lát | ≥ 1 · 0 thì chỉ chạy thật ở lát cuối | 30 ngày |
+| L8 | CI chỉ có bài tất định: không phụ thuộc ngày giờ, mạng ngoài; `main` đỏ thì sửa `main` trước mọi PR | CI đỏ oan, người quen bỏ qua đỏ | đỏ oan / 100 lượt | ≤ 3 · trên 3 thì sửa bài, không thêm cổng | 14 ngày |
+| L9 | Làn song song: một làn một worktree (bản làm việc song song cùng một repo) một PR; số làn theo tải máy; merge xong máy tự dọn | làn giẫm nhau, đầy đĩa | xung đột / tuần, GB tồn | xung đột ≤ 1 / tuần · trên mức đó thì giảm làn | 14 ngày |
+| L10 | Bằng chứng duy nhất là lượt CI trên đúng head SHA mà cổng đọc; thân PR không có mục tự khai «đã chạy» | khai xanh mà chưa chạy | cổng đã đọc lượt | luật nền | 30 ngày |
+| L11 | Mỗi module có tệp **điều kiện bán được** trong repo, thuộc vùng cần người duyệt; mỗi PR ghi điều kiện nó đẩy, PR không đẩy điều kiện nào thì xếp sau | làm nhiều mà không ra bản bán được | số điều kiện đạt / tuần, máy đếm từ tệp | tăng mỗi tuần · 2 tuần liền không tăng thì chủ dự án xem lại danh sách | 14 ngày |
+
+Trích dẫn cho bảng: lượt phản bác có bắt lỗi thật trước merge (độ tin trung bình), **chưa chứng minh giảm lỗi lọt** `[ĐÃ KIỂM: nội bộ · 04/11]`. L7: ca L8 của cổng vibe8 qua hết vòng thử cục bộ, chỉ lọt khi thử trên GitHub thật `[ĐÃ KIỂM: nghiem-thu/ket-qua.md:18 · 05/11]`.
+
+## 4. Token — chi theo việc, không chi theo thói quen
+
+- Không phản bác mức Thấp; không chạy lượt review thường song song với phản bác: phản bác đã có lỗi thật kèm tái hiện, còn review thường chưa có số tách riêng `[ĐÃ KIỂM: nội bộ · 04/11]`. Nếu nhóm rút thăm của L3 cho thấy cần thêm, đưa lại qua mục 1.
+- Đọc nhiều tệp, tìm kiếm: agent con model rẻ; quyết định, viết mã khó: model mạnh.
+- File nạp sẵn mỗi phiên (`CLAUDE.md`, `AGENTS.md`) càng ngắn càng tốt; trần đặt theo số đo «token nạp sẵn mỗi phiên» `[CHƯA KIỂM: chưa có số]`.
+- Một phiên một việc; xong thì đóng. Phiên dài chiếm phần lớn chi phí `[SUY LUẬN từ số đo theo bước · nội bộ · 04/11]`.
+- Token ghi theo PR, máy ghi từ lúc chạy; không dùng số agent tự báo.
+
+## 5. Đo — năm con số, máy tính
+
+| Số | Định nghĩa | Đủ để kết luận |
+|---|---|---|
+| Lỗi lọt | issue nhãn `loi-lot` (mục 8), trên 100 PR, theo mức nặng và khâu lẽ ra chặn | ≥ 10 lỗi mỗi kỳ |
+| Tỉ lệ thay đổi gây hỏng | % PR phải sửa gấp, hoàn lại trong 7 ngày | ≥ 30 PR đủ 7 ngày |
+| Thời gian ra | mở PR → lên production; trung vị và mức chậm nhất của 1/10 số PR; theo mức rủi ro | ≥ 30 PR mỗi mức |
+| Token mỗi PR đã merge | token mới (không tính đọc lại bộ nhớ đệm), tính cả PR bị bỏ | ≥ 30 PR |
+| Độ đúng của từng luật | lần chặn đúng / mọi lần chặn | ≥ 30 lần chặn |
+
+Lỗi lọt cần nhiều tháng mới đủ mẫu, nên luật nhỏ xét bằng số sớm hơn (lỗi bắt trước merge, sửa gấp, tái phát); lỗi lọt dùng để xét cả bộ.
+Mốc trước khi áp: đo 30 ngày gần nhất của repo, ghi vào sổ riêng của repo đó, không ghi vào repo công khai này.
+
+## 6. Đã bỏ từ bộ cách cũ, và vì sao
+
+Theo bảng chấm nội bộ 04/11:
+- **Vòng 9 bước bắt buộc cho mọi việc:** chưa tách được công; thay bằng ba mức ở mục 2.
+- **Công cụ merge an toàn phía máy agent:** chủ yếu đẩy tuân thủ, không có sổ chặn; thay bằng cổng phía GitHub (L1).
+- **Mục «Đã chạy» do agent tự khai:** hầu như không có output thật; thay bằng L10.
+- **Gác PR tự động, merge theo lô, bất biến chạy mỗi PR, tự lái:** chưa chặn được lỗi thật nào, hoặc đã đo không hơn.
+  Muốn đưa lại thì đi đường mục 1.
+
+## 7. Lời khuyên (chưa phải luật)
+
+- Hướng dẫn thao tác tay cho người: đúng màn hiện tại, một bước một dòng.
+- Đặc tả trước code có mục «KHÔNG được phá» cho mức Vừa: đang chờ số đo.
+- Kiểm thử đột biến cho mã cổng và mã quyền: 0 token, vài phút, bắt được bài test yếu.
+
+## 8. Vòng cải tiến — nhận diện, phân loại, đo, đề xuất
+
+Thiếu khâu nào trong bốn khâu dưới đây thì mục 1 và mục 5 không chạy được: không có sổ lỗi thì không có số, không có số thì không xét giữ hay bỏ luật nào.
+
+**8.1 Nhận diện — sổ lỗi lọt là issue GitHub, không phải tệp tự ghi.**
+- Lỗi lọt = lỗi đã tới bản người dùng chạy. Ai thấy (người dùng, giám sát, người trong nhóm) thì mở issue nhãn `loi-lot` trong 24 giờ.
+- Issue ghi: PR gây lỗi (số PR hoặc SHA, ghi «chưa rõ» nếu chưa truy được) · cách tái hiện · ngày lộ.
+- PR sửa ghi `sua-loi-lot: #<issue>` để máy nối lỗi với bản sửa và tính tỉ lệ thay đổi gây hỏng.
+- Lỗi bắt được trước merge (phản bác, cổng, test) không phải lỗi lọt; ghi nhãn `bat-truoc-merge` để đo L3.
+
+**8.2 Phân loại — ba trường bắt buộc trên mỗi issue `loi-lot`.**
+
+| Trường | Giá trị | Ai điền |
+|---|---|---|
+| Mức nặng | **N1** mất hoặc sai dữ liệu, lộ dữ liệu, sai tiền, vượt quyền · **N2** chức năng chính hỏng, không có đường vòng · **N3** có đường vòng hoặc chỉ sai giao diện | agent không viết PR gây lỗi đề xuất; người duyệt chốt N1 |
+| Khâu lẽ ra chặn | khâu **sớm nhất** lẽ ra bắt được, chỉ một: `dac-ta` (tiêu chí thiếu) · `test` (thiếu test) · `phan-bac` (có lượt mà sót) · `khong-phan-bac` (mức Thấp hoặc bị rút thăm) · `cong` (xếp sai mức) · `chay-that` (L7) · `ngoai-tam` (môi trường, bên thứ ba) | như trên |
+| Mức rủi ro của PR gây lỗi | Thấp · Vừa · Cao | máy, từ kết luận của cổng trên PR đó |
+
+**8.3 Đo — máy đọc nhãn, không đếm tay.**
+`[CHƯA KIỂM]` Script đo chưa có; hiện chỉ `nghiem-thu/do_nhip.py` đo thời gian ra. Script mới chỉ đọc API GitHub, ra năm số của mục 5 và bảng «lỗi lọt theo khâu × mức nặng». Token mỗi PR chưa có cách máy ghi: tới khi có, ghi «chưa đo», không dùng số agent tự báo.
+
+**8.4 Xét và đề xuất.**
+- **Lịch:** 14 ngày một lần, việc định giờ chạy script và mở issue `xet-vong` kèm bảng số. Luật nào tới ngày ở cột «Xét» của mục 3 thì xét trong buổi đó. Script không chạy được thì hoãn buổi xét, không đoán số.
+- **Không chờ lịch:** mỗi lỗi N1 có buổi xét riêng trong 3 ngày, tìm khâu hở, không tìm người có lỗi.
+- **Mỗi buổi tối đa 3 đề xuất**, ưu tiên khâu có nhiều lỗi N1 và N2 nhất. Mỗi đề xuất ghi: khâu hở và các issue làm căn cứ · thay đổi gì (sửa máy, thêm, sửa hay bỏ luật) · đủ bốn thứ của mục 1 · tốn thêm bao nhiêu token và thời gian.
+- **Sửa máy trước, thêm chữ sau:** khâu hở mà cổng hoặc test chặn được thì sửa cổng hoặc test, không thêm luật.
+- Đề xuất đi qua PR sửa file này, mức Cao, người duyệt chốt.
+- **Kỳ không có lỗi lọt nào:** trước khi kết luận tốt, đối chiếu các PR sửa gấp trong kỳ với sổ; có PR sửa gấp mà không có issue thì sổ đang bị bỏ sót.
