@@ -22,16 +22,16 @@ _TEP_BAO_VE = {ten.TEP_CAU_HINH, "codeowners", "makefile", "justfile", "noxfile.
 # Mã máy chạy được mà diff không đọc được: Python nạp `.pyc` hash-based thay cho `.py` mà không so với mã nguồn.
 _MA_MAY = (".pyc", ".pyo", ".pyd", ".so", ".dylib", ".dll", ".node", ".wasm", ".jar", ".class")
 _KHONG_CHAY = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".woff", ".woff2", ".ttf")  # Tệp không chữ nhưng không tự chạy.
-# Tệp trùng tên mô-đun chuẩn che được thư viện chuẩn khi chạy test. Python 3.9 không có danh sách: quét thư mục thư viện chuẩn.
-_MO_DUN_CHUAN = {"pytest", "_pytest"}.union(sys.builtin_module_names, getattr(sys, "stdlib_module_names", ()), (m.name for m in pkgutil.iter_modules(
-    [sysconfig.get_path("stdlib"), sysconfig.get_path("stdlib") + "/lib-dynload"])))
+# Tệp trùng tên mô-đun chuẩn che được thư viện chuẩn khi chạy test. Chỉ Python 3.9 không có danh sách: mới quét thư mục, bỏ `test` cho khớp bản sau.
+_MO_DUN_CHUAN = {m.casefold() for m in {"pytest", "_pytest", "json", "os", "re"}.union(sys.builtin_module_names, getattr(sys, "stdlib_module_names", None) or (
+    m.name for m in pkgutil.iter_modules([sysconfig.get_path("stdlib"), sysconfig.get_path("stdlib") + "/lib-dynload"]) if m.name != "test"))}
 _MAU_SCRIPT_CHECK = re.compile(r"^(check|kiem-tra)(\.[a-z0-9]+)?$|^(vitest|jest|playwright|karma)\.config\.")
 _LOCKFILE = {"package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb", "poetry.lock", "uv.lock",
              "pipfile.lock", "cargo.lock", "go.sum", "gemfile.lock", "composer.lock", "pdm.lock"}
 _MANIFEST = re.compile(r"(^|/)(package\.json|pyproject\.toml|go\.mod|requirements[^/]*\.(txt|in)|requirements/[^/]*\.(txt|in)"
                        r"|constraints[^/]*\.txt|setup\.py|setup\.cfg|cargo\.toml|gemfile|composer\.json|pipfile|\.npmrc"
                        r"|pnpm-workspace\.yaml|dockerfile[^/]*|\.python-version|\.tool-versions|\.pre-commit-config\.yaml"
-                       r"|\.nvmrc|\.node-version|\.yarnrc\.yml|pom\.xml|(build|settings)\.gradle(\.kts)?)$")
+                       r"|\.nvmrc|\.node-version|\.bun-version|\.ruby-version|\.yarnrc(\.yml)?|\.pnpmfile\.cjs|bunfig\.toml|rust-toolchain(\.toml)?|pom\.xml|(build|settings)\.gradle(\.kts)?)$")
 # Dữ liệu kỳ vọng (golden, snapshot, fixture) cũng là điều kiện nghiệm thu: đổi nó là đổi test.
 _THU_MUC_TEST = {"test", "tests", "testing", "__tests__", "spec", "specs", "e2e", "cypress", "integration_tests",
                  "testdata", "__snapshots__", "__fixtures__", "fixtures"}
@@ -65,11 +65,11 @@ def _la_bao_ve(duong):
     return doan[-1] in _TEP_BAO_VE or bool(_MAU_SCRIPT_CHECK.search(doan[-1]))
 
 
-def _che_thu_vien(duong, trang_thai):
+def _che_thu_vien(duong, trang_thai, them):
     doan = duong.split("/")
     mo_dun = doan[-2] if doan[-1] == "__init__.py" and len(doan) > 1 else doan[-1].split(".")[0]
-    # Tên không đuôi: symlink `json` trỏ tới thư mục khác cũng che được mô-đun, API chỉ cho thấy một dòng là đích của nó.
-    return trang_thai not in ("modified", "removed") and (doan[-1].endswith(".py") or "." not in doan[-1]) and mo_dun in _MO_DUN_CHUAN
+    # Tên không đuôi: symlink `json` trỏ tới thư mục khác cũng che được mô-đun, API chỉ cho thấy một dòng là đích của nó. Nhiều dòng thì không phải symlink.
+    return trang_thai not in ("modified", "removed") and (doan[-1].endswith(".py") or ("." not in doan[-1] and them <= 1)) and mo_dun in _MO_DUN_CHUAN
 
 
 def _la_test(duong, goc):
@@ -114,12 +114,12 @@ def _xet_tep(tep):
             ket.append((CAO, "đổi tệp khai phụ thuộc " + hien_thi(goc)))
     if trang_thai != "removed" and moi.endswith(_MA_MAY):
         ket.append((CAO, "có mã máy, diff không đọc được " + hien_thi(ten_moi)))
-    if _che_thu_vien(moi, trang_thai):
-        ket.append((CAO, "thêm tệp trùng tên mô-đun chuẩn " + hien_thi(ten_moi)))
     so = _so_dong(tep)
     if so is None:
         return ket + [(CAO, "số dòng không hợp lệ " + hien_thi(ten_moi))]
     them, xoa = so
+    if _che_thu_vien(moi, trang_thai, them):
+        ket.append((CAO, "thêm tệp trùng tên mô-đun chuẩn " + hien_thi(ten_moi)))
     if _la_test(moi, ten_moi) or (cu is not None and _la_test(cu, ten_cu)):
         ket += _xet_test(tep, moi)
     if trang_thai not in ("added", "modified", "removed", "renamed"):

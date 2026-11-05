@@ -30,8 +30,6 @@ def ke_hoach(app_id):
         # GITHUB_TOKEN của workflow trong PR không được ghi, không được duyệt PR.
         {"phuong_thuc": "PUT", "duong": "/actions/permissions/workflow",
          "body": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": False}},
-        # Cổng đọc diff so với điểm rẽ nhánh; rebase phát lại từng commit nên kết quả có thể khác thứ đã xét.
-        {"phuong_thuc": "PATCH", "duong": "", "body": {"allow_rebase_merge": False}},
         {"phuong_thuc": "PUT", "duong": "/branches/%s/protection" % ten.NHANH_GOC, "body": {
             "required_status_checks": {"strict": False, "checks": [{"context": ten.CHECK_CUOI, "app_id": app_id}]},
             "enforce_admins": True,
@@ -41,6 +39,8 @@ def ke_hoach(app_id):
                 "require_code_owner_reviews": False, "require_last_push_approval": False},
             "restrictions": None, "required_linear_history": False,
             "allow_force_pushes": False, "allow_deletions": False, "lock_branch": False}},
+        # Cổng đọc diff so với điểm rẽ nhánh, rebase phát lại từng commit. Chưa tái hiện được kết quả lệch: tắt để phòng. Đặt cuối để lỗi ở đây không làm mất bảo vệ nhánh.
+        {"phuong_thuc": "PATCH", "duong": "", "body": {"allow_rebase_merge": False}},
     ]
 
 

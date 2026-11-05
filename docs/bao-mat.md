@@ -25,10 +25,12 @@ Trên repo thử do agent làm chủ: ghim `app_id` chặn check và status gi�
 Cũng trên repo thử, bằng token giả:
 
 - Tag tên `main` không làm `actions/checkout` lấy nhầm mã cổng.
-- Symlink `json` trỏ tới gói giả, runner `ubuntu-latest`: checkout cả repo thì `python3 -m cong.gate_app` chạy mã của nhánh, với token trong tay.
+- Symlink `json` đã vào nhánh gốc, trỏ tới gói giả, runner `ubuntu-latest`: checkout cả repo thì `python3 -m cong.gate_app` chạy mã của gói đó,
+  với token trong tay. Nghĩa là merge lọt một lần thì giữ được token về sau, nên cổng chỉ lấy `/cong/` và symlink như vậy phải có người duyệt.
   Checkout thưa chỉ `/cong/` thì thư mục làm việc chỉ còn `.git`, `cong`, và cổng chạy đúng mã của nó.
 - Merge kiểu rebase một nhánh lặp lại rồi đảo thay đổi đã vào `main`, 5 biến thể: GitHub đều trả `rebaseable: false` và 405. Rebase thường
-  vẫn merge được. Tài liệu GitHub không nêu điều kiện cụ thể, nên cổng không dựa vào hành vi này: xem giới hạn 21.
+  vẫn merge được. Tài liệu GitHub Enterprise Server gọi rebase "unsafe" khi kết quả khác merge thường, các trang của github.com không nêu; có áp cho github.com
+  không thì chưa kiểm, nên cổng không dựa vào hành vi này: xem giới hạn 21.
 
 ## Đã kiểm trên GitHub thật, bằng khoá thật
 
@@ -36,10 +38,11 @@ Cũng trên repo thử, bằng token giả:
 
 ## Chưa kiểm: cần khoá thật
 
-- L1-L6 và L8 thực sự bị chặn. Bài cục bộ không chứng minh được những lỗi này.
+- L1-L4, L6 và phần `--admin` của L5 thực sự bị chặn; đổi base của PR đã xanh sang nhánh khác (L8, chưa có bản mẫu trong `nghiem-thu/loi/`).
+  Bài cục bộ không chứng minh được những lỗi này.
 - Token App đọc được API quyền cộng tác viên không. Tài liệu ghi cần quyền Metadata đọc, App luôn có. Không đọc được thì mọi lượt có người xét sẽ đóng.
 - `head_sha` của lượt `workflow_run` có đúng là head của PR không, và GitHub chọn check mới nhất của App trên SHA thế nào.
-- Quyền Actions read, Checks write và Pull requests read của App có đủ không.
+- Quyền Actions read và Pull requests read của App có đủ không. Checks write đã đủ: xem mục trên.
 - Trường `head_repository` của lượt chạy có đúng như cách cổng dùng để lọc PR fork không.
 - Hiệu lực của `can_admins_bypass: false` với chủ repo: API nhận và đọc lại đúng, chưa thử bằng tài khoản chủ.
 - `created_at` của lượt có giữ nguyên khi bấm chạy lại không. Cổng lọc lượt theo mốc này; nếu nó đổi thì lượt của base cũ có thể được tính.
@@ -95,7 +98,7 @@ Cũng trên repo thử, bằng token giả:
 19. **Chỉ quyền admin mới duyệt được.** Trên repo tổ chức, vai `maintain` không tính. Quyền đọc lúc xét: mất quyền admin thì lượt duyệt cũ hết tính.
 20. **Lỗi đọc quyền làm cổng đóng.** API quyền hỏng thì lượt đó ra `failure`, tự lành ở sự kiện sau.
 21. **Merge kiểu rebase phải tắt.** Cổng đọc diff so với điểm rẽ nhánh; rebase phát lại từng commit nên có thể đảo thay đổi đã vào `main` mà diff không
-    cho thấy. Chưa tái hiện được trên GitHub, nhưng lý do GitHub từ chối chưa được ghi trong tài liệu nào. `bat_cong.py` tắt và đọc lại.
+    cho thấy. Chưa tái hiện được trên GitHub: đây là biện pháp phòng, vì điều kiện GitHub từ chối chỉ thấy ghi ở tài liệu Enterprise Server. `bat_cong.py` tắt và đọc lại.
 
 ## Vì sao dùng hai sự kiện đặc quyền
 

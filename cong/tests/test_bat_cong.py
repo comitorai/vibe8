@@ -35,7 +35,7 @@ def main(argv, env=None):
 
 class TestKeHoach(unittest.TestCase):
     def test_check_co_nguon_la_app(self):
-        bv = bat_cong.ke_hoach(APP)[-1]["body"]
+        bv = next(b["body"] for b in bat_cong.ke_hoach(APP) if b["duong"].endswith("/protection"))
         self.assertEqual(bv["required_status_checks"]["checks"], [{"context": ten.CHECK_CUOI, "app_id": APP}])
         self.assertTrue(bv["enforce_admins"])
         self.assertFalse(bv["allow_force_pushes"])
@@ -135,7 +135,7 @@ class TestApDung(unittest.TestCase):
     def test_chinh_sach_da_co_khong_tinh_la_loi(self):
         gh = self._gh()
         self.assertEqual(bat_cong.ap_dung(gh, APP), [])
-        self.assertEqual([x[0] for x in gh.da_phat], ["PUT", "POST", "PUT", "PATCH", "PUT"])
+        self.assertEqual([x[0] for x in gh.da_phat], ["PUT", "POST", "PUT", "PUT", "PATCH"])
 
     def test_doc_lai_sai_thi_bao(self):
         self.assertTrue(bat_cong.ap_dung(self._gh(dict(DUNG_BV, enforce_admins={"enabled": False})), APP))

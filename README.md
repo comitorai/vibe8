@@ -40,14 +40,14 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
   Đổi README tự qua: tệp này chỉ mô tả, cổng không đọc nó.
 - **Test có sẵn là điều kiện nghiệm thu:** sửa, đổi tên, xoá đều là rủi ro cao, cần duyệt. Muốn thêm test thì tạo tệp mới, tự qua.
   Thêm `__init__.py` trong vùng test cũng cần duyệt, vì nó quyết định test nào được nạp.
-- Thêm tệp hay symlink trùng tên mô-đun chuẩn của Python (`pprint.py`, `app/json.py`, symlink `json`) cũng cần duyệt, vì đủ làm CI xanh giả.
+- Thêm tệp hay symlink trùng tên mô-đun chuẩn của Python (`pprint.py`, `app/json.py`, symlink `json`; tệp không đuôi nhiều dòng thì không tính) cũng cần duyệt, vì đủ làm CI xanh giả.
   Có thể báo oan với tệp vô hại như `app/calendar.py`; người duyệt bấm qua. Gói bên thứ ba thì không bắt được: xem giới hạn 9.
 - Tệp không có diff dạng chữ cần duyệt, vì không ai đọc được bên trong: tệp nhị phân, tệp rỗng, và mọi mã máy như `.pyc`, `.so`, `.wasm`.
   Trừ ảnh, PDF, phông chữ: rủi ro trung bình. Thêm `__init__.py` thì ghi một dòng chú thích để khỏi phải duyệt.
   Đổi tên kèm sửa tệp nhị phân thì tự qua, vì API không phân biệt được với đổi tên thuần: xem giới hạn 8.
 - Một số tệp vô hại có thể bị báo oan vì trùng tên tệp nhạy cảm (`docs/check.md`, `docs/requirements-q4.txt`, thư mục `docs/specs/`); người duyệt bấm qua.
 - Rủi ro thấp và trung bình tự qua khi đủ các điều kiện khác.
-- Merge kiểu rebase phải tắt: cổng xét theo diff, rebase có thể ra kết quả khác diff. `bat_cong.py` tắt và đọc lại.
+- Merge kiểu rebase phải tắt: cổng xét theo diff, còn rebase phát lại từng commit. Chưa tái hiện được kết quả lệch, đây là biện pháp phòng. `bat_cong.py` tắt và đọc lại.
 - Quá 400 dòng (không tính lockfile): chặn, trừ khi người duyệt hợp lệ ghi dòng `ngoai-le-co: <lý do>` trong lượt duyệt.
   Dòng đó phải đứng đầu dòng, đúng chữ thường, không gạch đầu dòng hay in đậm; sai định dạng thì cổng coi như chưa ghi.
 - Duyệt hợp lệ: người có quyền admin trên repo (cổng hỏi GitHub lúc xét), không phải tác giả hay người có commit
