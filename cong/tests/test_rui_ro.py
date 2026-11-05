@@ -15,8 +15,8 @@ def tep(ten, status="modified", them=1, xoa=0, patch="@@ -1 +1 @@\n+x", **them_k
 
 
 class TestMuc(unittest.TestCase):
-    def test_ma_thuong_la_thap(self):
-        self.assertEqual(phan_loai([tep("hoa_don/tinh.py")])["muc"], THAP)
+    def test_ma_thuong_la_vua(self):
+        self.assertEqual(phan_loai([tep("hoa_don/tinh.py")])["muc"], TRUNG_BINH)
 
     def test_pr_rong_la_thap(self):
         self.assertEqual(phan_loai([])["muc"], THAP)
@@ -57,7 +57,7 @@ class TestMuc(unittest.TestCase):
     def test_tep_nhieu_dong_khong_duoi_khong_oan(self):
         for ten in ("bin/code", "scripts/trace", "token", "secrets"):
             with self.subTest(ten):
-                self.assertEqual(phan_loai([tep(ten, "added", 2, 0)])["muc"], THAP)
+                self.assertNotEqual(phan_loai([tep(ten, "added", 2, 0)])["muc"], CAO)
 
     def test_ten_co_chu_hoa_trong_danh_sach_chuan(self):
         self.assertEqual(phan_loai([tep("cProfile.py", "added")])["muc"], CAO)
@@ -65,7 +65,7 @@ class TestMuc(unittest.TestCase):
     def test_tep_ten_test_tu_qua_tren_moi_ban_python(self):
         for ten in ("test.py", "tests/test.py", "bin/test"):
             with self.subTest(ten):
-                self.assertEqual(phan_loai([tep(ten, "added")])["muc"], THAP)
+                self.assertNotEqual(phan_loai([tep(ten, "added")])["muc"], CAO)
 
     def _nap_nhu_python_39(self, **gia):
         self.addCleanup(importlib.reload, rui_ro)
@@ -87,7 +87,7 @@ class TestMuc(unittest.TestCase):
     def test_ten_khong_duoi_khac_khong_oan(self):
         for ten in ("LICENSE", "docs/VERSION", "evilpkg"):
             with self.subTest(ten):
-                self.assertEqual(phan_loai([tep(ten, "added")])["muc"], THAP)
+                self.assertNotEqual(phan_loai([tep(ten, "added")])["muc"], CAO)
 
     def test_python_cu_van_du_danh_sach_mo_dun_chuan(self):
         # Trên 3.9 danh sách phải lấy được từ thư mục thư viện chuẩn, gồm cả mô-đun biên dịch.
@@ -102,17 +102,17 @@ class TestMuc(unittest.TestCase):
         self.assertEqual(phan_loai([t])["muc"], CAO)
 
     def test_sua_tep_trung_ten_mo_dun_co_san_khong_oan(self):
-        self.assertEqual(phan_loai([tep("app/json.py")])["muc"], THAP)
+        self.assertNotEqual(phan_loai([tep("app/json.py")])["muc"], CAO)
 
     def test_ten_gan_mo_dun_chuan_khong_oan(self):
         for ten in ("unittest/main.py", "pprint.md", "json.txt", "app/my_json.py"):
             with self.subTest(ten):
-                self.assertEqual(phan_loai([tep(ten, "added")])["muc"], THAP)
+                self.assertNotEqual(phan_loai([tep(ten, "added")])["muc"], CAO)
 
     def test_khong_nham_ten_gan_giong(self):
         for ten in ("docs/github.md", "src/cong/x.py", "checklist.md", "my.github.io/a.md", "xuong.yml.md"):
             with self.subTest(ten):
-                self.assertEqual(phan_loai([tep(ten)])["muc"], THAP)
+                self.assertNotEqual(phan_loai([tep(ten)])["muc"], CAO)
 
     def test_lach_chu_hoa_va_chu_rong(self):
         for ten in (".GitHub/workflows/a.yml", "CodeOwners", "ＸＵＯＮＧ.yml", ".ｇｉｔｈｕｂ/a.yml"):
@@ -128,7 +128,7 @@ class TestMuc(unittest.TestCase):
         self.assertEqual(phan_loai([t])["muc"], CAO)
 
     def test_app_mau_van_co_ca_rui_ro_thap(self):
-        self.assertEqual(phan_loai([tep("nghiem-thu/app-mau/hoa_don/tinh.py")])["muc"], THAP)
+        self.assertNotEqual(phan_loai([tep("nghiem-thu/app-mau/hoa_don/tinh.py")])["muc"], CAO)
 
     def test_lockfile_la_cao(self):
         self.assertEqual(phan_loai([tep("web/pnpm-lock.yaml")])["muc"], CAO)
@@ -155,11 +155,11 @@ class TestMuc(unittest.TestCase):
                                             ("renamed", {"previous_filename": "a.png"})):
                 with self.subTest(ten=ten, trang_thai=trang_thai):
                     self.assertEqual(phan_loai([tep(ten, trang_thai, 0, 0, None, **them_truong)])["muc"], CAO)
-        self.assertEqual(phan_loai([tep("cu.pyc", "removed", 0, 0, None)])["muc"], THAP)
+        self.assertNotEqual(phan_loai([tep("cu.pyc", "removed", 0, 0, None)])["muc"], CAO)
 
-    def test_doi_ten_thuan_ma_thuong_la_thap(self):
+    def test_doi_ten_thuan_ma_thuong_khong_oan(self):
         t = tep("b.py", "renamed", 0, 0, None, previous_filename="a.py")
-        self.assertEqual(phan_loai([t])["muc"], THAP)
+        self.assertNotEqual(phan_loai([t])["muc"], CAO)
 
     def test_trang_thai_la_thuong_la_trung_binh(self):
         self.assertEqual(phan_loai([tep("a.py", "changed", 0, 0, None)])["muc"], TRUNG_BINH)
@@ -217,7 +217,7 @@ class TestManifest(unittest.TestCase):
     def test_khong_nham_ten_gan_giong(self):
         for ten in ("docs/requirements.md", "requirements/ghi-chu.md", "my-dockerfile-notes/a.py", "constraints.md"):
             with self.subTest(ten):
-                self.assertEqual(phan_loai([tep(ten)])["muc"], THAP)
+                self.assertNotEqual(phan_loai([tep(ten)])["muc"], CAO)
 
 
 class TestTestCoSan(unittest.TestCase):
@@ -236,7 +236,7 @@ class TestTestCoSan(unittest.TestCase):
         for ten in ("latest.py", "contest.py", "docs/spec.md", "inspect.py", "testdata.csv", "Contest.java",
                     "ProductSpec.md", "docs/LoadTest.pdf"):
             with self.subTest(ten):
-                self.assertEqual(phan_loai([tep(ten, "removed", 0, 5, "@@ -1,5 +0,0 @@\n-x")])["muc"], THAP)
+                self.assertNotEqual(phan_loai([tep(ten, "removed", 0, 5, "@@ -1,5 +0,0 @@\n-x")])["muc"], CAO)
 
     def test_doi_ten_test_deu_cao(self):
         # Đổi tên trong vùng test làm hỏng khớp mẫu của trình chạy test, test đó lặng lẽ không chạy nữa.
@@ -277,7 +277,7 @@ class TestTestCoSan(unittest.TestCase):
 
     def test_xoa_ma_thuong_khong_tinh_la_xoa_test(self):
         t = tep("hoa_don/cu.py", "removed", 0, 5, "@@ -1,5 +0,0 @@\n-x")
-        self.assertEqual(phan_loai([t])["muc"], THAP)
+        self.assertNotEqual(phan_loai([t])["muc"], CAO)
 
 
 class TestTenLa(unittest.TestCase):
@@ -336,10 +336,133 @@ class TestVungTestRong(unittest.TestCase):
     def test_ten_gan_giong_khong_phai_test(self):
         for duong in ("src/latest.sh", "contest.c", "src/Testing.ts", "Testimonial.txt", "hoa_don/snapshot.py"):
             with self.subTest(duong):
-                self.assertEqual(self._sua(duong), rui_ro.THAP)
+                self.assertNotEqual(self._sua(duong), rui_ro.CAO)
 
     def test_goi_trung_ten_trinh_chay_test_can_duyet(self):
         for duong in ("pytest.py", "pytest/__init__.py", "_pytest/__init__.py"):
             with self.subTest(duong):
                 tep = {"filename": duong, "status": "added", "additions": 1, "deletions": 0, "patch": "@@"}
                 self.assertEqual(rui_ro.phan_loai([tep])["muc"], rui_ro.CAO)
+
+
+class TestMucVua(unittest.TestCase):
+    """luat/phuong-phap.md mục 2: Thấp chỉ cho tài liệu, tệp tĩnh, test mới; mã và cấu hình chạy được là Vừa."""
+
+    def test_ma_va_cau_hinh_chay_duoc_la_vua(self):
+        for ten in ("hoa_don/tinh.py", "src/app.ts", "bin/chay", "config/app.json", "web/logo.svg", "CMakeLists.txt", "a.sql"):
+            for trang_thai in ("added", "modified", "removed"):
+                with self.subTest(ten=ten, trang_thai=trang_thai):
+                    self.assertEqual(phan_loai([tep(ten, trang_thai)])["muc"], TRUNG_BINH)
+
+    def test_doi_ten_ma_la_vua(self):
+        t = tep("b.py", "renamed", 0, 0, None, previous_filename="a.py")
+        self.assertEqual(phan_loai([t])["muc"], TRUNG_BINH)
+
+    def test_doi_tai_lieu_thanh_ma_la_vua(self):
+        t = tep("chay.sh", "renamed", 0, 0, None, previous_filename="ghi-chu.md")
+        self.assertEqual(phan_loai([t])["muc"], TRUNG_BINH)
+
+    def test_tai_lieu_va_test_moi_van_thap(self):
+        for t in (tep("docs/a.md"), tep("LICENSE"), tep("README.rst", "removed"), tep("ghi chú.txt"),
+                  tep("tests/test_moi.py", "added"), tep("a.png", "removed", 0, 0, None)):
+            with self.subTest(t["filename"]):
+                self.assertEqual(phan_loai([t])["muc"], THAP)
+
+    def test_ten_gan_tai_lieu_van_la_vua(self):
+        for ten in ("readme.sh", "license.py", "docs/a.md.py", "LICENSE/x.js"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten)])["muc"], TRUNG_BINH)
+
+    def test_ly_do_vua_gop_mot_dong(self):
+        rr = phan_loai([tep("a%d.py" % i) for i in range(30)])
+        self.assertEqual(len([x for x in rr["ly_do"] if "chạy được" in x]), 1)
+        self.assertIn("30 tệp", " ".join(rr["ly_do"]))
+
+
+class TestVungNhayCam(unittest.TestCase):
+    """Repo tự khai mẫu đường dẫn nhạy cảm (quyền, xoá dữ liệu, migration, thanh toán): chạm vào là mức Cao."""
+
+    VUNG = ["src/quyen/", "db/migrations/*", "*thanh_toan*"]
+
+    def test_cham_vung_la_cao(self):
+        for ten in ("src/quyen/vai_tro.py", "SRC/Quyen/a.ts", "db/migrations/0001.sql", "db/migrations/a/b.sql",
+                    "app/thanh_toan/the.py", "docs/thanh_toan.md"):
+            with self.subTest(ten):
+                rr = phan_loai([tep(ten)], self.VUNG)
+                self.assertEqual(rr["muc"], CAO)
+                self.assertTrue(any("vùng nhạy cảm" in x for x in rr["ly_do"]))
+
+    def test_doi_ten_ra_khoi_vung_van_cao(self):
+        t = tep("src/khac.py", "renamed", 0, 0, None, previous_filename="src/quyen/a.py")
+        self.assertEqual(phan_loai([t], self.VUNG)["muc"], CAO)
+
+    def test_ngoai_vung_khong_oan(self):
+        for ten in ("src/quyen.py", "src/quyenx/a.py", "db/migrations.md"):
+            with self.subTest(ten):
+                self.assertNotEqual(phan_loai([tep(ten)], self.VUNG)["muc"], CAO)
+
+    def test_khong_khai_vung_thi_nhu_cu(self):
+        self.assertEqual(phan_loai([tep("src/quyen/a.py")])["muc"], TRUNG_BINH)
+
+
+class TestCuPhapVung(unittest.TestCase):
+    """Phản bác 05/11: mẫu viết theo thói quen gitignore/CODEOWNERS từng chết lặng. Giờ hoặc khớp, hoặc doc_vung báo lỗi."""
+
+    def _muc(self, ten, mau, **k):
+        return phan_loai([tep(ten, **k)], [mau])["muc"]
+
+    def test_mau_quen_tay_van_khop(self):
+        for ten, mau in [("vendor/thanh-toan", "vendor/thanh-toan/"),  # con trỏ submodule không có / cuối
+                         ("src/quyen/a.py", "src/quyen"), ("src/auth.py", "auth.py"), ("a/b/auth.py", "auth.py"),
+                         ("db/x/migrations/1.sql", "*/migrations/"), ("db/x/migrations/1.sql", "**/migrations/"),
+                         ("src/auth.py", "src/**/auth.py"), ("src/a/b/auth.py", "src/**/auth.py"),
+                         ("app/[id]/page.tsx", "app/[id]/page.tsx"), ("app/[id]/x.tsx", "app/[id]/*"),
+                         ("src/c#/a.cs", "src/c#/")]:
+            with self.subTest(ten=ten, mau=mau):
+                self.assertEqual(self._muc(ten, mau), CAO)
+
+    def test_khong_khop_lan(self):
+        for ten, mau in [("src/quyen2/a.py", "src/quyen"), ("src/oauth.py", "auth.py"), ("app/i/page.tsx", "app/[id]/page.tsx"),
+                         ("srcx/auth.py", "src/**/auth.py")]:
+            with self.subTest(ten=ten, mau=mau):
+                self.assertNotEqual(self._muc(ten, mau), CAO)
+
+    def test_ten_cu_hong_khong_nem_loi(self):
+        for cu in (0, False, [], {}):
+            with self.subTest(cu=cu):
+                self.assertEqual(phan_loai([tep("a.py", status="renamed", previous_filename=cu)], ["x/"])["muc"], CAO)
+
+
+class TestDocVung(unittest.TestCase):
+    def _doc(self, noi_dung):
+        import os, tempfile
+        with tempfile.TemporaryDirectory() as thu_muc:
+            duong = os.path.join(thu_muc, "vung.txt")
+            with open(duong, "wb") as f:
+                f.write(noi_dung if isinstance(noi_dung, bytes) else noi_dung.encode())
+            return rui_ro.doc_vung(duong)
+
+    def test_doc_bo_chu_thich_va_dong_trong(self):
+        self.assertEqual(self._doc("# quyền\nsrc/quyen/\n\n  db/migrations/*  # cuối dòng\n"), ["src/quyen/", "db/migrations/*"])
+
+    def test_mau_khong_bao_gio_khop_thi_bao_loi(self):
+        for dong in ("!src/quyen/", "src/\xa0quyen/", "ｓｒｃ/", "src/***/a"):
+            with self.subTest(dong=dong):
+                with self.assertRaises(ValueError):
+                    self._doc(dong + "\n")
+
+    def test_thang_giua_dong_khong_phai_chu_thich(self):
+        self.assertEqual(self._doc("src/c#/\n"), ["src/c#/"])
+
+    def test_khong_co_tep_la_khong_khai(self):
+        self.assertEqual(rui_ro.doc_vung("/khong/co/tep/nay.txt"), [])
+        self.assertEqual(rui_ro.doc_vung(None), [])
+
+    def test_tep_hong_thi_bao_loi_khong_lang_le_bo_qua(self):
+        for xau in (b"\xff\xfe", "/tuyet-doi\n", "a\\b\n", "../ra-ngoai\n", "\n".join("m%d/" % i for i in range(201))):
+            with self.subTest(repr(xau)[:30]):
+                with self.assertRaises(ValueError):
+                    self._doc(xau)
+
+    def test_mau_rong_sau_chu_thich_bi_bo(self):
+        self.assertEqual(self._doc("   # chỉ chú thích\n"), [])

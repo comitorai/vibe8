@@ -4,6 +4,7 @@
 (filename, previous_filename, status, additions, deletions, patch).
 Thiếu dữ liệu thì nghiêng về rủi ro cao hơn, không bao giờ thấp hơn.
 """
+import os
 import pkgutil
 import re
 import sys
@@ -22,6 +23,11 @@ _TEP_BAO_VE = {ten.TEP_CAU_HINH, "codeowners", "makefile", "justfile", "noxfile.
 # Mã máy chạy được mà diff không đọc được: Python nạp `.pyc` hash-based thay cho `.py` mà không so với mã nguồn.
 _MA_MAY = (".pyc", ".pyo", ".pyd", ".so", ".dylib", ".dll", ".node", ".wasm", ".jar", ".class")
 _KHONG_CHAY = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".woff", ".woff2", ".ttf")  # Tệp không chữ nhưng không tự chạy.
+# Mức Thấp chỉ cho tài liệu và tệp tĩnh (luat/phuong-phap.md mục 2). Danh sách cho phép: đuôi lạ là mã hoặc cấu hình chạy được, mức Vừa.
+_TAI_LIEU = (".md", ".markdown", ".rst", ".txt", ".adoc")
+_TEN_TAI_LIEU = {"license", "licence", "notice", "authors", "contributors", "changelog", "copying", "readme"}
+_TXT_CHAY = {"cmakelists.txt"}
+TRAN_MAU_VUNG = 200
 # Tệp trùng tên mô-đun chuẩn che được thư viện chuẩn khi chạy test. Chỉ Python 3.9 không có danh sách: mới quét thư mục, bỏ `test` cho khớp bản sau.
 _MO_DUN_CHUAN = {m.casefold() for m in {"pytest", "_pytest", "json", "os", "re"}.union(sys.builtin_module_names, getattr(sys, "stdlib_module_names", None) or (
     m.name for m in pkgutil.iter_modules([sysconfig.get_path("stdlib"), sysconfig.get_path("stdlib") + "/lib-dynload"]) if m.name != "test"))}
@@ -94,6 +100,55 @@ def _la_lockfile(tep):
     return isinstance(tep.get("filename"), str) and _chuan_hoa(tep["filename"]).split("/")[-1] in _LOCKFILE
 
 
+def _la_tai_lieu(duong):
+    cuoi = duong.split("/")[-1]
+    return cuoi in _TEN_TAI_LIEU or (cuoi.endswith(_TAI_LIEU + _KHONG_CHAY) and cuoi not in _TXT_CHAY)
+
+
+def _la_ma_chay(tep, moi, cu):
+    """Thêm tệp test mới là Thấp; còn lại, tên mới hay tên cũ không phải tài liệu, tệp tĩnh thì là mã chạy được."""
+    if tep.get("status") == "added" and _la_test(moi, tep["filename"]) and moi.split("/")[-1] != "__init__.py":
+        return False
+    return any(not _la_tai_lieu(d) for d in [moi] + ([] if cu is None else [cu]))
+
+
+class LoiVung(ValueError):
+    """Tệp vùng nhạy cảm hỏng. Thông báo hiện trên check: tệp nằm ở nhánh gốc, đã được bảo vệ."""
+
+
+def _khop_vung(duong, mau):
+    """Gần gitignore: `*` khớp cả `/`, `**/` là không hoặc nhiều thư mục, mọi ký tự khác là chữ thường (kể cả `[id]` của Next.js).
+    Mẫu khớp chính nó và mọi thứ bên dưới (nên khớp cả con trỏ submodule); mẫu không có `/` khớp ở mọi tầng."""
+    loi = mau.rstrip("/")
+    than = "".join("(?:.*/)?" if t == "**/" else ".*" if t.startswith("*") else re.escape(t)
+                   for t in re.findall(r"\*\*/|\*+|[^*]+", loi))
+    return re.fullmatch(("" if "/" in loi else "(?:.*/)?") + than + "(?:/.*)?", duong, re.S) is not None
+
+
+def doc_vung(duong):
+    """Mẫu đường dẫn nhạy cảm repo tự khai, mỗi dòng một mẫu; `#` đầu dòng hoặc sau dấu cách là chú thích. Cú pháp: _khop_vung.
+    Không có tệp thì là chưa khai. Tệp có mà hỏng, hay có mẫu không bao giờ khớp được, thì báo lỗi: lặng lẽ bỏ qua là mở cổng."""
+    if not duong or not os.path.lexists(duong):
+        return []
+    if os.path.islink(duong) or not os.path.isfile(duong):
+        raise LoiVung("tệp vùng nhạy cảm không phải tệp thường")
+    with open(duong, "rb") as f:
+        try:
+            dong = f.read().decode("utf-8").splitlines()
+        except UnicodeDecodeError:
+            raise LoiVung("tệp vùng nhạy cảm không phải UTF-8") from None
+    mau = [re.sub(r"(^|\s)#.*", "", d).strip() for d in dong]
+    mau = [m for m in mau if m]
+    for m in mau:
+        # `!` phủ định của gitignore, dấu cách lạ, chữ toàn khổ: đường dẫn đã chuẩn hoá không bao giờ khớp được.
+        if (_la_ten_la(m.rstrip("/")) or m.startswith(("/", "!")) or "***" in m
+                or unicodedata.normalize("NFKC", m) != m or any(c.isspace() and c != " " for c in m)):
+            raise LoiVung("mẫu vùng nhạy cảm không hợp lệ: " + hien_thi(m))
+    if len(mau) > TRAN_MAU_VUNG:
+        raise LoiVung("quá %d mẫu vùng nhạy cảm" % TRAN_MAU_VUNG)
+    return mau
+
+
 def _xet_tep(tep):
     if not isinstance(tep, dict):
         return [(CAO, "dữ liệu tệp không hợp lệ")]
@@ -129,17 +184,37 @@ def _xet_tep(tep):
     return ket
 
 
-def phan_loai(ds_tep):
-    """Trả {muc, ly_do, so_dong, qua_co}."""
+def _xet_muc_moi(tep, vung):
+    """Mức Vừa và vùng nhạy cảm. Tên lạ, dữ liệu hỏng đã là Cao ở _xet_tep. Trả (mã chạy được?, [lý do Cao])."""
+    if not isinstance(tep, dict):
+        return False, []
+    if any(_la_ten_la(d) for d in [tep.get("filename")] + ([] if tep.get("previous_filename") is None else [tep["previous_filename"]])):
+        return False, []
+    moi = _chuan_hoa(tep["filename"])
+    cu = None if tep.get("previous_filename") is None else _chuan_hoa(tep["previous_filename"])
+    cao = ["chạm vùng nhạy cảm %s: %s" % (hien_thi(m), hien_thi(goc))
+           for duong, goc in [(moi, tep["filename"])] + ([] if cu is None else [(cu, tep["previous_filename"])])
+           for m in vung if _khop_vung(duong, _chuan_hoa(m))]
+    return _la_ma_chay(tep, moi, cu), cao
+
+
+def phan_loai(ds_tep, vung=()):
+    """Trả {muc, ly_do, so_dong, qua_co}. vung: mẫu đường dẫn nhạy cảm đọc từ nhánh gốc (doc_vung)."""
     if not isinstance(ds_tep, list):
         return {"muc": CAO, "ly_do": ["không có danh sách tệp"], "so_dong": 0, "qua_co": False}
-    muc, ly_do, tong = THAP, [], 0
+    muc, ly_do, tong, ma_chay = THAP, [], 0, []
     for tep in ds_tep:
-        for muc_tep, vi_sao in _xet_tep(tep):
+        la_ma, cao = _xet_muc_moi(tep, vung)
+        if la_ma:
+            ma_chay.append(tep["filename"])
+        for muc_tep, vi_sao in _xet_tep(tep) + [(CAO, x) for x in cao]:
             ly_do.append(vi_sao)
             if _THU_TU[muc_tep] > _THU_TU[muc]:
                 muc = muc_tep
         so = _so_dong(tep) if isinstance(tep, dict) else None
         # Lockfile do máy sinh, không tính vào cỡ: đã là rủi ro cao, không cần thêm `ngoai-le-co`.
         tong += sum(so) if so and not _la_lockfile(tep) else 0
+    if ma_chay:
+        ly_do.append("%d tệp mã hoặc cấu hình chạy được, vd %s" % (len(ma_chay), hien_thi(ma_chay[0])))
+        muc = muc if _THU_TU[muc] > _THU_TU[TRUNG_BINH] else TRUNG_BINH
     return {"muc": muc, "ly_do": ly_do, "so_dong": tong, "qua_co": tong > NGUONG_CO_DONG}
