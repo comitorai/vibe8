@@ -1,0 +1,18 @@
+name: thu-khoa
+on:
+  pull_request:
+  pull_request_target:
+  push:
+  workflow_dispatch:
+  deployment:
+  deployment_status:
+permissions: {}
+jobs:
+  doc-khoa:
+    if: (github.event_name != 'deployment' && github.event_name != 'deployment_status') || github.event.deployment.description == 'thu-l6'
+    runs-on: ubuntu-latest
+    environment: gate
+    steps:
+      - env:
+          K: ${{ secrets.XUONG_APP_KEY }}
+        run: printf 'do-dai-khoa=%s su-kien=%s ref=%s\n' "${#K}" "$GITHUB_EVENT_NAME" "$GITHUB_REF"
