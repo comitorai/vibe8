@@ -30,6 +30,8 @@ def ke_hoach(app_id):
         # GITHUB_TOKEN của workflow trong PR không được ghi, không được duyệt PR.
         {"phuong_thuc": "PUT", "duong": "/actions/permissions/workflow",
          "body": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": False}},
+        # Cổng đọc diff so với điểm rẽ nhánh; rebase phát lại từng commit nên kết quả có thể khác thứ đã xét.
+        {"phuong_thuc": "PATCH", "duong": "", "body": {"allow_rebase_merge": False}},
         {"phuong_thuc": "PUT", "duong": "/branches/%s/protection" % ten.NHANH_GOC, "body": {
             "required_status_checks": {"strict": False, "checks": [{"context": ten.CHECK_CUOI, "app_id": app_id}]},
             "enforce_admins": True,
@@ -42,7 +44,7 @@ def ke_hoach(app_id):
     ]
 
 
-def kiem_lai(bao_ve, moi_truong, chinh_sach, quyen, app_id):
+def kiem_lai(bao_ve, moi_truong, chinh_sach, quyen, kho, app_id):
     """Hàm thuần: đọc lại rồi so, trả danh sách chỗ sai. Ghi được chưa có nghĩa là đã có hiệu lực."""
     sai = []
     checks = (bao_ve.get("required_status_checks") or {}).get("checks")
@@ -65,6 +67,8 @@ def kiem_lai(bao_ve, moi_truong, chinh_sach, quyen, app_id):
         sai.append("environment phải chỉ cho đúng nhánh %s" % ten.NHANH_GOC)
     if quyen.get("default_workflow_permissions") != "read" or quyen.get("can_approve_pull_request_reviews") is not False:
         sai.append("GITHUB_TOKEN mặc định phải chỉ đọc và không được duyệt PR")
+    if kho.get("allow_rebase_merge") is not False:
+        sai.append("repo vẫn cho merge kiểu rebase")
     return sai
 
 
@@ -78,7 +82,7 @@ def ap_dung(gh, app_id):
     moi_truong = "/environments/" + ten.MOI_TRUONG
     return kiem_lai(gh.goi("GET", "/branches/%s/protection" % ten.NHANH_GOC), gh.goi("GET", moi_truong),
                     gh.goi("GET", moi_truong + "/deployment-branch-policies"),
-                    gh.goi("GET", "/actions/permissions/workflow"), app_id)
+                    gh.goi("GET", "/actions/permissions/workflow"), gh.goi("GET", ""), app_id)
 
 
 def in_buoc_tay(repo):

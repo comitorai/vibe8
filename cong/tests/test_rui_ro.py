@@ -40,6 +40,25 @@ class TestMuc(unittest.TestCase):
             with self.subTest(ten):
                 self.assertEqual(phan_loai([tep(ten, "added")])["muc"], CAO)
 
+    def test_symlink_trung_mo_dun_chuan_la_cao(self):
+        # GitHub trả symlink mới đúng dạng này: một dòng thêm, patch là đích, không có mode.
+        for ten in ("json", "unittest", "app/argparse", "JSON"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "added", 1, 0, "@@ -0,0 +1 @@\n+evilpkg")])["muc"], CAO)
+
+    def test_ten_khong_duoi_khac_khong_oan(self):
+        for ten in ("LICENSE", "docs/VERSION", "evilpkg"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten, "added")])["muc"], THAP)
+
+    def test_python_cu_van_du_danh_sach_mo_dun_chuan(self):
+        # Trên 3.9 danh sách phải lấy được từ thư mục thư viện chuẩn, gồm cả mô-đun biên dịch.
+        for ten in ("unicodedata", "subprocess", "re", "os", "sys", "json", "pytest"):
+            with self.subTest(ten):
+                self.assertIn(ten, rui_ro._MO_DUN_CHUAN)
+                self.assertEqual(phan_loai([tep(ten + ".py", "added")])["muc"], CAO)
+        self.assertNotIn("site-packages", rui_ro._MO_DUN_CHUAN)
+
     def test_doi_ten_thanh_mo_dun_chuan_la_cao(self):
         t = tep("pprint.py", "renamed", 0, 0, None, previous_filename="a.py")
         self.assertEqual(phan_loai([t])["muc"], CAO)
@@ -106,6 +125,15 @@ class TestMuc(unittest.TestCase):
 
     def test_trang_thai_la_thuong_la_trung_binh(self):
         self.assertEqual(phan_loai([tep("a.py", "changed", 0, 0, None)])["muc"], TRUNG_BINH)
+
+    def test_tep_khai_moi_truong_chay_la_cao(self):
+        for ten in (".node-version", ".yarnrc.yml", "web/.yarnrc.yml", ".nvmrc"):
+            with self.subTest(ten):
+                self.assertEqual(phan_loai([tep(ten)])["muc"], CAO)
+
+    def test_tai_lieu_bao_mat_la_cao(self):
+        self.assertEqual(phan_loai([tep("docs/bao-mat.md")])["muc"], CAO)
+        self.assertEqual(phan_loai([tep("docs/khac.md")])["muc"], THAP)
 
 
 class TestPhuThuoc(unittest.TestCase):

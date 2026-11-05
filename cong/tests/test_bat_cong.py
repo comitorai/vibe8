@@ -24,6 +24,7 @@ DUNG_MT = {"can_admins_bypass": False,
            "deployment_branch_policy": {"custom_branch_policies": True, "protected_branches": False}}
 DUNG_CS = {"branch_policies": [{"name": ten.NHANH_GOC, "type": "branch"}]}
 DUNG_QUYEN = {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": False}
+DUNG_KHO = {"allow_rebase_merge": False}
 
 
 def main(argv, env=None):
@@ -50,6 +51,9 @@ class TestKeHoach(unittest.TestCase):
     def test_github_token_chi_doc_khong_duyet_pr(self):
         buoc = [b for b in bat_cong.ke_hoach(APP) if b["duong"] == "/actions/permissions/workflow"]
         self.assertEqual([b["body"] for b in buoc], [DUNG_QUYEN])
+
+    def test_tat_merge_kieu_rebase(self):
+        self.assertEqual([b["body"] for b in bat_cong.ke_hoach(APP) if b["duong"] == ""], [DUNG_KHO])
 
 
 class TestKho(unittest.TestCase):
@@ -84,7 +88,12 @@ class TestLoi(unittest.TestCase):
 
 class TestKiemLai(unittest.TestCase):
     def test_dung_het(self):
-        self.assertEqual(bat_cong.kiem_lai(DUNG_BV, DUNG_MT, DUNG_CS, DUNG_QUYEN, APP), [])
+        self.assertEqual(bat_cong.kiem_lai(DUNG_BV, DUNG_MT, DUNG_CS, DUNG_QUYEN, DUNG_KHO, APP), [])
+
+    def test_con_merge_kieu_rebase_la_sai(self):
+        for kho in ({"allow_rebase_merge": True}, {}):
+            with self.subTest(str(kho)):
+                self.assertEqual(len(bat_cong.kiem_lai(DUNG_BV, DUNG_MT, DUNG_CS, DUNG_QUYEN, kho, APP)), 1)
 
     def test_bat_tung_cho_sai(self):
         cac_ca = [
@@ -104,7 +113,7 @@ class TestKiemLai(unittest.TestCase):
         for bv, mt, cs, quyen in cac_ca:
             with self.subTest(str((bv, mt, cs, quyen))):
                 sai = bat_cong.kiem_lai(dict(DUNG_BV, **bv), dict(DUNG_MT, **mt), dict(DUNG_CS, **cs),
-                                        dict(DUNG_QUYEN, **quyen), APP)
+                                        dict(DUNG_QUYEN, **quyen), DUNG_KHO, APP)
                 self.assertEqual(len(sai), 1)
 
 
@@ -117,16 +126,19 @@ class GhGia(gate_app.GiaLap):
 
 
 class TestApDung(unittest.TestCase):
-    def _gh(self, bao_ve=DUNG_BV):
+    def _gh(self, bao_ve=DUNG_BV, kho=DUNG_KHO):
         mt = "/environments/" + ten.MOI_TRUONG
         return GhGia(json.loads(json.dumps({
             "/branches/%s/protection" % ten.NHANH_GOC: bao_ve, mt: DUNG_MT,
-            mt + "/deployment-branch-policies": DUNG_CS, "/actions/permissions/workflow": DUNG_QUYEN})))
+            mt + "/deployment-branch-policies": DUNG_CS, "/actions/permissions/workflow": DUNG_QUYEN, "": kho})))
 
     def test_chinh_sach_da_co_khong_tinh_la_loi(self):
         gh = self._gh()
         self.assertEqual(bat_cong.ap_dung(gh, APP), [])
-        self.assertEqual([x[0] for x in gh.da_phat], ["PUT", "POST", "PUT", "PUT"])
+        self.assertEqual([x[0] for x in gh.da_phat], ["PUT", "POST", "PUT", "PATCH", "PUT"])
 
     def test_doc_lai_sai_thi_bao(self):
         self.assertTrue(bat_cong.ap_dung(self._gh(dict(DUNG_BV, enforce_admins={"enabled": False})), APP))
+
+    def test_doc_lai_rebase_con_bat_thi_bao(self):
+        self.assertTrue(bat_cong.ap_dung(self._gh(kho={"allow_rebase_merge": True}), APP))

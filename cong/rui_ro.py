@@ -4,8 +4,10 @@
 (filename, previous_filename, status, additions, deletions, patch).
 Thiếu dữ liệu thì nghiêng về rủi ro cao hơn, không bao giờ thấp hơn.
 """
+import pkgutil
 import re
 import sys
+import sysconfig
 import unicodedata
 
 from . import ten
@@ -14,22 +16,22 @@ THAP, TRUNG_BINH, CAO = "thap", "trung_binh", "cao"
 NGUONG_CO_DONG = 400
 
 _THU_TU = {THAP: 0, TRUNG_BINH: 1, CAO: 2}
-_GOC_BAO_VE = ("cong/", "luat/", "nghiem-thu/kiem_cuc_bo.py", "nghiem-thu/bat_cong.py", "nghiem-thu/loi/")
+_GOC_BAO_VE = ("cong/", "luat/", "docs/bao-mat.md", "nghiem-thu/kiem_cuc_bo.py", "nghiem-thu/bat_cong.py", "nghiem-thu/loi/")
 _TEP_BAO_VE = {ten.TEP_CAU_HINH, "codeowners", "makefile", "justfile", "noxfile.py", "tox.ini", "pytest.ini", "conftest.py",
                ".gitattributes", ".gitmodules", "sitecustomize.py", "usercustomize.py"}
 # Mã máy chạy được mà diff không đọc được: Python nạp `.pyc` hash-based thay cho `.py` mà không so với mã nguồn.
 _MA_MAY = (".pyc", ".pyo", ".pyd", ".so", ".dylib", ".dll", ".node", ".wasm", ".jar", ".class")
 _KHONG_CHAY = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".woff", ".woff2", ".ttf")  # Tệp không chữ nhưng không tự chạy.
-# Tệp trùng tên mô-đun chuẩn che được thư viện chuẩn khi chạy test. Python 3.9 không có danh sách: dùng các mô-đun unittest nạp.
-_MO_DUN_CHUAN = {"pytest", "_pytest"}.union(getattr(sys, "stdlib_module_names", (
-    "unittest", "argparse", "difflib", "json", "logging", "pprint", "shutil", "signal", "traceback", "warnings")))
+# Tệp trùng tên mô-đun chuẩn che được thư viện chuẩn khi chạy test. Python 3.9 không có danh sách: quét thư mục thư viện chuẩn.
+_MO_DUN_CHUAN = {"pytest", "_pytest"}.union(sys.builtin_module_names, getattr(sys, "stdlib_module_names", ()), (m.name for m in pkgutil.iter_modules(
+    [sysconfig.get_path("stdlib"), sysconfig.get_path("stdlib") + "/lib-dynload"])))
 _MAU_SCRIPT_CHECK = re.compile(r"^(check|kiem-tra)(\.[a-z0-9]+)?$|^(vitest|jest|playwright|karma)\.config\.")
 _LOCKFILE = {"package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock", "bun.lockb", "poetry.lock", "uv.lock",
              "pipfile.lock", "cargo.lock", "go.sum", "gemfile.lock", "composer.lock", "pdm.lock"}
 _MANIFEST = re.compile(r"(^|/)(package\.json|pyproject\.toml|go\.mod|requirements[^/]*\.(txt|in)|requirements/[^/]*\.(txt|in)"
                        r"|constraints[^/]*\.txt|setup\.py|setup\.cfg|cargo\.toml|gemfile|composer\.json|pipfile|\.npmrc"
                        r"|pnpm-workspace\.yaml|dockerfile[^/]*|\.python-version|\.tool-versions|\.pre-commit-config\.yaml"
-                       r"|\.nvmrc|pom\.xml|(build|settings)\.gradle(\.kts)?)$")
+                       r"|\.nvmrc|\.node-version|\.yarnrc\.yml|pom\.xml|(build|settings)\.gradle(\.kts)?)$")
 # Dữ liệu kỳ vọng (golden, snapshot, fixture) cũng là điều kiện nghiệm thu: đổi nó là đổi test.
 _THU_MUC_TEST = {"test", "tests", "testing", "__tests__", "spec", "specs", "e2e", "cypress", "integration_tests",
                  "testdata", "__snapshots__", "__fixtures__", "fixtures"}
@@ -52,9 +54,7 @@ def _chuan_hoa(duong):
 def _la_ten_la(duong):
     if not isinstance(duong, str) or not duong or duong.startswith("/") or "\\" in duong:
         return True
-    if any(unicodedata.category(c) in ("Cc", "Cf", "Cs", "Co", "Zl", "Zp") for c in duong):
-        return True
-    return any(doan in ("", ".", "..") for doan in duong.split("/"))
+    return any(unicodedata.category(c) in ("Cc", "Cf", "Cs", "Co", "Zl", "Zp") for c in duong) or any(doan in ("", ".", "..") for doan in duong.split("/"))
 
 
 def _la_bao_ve(duong):
@@ -68,7 +68,8 @@ def _la_bao_ve(duong):
 def _che_thu_vien(duong, trang_thai):
     doan = duong.split("/")
     mo_dun = doan[-2] if doan[-1] == "__init__.py" and len(doan) > 1 else doan[-1].split(".")[0]
-    return trang_thai not in ("modified", "removed") and doan[-1].endswith(".py") and mo_dun in _MO_DUN_CHUAN
+    # Tên không đuôi: symlink `json` trỏ tới thư mục khác cũng che được mô-đun, API chỉ cho thấy một dòng là đích của nó.
+    return trang_thai not in ("modified", "removed") and (doan[-1].endswith(".py") or "." not in doan[-1]) and mo_dun in _MO_DUN_CHUAN
 
 
 def _la_test(duong, goc):
@@ -90,8 +91,7 @@ def _xet_test(tep, moi):
 
 
 def _la_lockfile(tep):
-    ten_tep = tep.get("filename")
-    return isinstance(ten_tep, str) and _chuan_hoa(ten_tep).split("/")[-1] in _LOCKFILE
+    return isinstance(tep.get("filename"), str) and _chuan_hoa(tep["filename"]).split("/")[-1] in _LOCKFILE
 
 
 def _xet_tep(tep):
