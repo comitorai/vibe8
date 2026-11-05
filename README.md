@@ -53,3 +53,4 @@ Chủ repo bật cổng: bỏ `--kho`, đặt `GH_TOKEN`, rồi làm các bướ
 - Yêu cầu sửa của người trong danh sách chặn bất kể SHA và mức rủi ro trên **PR đó**. Lượt của họ bị gỡ thì vẫn chặn đến khi họ duyệt lại.
   Yêu cầu sửa không theo sang PR mới cùng nội dung; người duyệt phải đóng cả nhánh nếu không muốn nội dung đó vào.
 - SHA không còn là head của PR mở vào `main`: cổng thu hồi bằng `failure`, để `success` cũ không chờ sẵn khi đổi base đi rồi đổi lại.
+x
