@@ -35,6 +35,19 @@ Một lần chạy lại kịch bản thử đẩy đè nhánh của PR 4 sau kh
 
 PR từ fork cùng SHA, PR 20 (fork của cộng tác viên) và PR 21 (nội bộ), một tệp rủi ro thấp: PR 20 mở một mình thì `cong-nhanh` chạy không cần phê duyệt, lượt ghi đúng `head_repository` của fork, cổng `cho_qua (thap)` sau 35 giây. Mở PR 21 cùng SHA thì cổng xét lại, vẫn `cho_qua (thap)`, cả hai `CLEAN`. Check gắn theo SHA nên hai PR dùng chung một kết quả, nội dung merge như nhau. Không merge, đã đóng cả hai. Fork từ người không phải cộng tác viên chưa thử.
 
+## Phiếu phản bác trên PR mức Vừa thật
+
+PR 38 (06/11), PR mức Vừa đầu tiên kể từ khi cổng đòi phiếu (PR 32). PR 34–37 bị cổng xếp `cao`, nên rút thăm bỏ phiếu chưa từng chạy trên PR thật: `boc_tham_bo(35..37)` = True chỉ là kết quả của hàm, không có nhóm đối chứng thật. Mức Vừa là luật cũ, nay gộp vào Thường. Sửa `nghiem-thu/ghi_token.py` kèm tệp test mới, cổng xếp `trung_binh`. Phiếu do agent độc lập viết, đăng dưới dạng review COMMENT bằng tài khoản `phanbinhdcna` (tác giả PR, có quyền ghi).
+
+| Bước | SHA | Kết quả |
+|---|---|---|
+| Mở PR, chưa có phiếu | `0eb6b62` | `chan (trung_binh)`: «cần phiếu phản bác trên đúng SHA» |
+| Phiếu 1 (không đăng) | `0eb6b62` | `khong-bac`, kèm 2 lỗi nhẹ: mốc lấy PR song song đóng sau, tên nhánh có `#` bị cắt trong `head=` |
+| Sửa 2 lỗi, đẩy commit | `fa92fb8` | `chan (trung_binh)`: SHA mới chưa có phiếu nào (phiếu 1 không đăng) |
+| Phiếu 2, lượt hẹp trên diff sửa, đăng lên PR | `fa92fb8` | `khong-bac`; 3 điểm nhẹ để PR sau. Tín hiệu duyệt chạy, `cong-cuoi` → `cho_qua (trung_binh)` sau ~2 phút |
+
+Ghi nhận: phiếu 1 bắt được lỗi thật trước merge (`#` trong tên nhánh làm `head=` khớp nhầm nhánh, đã tái hiện bằng GET thật). Đây là một lần bắt trước merge, nhưng repo chưa có nhãn `bat-truoc-merge` nên `do_vong.py` chưa đếm được. Phiếu 2 lấy GitHub thật làm bằng chứng GitHub giải mã `head=` đã mã hoá. Token máy ghi PR 38: 381 216; script đọc cả thư mục `subagents/` nên có thể đã gồm hai agent phản bác, chưa tách riêng.
+
 ## Giả mạo kết quả
 
 - Tác giả tự duyệt, tự yêu cầu sửa: GitHub từ chối.
