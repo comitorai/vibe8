@@ -302,6 +302,9 @@ class TestTenLa(unittest.TestCase):
 
     def test_hien_thi_cat_ten_dai(self):
         self.assertLess(len(rui_ro.hien_thi("a" * 5000)), 300)
+        ten = rui_ro.hien_thi("docs/" + "a" * 300 + "/thanh-toan/tru.py")
+        self.assertIn("…", ten)
+        self.assertIn("thanh-toan/tru.py", ten)
 
 
 class TestCo(unittest.TestCase):

@@ -6,7 +6,7 @@ nguoi_tin [login], nguoi_ghi [login có quyền ghi], duyet [{user, user_type, s
 """
 import re
 
-from . import rui_ro, ten
+from . import rui_ro, ten, the_duyet
 
 CHO_QUA, CHAN, CHO = "cho_qua", "chan", "cho"
 
@@ -15,25 +15,32 @@ _TRANG_THAI_XET = {"APPROVED", "CHANGES_REQUESTED", "DISMISSED"}
 _NGOAI_LE = re.compile(r"^ngoai-le-co:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
 # Phiếu phản bác (luật L3): một lượt review, thân có hai dòng này. Tái hiện bắt buộc cả khi không bác: ghi đã thử gì.
 _PHIEU = re.compile(r"^phieu-phan-bac:[ \t]*(bac|khong-bac)[ \t\r]*$", re.M)
-_TAI_HIEN = re.compile(r"^tai-hien:[ \t]*\S.{8,}\S[ \t\r]*$", re.M)
+_TAI_HIEN = re.compile(r"^tai-hien:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
 _TRANG_THAI_PHIEU = {"COMMENTED", "APPROVED", "CHANGES_REQUESTED"}
 TRAN_PHIEU_BAC = 2  # L4: quá hai vòng bác thì người quyết
 
 
-def _xet_phieu(du_lieu, sha):
-    """Trả (lý do chặn hoặc None, chi tiết). Chỉ người có quyền ghi được ghi phiếu: repo công khai thì ai cũng gửi được review.
-    Máy không phân biệt được hai agent dùng chung tài khoản, nên tác giả cũng ghi phiếu được (giới hạn ghi ở luật)."""
+def _doc_phieu(du_lieu):
+    """Phiếu hợp lệ theo thứ tự thời gian: [(bac|khong-bac, review, dòng tái hiện)]. Chỉ người có quyền ghi được ghi phiếu:
+    repo công khai thì ai cũng gửi được review. Máy không phân biệt được hai agent dùng chung tài khoản, nên tác giả cũng
+    ghi phiếu được (giới hạn ghi ở luật)."""
     ghi = {str(x).casefold() for x in du_lieu.get("nguoi_ghi") or [] if x}
     ds = []
     for r in sorted(du_lieu.get("duyet") or [], key=lambda r: str(r.get("submitted_at") or "")):
         than = str(r.get("body") or "")
-        m = _PHIEU.search(than)
+        m, tai_hien = _PHIEU.search(than), _TAI_HIEN.search(than)
         if not m or r.get("state") not in _TRANG_THAI_PHIEU:  # PENDING là nháp, DISMISSED đã bị gỡ
             continue
         login = str(r.get("user") or "").casefold()
-        if login not in ghi or r.get("user_type") != "User" or login.endswith("[bot]") or not _TAI_HIEN.search(than):
+        if login not in ghi or r.get("user_type") != "User" or login.endswith("[bot]") or not tai_hien:
             continue
-        ds.append((m.group(1), r))
+        ds.append((m.group(1), r, tai_hien.group(1)))
+    return ds
+
+
+def _xet_phieu(du_lieu, sha):
+    """Trả (lý do chặn hoặc None, chi tiết)."""
+    ds = [(ket, r) for ket, r, _ in _doc_phieu(du_lieu)]
     so_bac = sum(1 for ket, _ in ds if ket == "bac")
     dung_sha = [(ket, r) for ket, r in ds if r.get("commit_id") == sha]
     if so_bac >= TRAN_PHIEU_BAC:
@@ -104,7 +111,7 @@ def _xet_duyet(du_lieu, sha):
 
 
 def quyet_dinh(du_lieu):
-    """Trả {ket_luan, ly_do, chi_tiet, sha, rui_ro, so_dong, so_mau_vung, nguoi_duyet}."""
+    """Trả {ket_luan, ly_do, chi_tiet, sha, rui_ro, so_dong, so_mau_vung, nguoi_duyet, qua_co, theo_tep, the_duyet}."""
     sha = du_lieu.get("sha_dau")
     ds_tep = du_lieu.get("tep")
     vung = du_lieu.get("vung_nhay_cam")
@@ -158,8 +165,13 @@ def quyet_dinh(du_lieu):
         ket_luan, ly_do = CHO, [ly_do_nhanh]
     else:
         ket_luan, ly_do = CHO_QUA, ["cong-nhanh xanh trên đúng SHA, không vướng điều kiện nào"]
-    return {
+    q = {
         "ket_luan": ket_luan, "ly_do": ly_do, "chi_tiet": rr["ly_do"] + bo, "sha": sha,
         "rui_ro": rr["muc"], "so_dong": rr["so_dong"], "so_mau_vung": len(vung),
         "nguoi_duyet": [rui_ro.hien_thi(r.get("user")) for r in hop_le],
+        "qua_co": rr["qua_co"], "theo_tep": rr["theo_tep"], "the_duyet": None,
     }
+    # Thẻ chỉ dựng khi PR cần người admin; Thường đi bằng phiếu phản bác, không ai cần đọc.
+    if rr["muc"] == rui_ro.CAO or rr["qua_co"]:
+        q["the_duyet"] = the_duyet.lap_the(du_lieu, q, _doc_phieu(du_lieu), (nhanh, ly_do_nhanh))
+    return q
