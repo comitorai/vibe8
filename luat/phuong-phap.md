@@ -145,7 +145,7 @@ Hai trường đầu là **nhãn** trên issue, đúng một nhãn mỗi trườ
 - **Giới hạn:** mỗi danh sách đọc 100 mục mới nhất (bảng cảnh báo khi chạm trần); PR sửa gấp mà không có issue hay Revert thì máy không thấy; người có quyền ghi vẫn gỡ được nhãn `loi-lot`, hạ mức nặng hay sửa dòng `pr-gay-loi` mà máy không thấy (chỉ `chan-oan` được kiểm người gắn); hai PR chung một SHA thì lượt check của SHA đó tính cho cả hai.
 
 **8.4 Xét và đề xuất.**
-- **Lịch:** 14 ngày một lần, việc định giờ chạy script và mở issue `xet-vong` kèm bảng số. Luật nào tới ngày ở cột «Xét» của mục 3 thì xét trong buổi đó. Script không chạy được thì hoãn buổi xét, không đoán số.
+- **Lịch:** 7 ngày một lần (chủ dự án chọn, 06/11): việc định giờ chạy `do_vong.py --ngay 7` cho mọi repo đã áp và mở issue `xet-vong` kèm bảng số **trong chính repo đó**, vì số của repo riêng ở lại repo riêng. Đề xuất đổi luật mang sang repo này chỉ gồm khâu hở và cách sửa. Luật nào tới ngày ở cột «Xét» của mục 3 thì xét ở buổi đầu tiên sau ngày đó. Script không chạy được thì hoãn buổi xét của repo đó, không đoán số.
 - **Không chờ lịch:** mỗi lỗi N1 có buổi xét riêng trong 3 ngày, tìm khâu hở, không tìm người có lỗi.
 - **Mỗi buổi tối đa 3 đề xuất**, ưu tiên khâu có nhiều lỗi N1 và N2 nhất. Mỗi đề xuất ghi: khâu hở và các issue làm căn cứ · thay đổi gì (sửa máy, thêm, sửa hay bỏ luật) · đủ bốn thứ của mục 1 · tốn thêm bao nhiêu token và thời gian.
 - **Sửa máy trước, thêm chữ sau:** khâu hở mà cổng hoặc test chặn được thì sửa cổng hoặc test, không thêm luật.
