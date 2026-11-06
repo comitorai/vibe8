@@ -33,6 +33,9 @@ _CHUA_RO = re.compile(r"^pr-gay-loi:\s*chưa rõ\s*$", re.M)
 _HOAN_LAI = re.compile(r"^Reverts ([\w.-]+/[\w.-]+)#(\d+)\s*$", re.M)  # thân mặc định của nút Revert trên GitHub
 _TOKEN = re.compile(r"^token-moi: (\d+)$", re.M)  # dòng do nghiem-thu/ghi_token.py ghi
 _DAU_TOKEN = "<!-- token-may-ghi -->"
+_USD = re.compile(r"^usd-quy-doi: (\d+\.\d+)$", re.M)  # luật L12, cũng do ghi_token.py ghi
+TRAN_USD = 1e6  # một PR quá 1 triệu USD là số bị sửa tay, không phải số đo
+_USD_MODEL = re.compile(r"^<!-- usd-model (\{.*\}) -->$", re.M)
 _TIN = {"OWNER", "MEMBER", "COLLABORATOR"}  # repo công khai: ai cũng comment được
 _CHUNG = "rủi ro cao"  # dòng lý do chung của mọi PR mức cao, không phải một luật
 
@@ -88,13 +91,42 @@ def _phan_loai(nhan):
     return ("%s · %s" % (nang[0], khau[0])) if len(nang) == 1 and len(khau) == 1 and khau[0] in KHAU else None
 
 
-def doc_token(ds_comment):
-    """Token mới máy ghi cho một PR: comment `token-may-ghi` mới nhất của người trong repo, None nếu chưa có."""
+def _than_token(ds_comment):
+    """Thân comment `token-may-ghi` mới nhất của người trong repo, "" nếu chưa có."""
     hop = [c for c in ds_comment if _DAU_TOKEN in (c.get("body") or "") and c.get("author_association") in _TIN]
-    if not hop:
-        return None
-    m = _TOKEN.search(max(hop, key=lambda c: c.get("updated_at") or "")["body"])
+    return max(hop, key=lambda c: c.get("updated_at") or "")["body"] if hop else ""
+
+
+def doc_token(ds_comment):
+    """Token mới máy ghi cho một PR, None nếu chưa có."""
+    m = _TOKEN.search(_than_token(ds_comment))
     return int(m.group(1)) if m else None
+
+
+def doc_usd(ds_comment):
+    """(USD quy đổi, {model: USD}) máy ghi cho một PR (luật L12), None nếu comment chưa có phần theo model.
+    Comment người trong repo sửa tay được: số phải hữu hạn, trong khoảng 0..TRAN_USD; tên trùng sau làm sạch thì cộng."""
+    than = _than_token(ds_comment)
+    m, mm = _USD.search(than), _USD_MODEL.search(than)
+    if not m:
+        return None
+    tong = float(m.group(1))
+    if not 0 <= tong <= TRAN_USD:
+        return None
+    try:
+        theo = json.loads(mm.group(1), parse_constant=_tu_choi) if mm else {}
+    except ValueError:
+        theo = {}
+    kq = {}
+    for k, v in (theo.items() if isinstance(theo, dict) else ()):
+        if type(v) in (int, float) and 0 <= v <= TRAN_USD:
+            ten = re.sub(r"[^a-z0-9.-]", "", str(k).lower())[:40]
+            kq[ten] = kq.get(ten, 0.0) + float(v)
+    return tong, kq
+
+
+def _tu_choi(hang):
+    raise ValueError(hang)
 
 
 def _p90(so):
@@ -167,6 +199,16 @@ def tinh(ds_pr, ds_issue, nay, ngay, repo=None):
              "trung_vi": round(statistics.median(p["token"] for p in co)) if co else None,
              "binh_quan_ca_bo": round(sum(p["token"] for p in co + bo) / len(co)) if co else None,
              "so_bo": len(bo), "du_mau": len(co) >= DU_MAU["token"]}
+    # Chi phí quy đổi theo model (luật L12): trung vị USD mỗi PR merge và tỉ trọng từng model trong kỳ.
+    co_usd = [p for p in merged if p.get("usd")]
+    theo_model = {}
+    for p in co_usd:
+        for m, u in p["usd"][1].items():
+            theo_model[m] = theo_model.get(m, 0) + u
+    tong_usd = sum(theo_model.values())
+    token.update(usd_co_ghi=len(co_usd), usd_du_mau=len(co_usd) >= DU_MAU["token"],
+                 usd_trung_vi=round(statistics.median(p["usd"][0] for p in co_usd), 2) if co_usd else None,
+                 usd_ti_trong={m: round(u / tong_usd, 2) for m, u in theo_model.items()} if tong_usd else {})
 
     return {"ky": [dau.date().isoformat(), nay.date().isoformat()], "so_pr": len(ds_pr), "so_merged": len(merged),
             "loi_lot": loi_lot, "bat_truoc_merge": sum("bat-truoc-merge" in i["nhan"] for i in ds_issue),
@@ -198,6 +240,10 @@ def bang(k):
         "chưa đo: 0 / %d PR merge có comment `token-may-ghi`" % tk["so_merge"] if not tk["co_ghi"] else
         "trung vị %d token mới, bình quân %d khi tính cả %d PR bị bỏ, %d / %d PR merge có số máy ghi%s" % (
             tk["trung_vi"], tk["binh_quan_ca_bo"], tk["so_bo"], tk["co_ghi"], tk["so_merge"], _mau(tk))))
+    if tk.get("usd_co_ghi"):
+        d.append("| USD quy đổi mỗi PR đã merge (L12) | trung vị %.2f, %d / %d PR merge có số theo model%s; tỉ trọng: %s |" % (
+            tk["usd_trung_vi"], tk["usd_co_ghi"], tk["so_merge"], _mau({"du_mau": tk["usd_du_mau"]}),
+            ", ".join("%s %d%%" % (m, round(100 * t)) for m, t in sorted(tk["usd_ti_trong"].items(), key=lambda x: -x[1]))))
     d += ["", "**Lỗi lọt theo mức nặng · khâu lẽ ra chặn**", ""]
     d += ["- %s: %d" % (o, n) for o, n in sorted(ll["bang"].items())] or ["- chưa có"]
     if ll["chua_phan_loai"]:
@@ -245,10 +291,11 @@ def thu_thap(gh, ngay, nay, app_id):
             gan = [e for e in gh.goi("GET", "/issues/%d/events?per_page=100" % p["number"])
                    if e.get("event") == "labeled" and (e.get("label") or {}).get("name") == "chan-oan"]
             oan_tu_gan = not gan or (gan[-1].get("actor") or {}).get("login") == (p.get("user") or {}).get("login")
-        token = doc_token(gh.goi("GET", "/issues/%d/comments?per_page=100" % p["number"]))
+        ds_comment = gh.goi("GET", "/issues/%d/comments?per_page=100" % p["number"])
+        token, usd = doc_token(ds_comment), doc_usd(ds_comment)
         ds_pr.append({"so": p["number"], "mo": p["created_at"], "merge": p.get("merged_at"), "muc": muc, "ly_do_chan": ly_do,
                       "nhan": nhan, "than": p.get("body") or "", "oan_tu_gan": oan_tu_gan,
-                      "dong": p.get("state") == "closed", "token": token})
+                      "dong": p.get("state") == "closed", "token": token, "usd": usd})
     ds_issue = []
     for nhan in ("loi-lot", "bat-truoc-merge"):
         ds = gh.goi("GET", "/issues?labels=%s&state=all&since=%s&per_page=100" % (nhan, dau))

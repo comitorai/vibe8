@@ -15,6 +15,8 @@ Codex: đọc ~/.codex/sessions, mỗi bản ghi token_usage_record một lần 
 tính cho nhánh đó; cwd lấy theo turn_context của từng lượt. Dòng Codex mang tên "<máy> codex".
 Tên nhánh dùng lại: chỉ tính lượt gọi sau lúc PR trước cùng tên nhánh đóng (mốc ghi trong comment).
 Mỗi máy một dòng: chạy ở máy khác thì thêm dòng của máy đó, dòng các máy khác giữ nguyên.
+Theo model (luật L12): mỗi lượt Claude Code ghi thêm model và bốn loại token, quy ra USD theo bảng GIA; tài khoản
+gói tháng không trả đúng số này, số chỉ để so model với nhau. Model không có trong bảng ghi "chưa có giá", không quy USD.
 Giới hạn: việc ở nhánh gốc sau khi merge PR trước (dọn, kiểm) bị tính cho PR kế tiếp của phiên; việc ở nhánh gốc
 sau nhánh cuối của phiên không tính cho PR nào; phiên Codex đổi nhánh giữa chừng
 vẫn tính cho nhánh lúc mở; lượt tóm tắt ngữ cảnh chưa tính; người có quyền ghi vẫn sửa tay được comment.
@@ -41,6 +43,16 @@ _DU_LIEU = re.compile(r"^<!-- du-lieu (\{.*\}) -->$", re.M)
 _TEN_MAY = re.compile(r"[^\w .-]")
 TIN = {"OWNER", "MEMBER", "COLLABORATOR"}  # repo công khai: ai cũng comment được, chỉ tin người trong repo
 _SO = ("phien", "luot", "moi", "doc_dem", "moi_truoc")
+USD = re.compile(r"^usd-quy-doi: (\d+\.\d+)$", re.M)  # do_vong.py đọc dòng này
+_USD_MODEL = re.compile(r"^<!-- usd-model (\{.*\}) -->$", re.M)
+# $ cho 1 triệu token: (vào, ra, đọc lại bộ đệm). Ghi bộ đệm 5 phút = 1,25 × vào, 1 giờ = 2 × vào.
+# Nguồn: tài liệu giá Anthropic qua skill claude-api, kiểm 06/11/2026. Haiku 5.5: bậc lời nhắc ≤ 100 nghìn token.
+GIA_NGAY = "2026-11-06"
+GIA = {"claude-fable-5-1": (10, 50, 0.25), "claude-fable-5": (10, 50, 1.0), "claude-opus-5-5": (4, 20, 0.20),
+       "claude-opus-5": (5, 25, 0.5), "claude-opus-4-8": (5, 25, 0.5), "claude-sonnet-5-5": (2, 10, 0.20),
+       "claude-sonnet-5": (2, 10, 0.20), "claude-haiku-5-5": (0.10, 0.50, 0.01)}
+TRAN_SO = 10 ** 13  # trần mỗi số theo model đọc lại từ comment (sửa tay được): đủ lớn cho số thật, đủ nhỏ để đổi ra float
+_LOAI = ("luot", "vao", "ghi_5m", "ghi_1h", "ra", "doc")
 
 
 def cac_tep(goc_repo, nha=None, tu_luc=0.0):
@@ -59,7 +71,8 @@ def cac_tep(goc_repo, nha=None, tu_luc=0.0):
 
 
 def _luot_goi(cac_tep, goc):
-    """Mỗi lượt gọi model trong repo đúng một lần: (phiên, lúc, nhánh, token mới, đọc đệm)."""
+    """Mỗi lượt gọi model trong repo đúng một lần: (phiên, lúc, nhánh, token mới, đọc đệm, chi tiết).
+    Chi tiết = (model, vào, ghi đệm 5 phút, ghi đệm 1 giờ, ra); thiếu phần tách ghi đệm thì tính cả là 5 phút."""
     da_tinh, kq = set(), []
     for tep in cac_tep:
         with open(tep, encoding="utf-8", errors="replace") as f:
@@ -80,10 +93,14 @@ def _luot_goi(cac_tep, goc):
                 if not isinstance(u, dict) or None in khoa or khoa in da_tinh:
                     continue
                 da_tinh.add(khoa)
-                so = lambda k: u.get(k) if isinstance(u.get(k), int) and u.get(k) >= 0 else 0  # noqa: E731
+                so = lambda k, d=u: d.get(k) if isinstance(d.get(k), int) and d.get(k) >= 0 else 0  # noqa: E731
+                ghi = so("cache_creation_input_tokens")
+                tach = u.get("cache_creation") if isinstance(u.get("cache_creation"), dict) else {}
+                ghi_1h = min(so("ephemeral_1h_input_tokens", tach), ghi)
+                model = tin.get("model") if isinstance(tin.get("model"), str) else ""
                 kq.append((str(e.get("sessionId")), luc, nhanh,
-                           so("input_tokens") + so("cache_creation_input_tokens") + so("output_tokens"),
-                           so("cache_read_input_tokens")))
+                           so("input_tokens") + ghi + so("output_tokens"), so("cache_read_input_tokens"),
+                           (_ten_model(model), so("input_tokens"), ghi - ghi_1h, ghi_1h, so("output_tokens"))))
     return kq
 
 
@@ -124,11 +141,26 @@ def _luot_goi_codex(cac_tep, goc):
     return kq
 
 
-def cong_theo_nhanh(cac_tep, goc_repo, nhanh_goc=("main",), doc_luot=_luot_goi, sau_luc=None):
+def _ten_model(model):
+    """Tên model gọn, an toàn để in vào bảng: bỏ hậu tố như `[1m]`, chỉ giữ chữ, số, gạch."""
+    return re.sub(r"[^a-z0-9.-]", "", model.split("[")[0].lower())[:40] or "khong-ro"
+
+
+def chi_phi(model, so):
+    """USD quy đổi của một model theo bảng GIA; None nếu model chưa có giá."""
+    g = GIA.get(model)
+    if not g:
+        return None
+    vao, ra, doc = g
+    return (so["vao"] * vao + so["ghi_5m"] * 1.25 * vao + so["ghi_1h"] * 2 * vao + so["ra"] * ra + so["doc"] * doc) / 1e6
+
+
+def cong_theo_nhanh(cac_tep, goc_repo, nhanh_goc=("main",), doc_luot=_luot_goi, sau_luc=None, theo_model=False):
     """{nhánh: {phien, luot, moi, doc_dem, moi_truoc}}. Lượt gọi ở nhánh gốc hay HEAD rời được tính cho nhánh
     kế tiếp mà cùng phiên chuyển sang (việc làm trước khi tạo nhánh); moi_truoc là phần đó.
     Lượt ở nhánh gốc sau nhánh cuối của phiên không tính cho nhánh nào. doc_luot=_luot_goi_codex cho Codex.
-    sau_luc (ISO 8601, UTC): bỏ lượt gọi từ lúc đó trở về trước, so tới giây."""
+    sau_luc (ISO 8601, UTC): bỏ lượt gọi từ lúc đó trở về trước, so tới giây.
+    theo_model=True: thêm khoá "model" = {model: {luot, vao, ghi_5m, ghi_1h, ra, doc}} cho lượt có chi tiết."""
     goc_cung = set(nhanh_goc) | {"HEAD"}
     theo_phien = {}
     for l in doc_luot(cac_tep, str(goc_repo).rstrip("/")):
@@ -138,7 +170,8 @@ def cong_theo_nhanh(cac_tep, goc_repo, nhanh_goc=("main",), doc_luot=_luot_goi, 
     kq = {}
     for phien, ds in theo_phien.items():
         ke_tiep = None
-        for _, _, nhanh, moi, doc_dem in sorted(ds, key=lambda l: l[1], reverse=True):
+        for l in sorted(ds, key=lambda l: l[1], reverse=True):
+            nhanh, moi, doc_dem = l[2], l[3], l[4]
             truoc = nhanh in goc_cung
             if not truoc:
                 ke_tiep = nhanh
@@ -150,6 +183,10 @@ def cong_theo_nhanh(cac_tep, goc_repo, nhanh_goc=("main",), doc_luot=_luot_goi, 
             o["moi"] += moi
             o["doc_dem"] += doc_dem
             o["moi_truoc"] += moi if truoc else 0
+            if theo_model and len(l) > 5:
+                m = o.setdefault("model", {}).setdefault(l[5][0], dict.fromkeys(_LOAI, 0))
+                for k, v in zip(_LOAI, (1, *l[5][1:], doc_dem)):
+                    m[k] += v
     for o in kq.values():
         o["phien"] = len(o["phien"])
     return kq
@@ -164,8 +201,41 @@ def doc_comment(than):
         return {}
     if not isinstance(d, dict):
         return {}
-    return {_TEN_MAY.sub("", str(k))[:60]: dict({s: v[s] for s in _SO}, luc=re.sub(r"[^\d :-]", "", str(v.get("luc", "")))[:16])
-            for k, v in d.items() if isinstance(v, dict) and all(type(v.get(s)) is int for s in _SO)}
+    kq = {}
+    for k, v in d.items():
+        if not (isinstance(v, dict) and all(type(v.get(s)) is int for s in _SO)):
+            continue
+        o = kq[_TEN_MAY.sub("", str(k))[:60]] = dict({s: v[s] for s in _SO}, luc=re.sub(r"[^\d :-]", "", str(v.get("luc", "")))[:16])
+        theo = v.get("model")
+        if isinstance(theo, dict):
+            gom = o["model"] = {}
+            for m, so in theo.items():
+                if isinstance(so, dict) and all(type(so.get(s)) is int and 0 <= so[s] <= TRAN_SO for s in _LOAI):
+                    g = gom.setdefault(_ten_model(str(m)), dict.fromkeys(_LOAI, 0))
+                    for s in _LOAI:
+                        g[s] += so[s]
+    return kq
+
+
+def bang_model(theo_may):
+    """Dòng bảng theo model (cộng mọi máy), dòng `usd-quy-doi` và dữ liệu USD theo model; rỗng nếu không máy nào có."""
+    tong = {}
+    for v in theo_may.values():
+        for m, so in (v.get("model") or {}).items():
+            o = tong.setdefault(m, dict.fromkeys(_LOAI, 0))
+            for k in _LOAI:
+                o[k] += so[k]
+    if not tong:
+        return []
+    usd = {m: chi_phi(m, so) for m, so in tong.items()}
+    d = ["", "**Theo model** · USD quy đổi theo giá API ngày %s (gói tháng không trả đúng số này)" % GIA_NGAY, "",
+         "| Model | Lượt gọi | Token mới | Đọc lại bộ đệm | USD quy đổi |", "|---|---|---|---|---|"]
+    for m, so in sorted(tong.items(), key=lambda x: -(usd[x[0]] or 0)):
+        d.append("| %s | %d | %d | %d | %s |" % (m, so["luot"], so["vao"] + so["ghi_5m"] + so["ghi_1h"] + so["ra"],
+                                              so["doc"], "chưa có giá" if usd[m] is None else "%.2f" % usd[m]))
+    co_gia = {m: round(u, 4) for m, u in usd.items() if u is not None}
+    return d + ["", "usd-quy-doi: %.4f" % sum(co_gia.values()),
+                "<!-- usd-model %s -->" % json.dumps(co_gia, ensure_ascii=True, sort_keys=True)]
 
 
 def than_comment(nhanh, theo_may, moc=None):
@@ -180,6 +250,7 @@ def than_comment(nhanh, theo_may, moc=None):
     if moc:
         d += ["", "Chỉ tính lượt gọi sau %s UTC, lúc PR #%d cùng tên nhánh đóng." % (
             re.sub(r"[^\d:-]", " ", moc[1][:19]), moc[0])]
+    d += bang_model(theo_may)
     d += ["", "token-moi: %d" % tong["moi"], "",
           "<!-- du-lieu %s -->" % json.dumps(theo_may, ensure_ascii=True, sort_keys=True)]
     return "\n".join(d)
@@ -249,7 +320,7 @@ def main(argv=None):
         tu_luc = time.time() - a.ngay * 86400
         moc = moc_dung_lai(gh, a.repo, so_pr, nhanh)
         sau = moc[1] if moc else None
-        moi = cong_theo_nhanh(cac_tep(goc, a.ban_ghi, tu_luc), goc, (nhanh_goc,), sau_luc=sau).get(nhanh)
+        moi = cong_theo_nhanh(cac_tep(goc, a.ban_ghi, tu_luc), goc, (nhanh_goc,), sau_luc=sau, theo_model=True).get(nhanh)
         tep_codex = cac_tep(goc, a.ban_ghi_codex or Path.home() / ".codex" / "sessions", tu_luc)
         moi_codex = cong_theo_nhanh(tep_codex, goc, (nhanh_goc,), _luot_goi_codex, sau).get(nhanh)
         ds = gh.goi("GET", "/issues/%d/comments?per_page=100" % so_pr)
