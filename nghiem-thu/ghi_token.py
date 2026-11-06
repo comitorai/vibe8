@@ -107,13 +107,15 @@ def _doc_worktree(ra, goc):
 
 
 _CHUYEN = re.compile(r"^checkout: moving from (?P<tu>\S+) to (?P<toi>\S+)$")
-_SHA = re.compile(r"^[0-9a-f]{40}$|^HEAD$")
+_DOI_TEN = re.compile(r"^Branch: renamed refs/heads/(?P<tu>\S+) to refs/heads/(?P<toi>\S+)$")
+# HEAD rời: SHA (đủ hay rút gọn), HEAD, biểu thức có ~ ^ @ :, hay nhánh xa (origin/…).
+_ROI = re.compile(r"^[0-9a-f]{7,40}$|^HEAD$|[~^@:]|^(origin|upstream)/")
 
 
 def _lich_nhanh(reflog, nhanh_nay):
     """Reflog HEAD (mới trước, dòng `HEAD@{<giây>}|<việc>`) → [(từ giây, nhánh hoặc None nếu HEAD rời)], cũ trước.
     Mốc đầu là lúc worktree có dòng reflog đầu tiên; nhánh ban đầu là «from» của lần chuyển đầu, chưa chuyển lần nào
-    thì là nhánh hiện tại."""
+    thì là nhánh hiện tại. Đổi tên nhánh (`Branch: renamed`) đổi tên mọi đoạn trước đó; reflog chỉ chính xác tới giây."""
     muc = []
     for dong in reversed(reflog.splitlines()):
         gd, _, viec = dong.partition("|")
@@ -122,10 +124,17 @@ def _lich_nhanh(reflog, nhanh_nay):
             muc.append((int(m.group(1)), viec.strip()))
     if not muc:
         return []
-    ten = lambda x: None if _SHA.match(x) else x  # noqa: E731
+    ten = lambda x: None if _ROI.search(x) else x  # noqa: E731
     chuyen = [(t, _CHUYEN.match(v)) for t, v in muc if _CHUYEN.match(v)]
     lich = [(muc[0][0], ten(chuyen[0][1].group("tu")) if chuyen else nhanh_nay)]
-    lich += [(t, ten(m.group("toi"))) for t, m in chuyen]
+    for t, v in muc:
+        m = _CHUYEN.match(v)
+        if m:
+            lich.append((t, ten(m.group("toi"))))
+            continue
+        m = _DOI_TEN.match(v)
+        if m:  # `git branch -m X Y`: mọi đoạn mang tên X trước đó là nhánh nay tên Y
+            lich = [(tu, m.group("toi") if n == m.group("tu") else n) for tu, n in lich]
     return lich
 
 

@@ -61,6 +61,16 @@ class DocWorktree(unittest.TestCase):
         self.assertEqual(ghi_token._lich_nhanh("HEAD@{10}|reset: moving to HEAD\n", "x"), [(10, "x")])
         self.assertEqual(ghi_token._lich_nhanh("", "x"), [])
 
+    def test_doi_ten_va_head_roi_go_tay(self):
+        # Phiếu phản bác lượt 2 PR 46: checkout -b tên tạm rồi branch -m sang tên PR.
+        reflog = ("HEAD@{40}|checkout: moving from ten-pr to origin/main\n"
+                  "HEAD@{30}|Branch: renamed refs/heads/claude/tam to refs/heads/ten-pr\n"
+                  "HEAD@{20}|checkout: moving from 41e2eda to claude/tam\n"
+                  "HEAD@{10}|\n")
+        self.assertEqual(ghi_token._lich_nhanh(reflog, "ten-pr"), [(10, None), (20, "ten-pr"), (40, None)])
+        for roi in ("HEAD~0", "origin/main", "abc1234", "main@{1}"):
+            self.assertIsNone(ghi_token._lich_nhanh("HEAD@{2}|checkout: moving from a to %s\nHEAD@{1}|\n" % roi, "a")[-1][1])
+
     def test_git_that(self):
         with tempfile.TemporaryDirectory() as td:
             goc = Path(td).resolve() / "repo"
@@ -112,6 +122,20 @@ class TheoThoiDiem(unittest.TestCase):
         self.assertEqual(ghi_token._nhanh_theo_cwd(str(wt), "g", bd, gio(doi)), "nhanh-B")
         if doi > dau:
             self.assertEqual(ghi_token._nhanh_theo_cwd(str(wt), "g", bd, gio(dau)), "nhanh-A")
+
+    def test_git_that_doi_ten_nhanh(self):
+        with tempfile.TemporaryDirectory() as td:
+            goc = Path(td).resolve() / "repo"
+            wt = goc / ".claude/worktrees/w"
+            chay = lambda *l, cwd=goc: subprocess.run(["git", *l], cwd=cwd, check=True, capture_output=True)  # noqa: E731
+            goc.mkdir()
+            chay("init", "-q", "-b", "main")
+            chay("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "a")
+            chay("worktree", "add", "-q", "--detach", str(wt))
+            chay("checkout", "-q", "-b", "claude/tam", cwd=wt)
+            chay("branch", "-m", "ten-pr", cwd=wt)
+            lich = ghi_token.nhanh_cua_worktree(goc)[str(wt)]
+        self.assertEqual([n for _, n in lich], [None, "ten-pr"])
 
 
 if __name__ == "__main__":
