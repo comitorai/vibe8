@@ -26,8 +26,8 @@ Chủ dự án chốt 06/11: **một Điều phối cho mỗi module** (1a); Đi
 
 ## 3. Mở làn trên máy phụ
 
-- ssh thường không đăng nhập được tác tử: trên macOS, phiên ssh không mở được Keychain nên CLI báo chưa đăng nhập `[ĐÃ KIỂM · 06/11]`.
-- Chạy được khi làn khởi động trong miền GUI của người dùng (launchd `gui/<uid>`), gọi qua ssh `[ĐÃ KIỂM · 06/11]`.
+- ssh thường không đăng nhập được tác tử: trên macOS, phiên ssh không mở được Keychain nên CLI báo chưa đăng nhập `[ĐÃ KIỂM: chạy CLI qua ssh trên máy phụ · 06/11]`.
+- Chạy được khi làn khởi động trong miền GUI của người dùng (launchd `gui/<uid>`), gọi qua ssh `[ĐÃ KIỂM: job launchd chạy một lần, CLI trả lời được · 06/11]`.
 - Công cụ mở làn cụ thể nằm ở repo riêng của chủ dự án, không ở vibe8.
 
 ## 4. Chống trùng việc, chồng chéo
@@ -35,7 +35,7 @@ Chủ dự án chốt 06/11: **một Điều phối cho mỗi module** (1a); Đi
 - **Sổ giữ chỗ duy nhất** là bảng task trong `docs/phase/<MÃ>-<số>.md`, và chỉ Điều phối ghi bảng đó. Cột: mã task · mã yêu cầu · tệp/thư mục giữ · máy · nhánh · model · trạng thái · PR.
 - Task mới chỉ mở khi tệp giữ của nó **không giao** với tệp giữ của task đang chạy.
 - Tệp dùng chung (lockfile, migration, cấu hình gốc) mỗi lúc chỉ một làn giữ; task cần chúng xếp hàng.
-- Một task một nhánh một PR (L9); không PR chồng PR, không đổi base.
+- Một task một làn một nhánh một PR (L9 và `kien-truc.md` mục 1); không PR chồng PR, không đổi base.
 - Làn trên máy phụ chỉ báo về qua PR trên GitHub. Chỉ máy chính ghi tệp bàn giao, ghi sổ giữ chỗ và merge.
 - Hai làn chạm nhau ngoài dự kiến (xung đột merge): dừng làn sau, ghi vào bảng, cắt lại task; không để làn tự giải xung đột của làn khác.
 

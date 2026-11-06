@@ -32,7 +32,7 @@ Nhãn căn cứ như `phuong-phap.md`. Chủ dự án (Alex) chốt 06/11: ba c�
 Hai đường phụ: **đường khẩn** cho lỗi đang hại người dùng (mục 10) và **phiếu đổi yêu cầu** khi yêu cầu đổi giữa phase (mục 11).
 Giữa các cổng, các vai AI tự đi; vai viết không bao giờ tự duyệt việc của mình.
 
-## 1. Bảy đơn vị việc
+## 1. Sáu đơn vị việc, và phiên
 
 | Tầng | Là gì | Phép thử | Ai mở, đóng |
 |---|---|---|---|
@@ -40,7 +40,7 @@ Giữa các cổng, các vai AI tự đi; vai viết không bao giờ tự duy�
 | Module | phần của project, phát hành và đo được riêng, thường là một repo | có tệp điều kiện bán được (L11) | chủ dự án |
 | Luồng việc (mã, vd `ABC-7`) | mục tiêu dài hơi của một module, qua nhiều phase; mã giữ suốt luồng | trả lời được «xong luồng thì module có gì mới» | chủ dự án mở, AI đề xuất đóng |
 | Phase | một mốc kiểm được bằng máy hay demo, ≤ 2 tuần lịch; không cấp mã mới | có một câu «xong khi…» và một buổi nghiệm thu | Cổng 2 mở, Cổng 3 đóng |
-| Task | 1–3 PR, ≤ 1 ngày | có 3–5 dòng tiêu chí nghiệm thu | Điều phối mở trong phase đã duyệt |
+| Task | một làn, một nhánh, một PR (L9), ≤ 1 ngày; việc cần nhiều PR thì tách task con | có 3–5 dòng tiêu chí nghiệm thu | Điều phối mở trong phase đã duyệt |
 | PR | đơn vị cổng kiểm, ≤ 400 dòng (L2) | `cong-cuoi` đọc được | AI mở; máy hay người cho merge theo mức |
 | Phiên | một lần AI chạy, **không** phải đơn vị việc; một phiên làm một task | — | — |
 
@@ -111,7 +111,7 @@ Chủ dự án trả lời kiểu `1a 2b` là phase mở. **Từ đây tới C�
 1. *Kiểm thử viên* viết test từ tiêu chí và hợp đồng giao diện, **trước code**; test phải đỏ khi chưa có code. Tên test chứa mã yêu cầu.
 2. *Lập trình viên* viết code tới khi test qua; không sửa test cho xanh (L5).
 3. Thân PR có dòng `yeu-cau: F.1.4, YC-3` và tiêu chí nghiệm thu (`phuong-phap.md` §2).
-4. Cổng vibe8 như hiện có: L1–L12, phiếu phản bác đúng SHA, mức do máy xếp. Mức Thường máy cho merge; mức Cao chờ người duyệt.
+4. Cổng vibe8 như hiện có (`phuong-phap.md` §2, §3): phiếu phản bác đúng SHA, mức do máy xếp; luật nào máy kiểm, luật nào là lời dặn xem mục 14. Mức Thường máy cho merge; mức Cao chờ người duyệt.
 
 ## 9. Cổng 3 và chặng 7 — Demo, phát hành theo bậc
 
@@ -149,10 +149,10 @@ Yêu cầu đổi giữa phase, hay khách sửa SRS: phiếu theo mẫu `mau/ph
 | PR Cao chờ duyệt **cùng lúc**, tính trên mọi repo | ≤ 5; đầy thì làn mới chỉ làm task Thường | số PR mở có `cong-cuoi` báo `chan (cao)` `[CHƯA CÓ máy đếm gộp]` |
 | Token mới mỗi task | Thường 300 k · Cao 600 k; vượt thì báo, không chặn | `ghi_token.py` `[CHƯA CÓ cảnh báo]` |
 | Câu hỏi giữa phase | 0, trừ ba ngoại lệ ở mục 7 | lời dặn |
-| Tỉ lệ PR Cao của repo sản phẩm | ≤ 30% (vibe8 không áp, vì repo này là cổng) | `do_vong.py` |
+| Tỉ lệ PR Cao của repo sản phẩm | ≤ 30% (vibe8 không áp, vì repo này là cổng) | `do_vong.py` theo mức `[CHƯA CÓ dòng tỉ lệ]` |
 | Giấy tờ | đặc tả phase ≤ 2 trang · thiết kế ≤ 6 · tờ khung ≤ 1 · dòng tài liệu mới / dòng code mới ≤ 1 mỗi phase | `[CHƯA CÓ]` |
 
-Số 5, 300 k, 600 k chưa có căn cứ đo, là mốc khởi đầu; đặt lại sau 30 PR có số `[SUY LUẬN từ trung vị token mỗi PR · nội bộ · 06/11]`.
+Số 5 chưa có căn cứ đo. 300 k, 600 k suy từ trung vị token mỗi PR cộng chừng một nửa `[SUY LUẬN từ số đo nội bộ · 06/11]`. Cả ba là mốc khởi đầu, đặt lại sau 30 PR có số.
 
 ## 13. Vai
 
@@ -176,7 +176,8 @@ Số 5, 300 k, 600 k chưa có căn cứ đo, là mốc khởi đầu; đặt l�
 
 | Kiểm | Loại | Có chưa |
 |---|---|---|
-| Phiếu phản bác đúng SHA, hai mức, L1–L12 | check `cong-cuoi` | có |
+| Phiếu phản bác đúng SHA, hai mức, L1–L5, L10 | check `cong-cuoi` | có |
+| L6–L9, L11, L12 | lời dặn, số đo trong `phuong-phap.md` §3 | chưa có máy chặn |
 | Mã trong dòng `yeu-cau:` có thật trong SRS, `docs/ma-yeu-cau.md` hay `docs/yeu-cau.md` | check `cong-cuoi` | chưa |
 | Mỗi mã được nhắc có test mang mã, đỏ ở commit trước code; mã đã đổi thì báo, không chặn | check `cong-cuoi` | chưa |
 | Ma trận truy vết mã → task → PR → test sinh từ thân PR và tên test | script | chưa |
@@ -188,7 +189,7 @@ Thứ tự làm máy: theo «sửa máy trước, thêm chữ sau» (`phuong-pha
 
 ## 15. Áp vào một repo
 
-1. Cài cổng như README; khai `cong/vung-nhay-cam.txt` và tệp điều kiện bán được (L11) trên nhánh gốc.
+1. Cài cổng như README; viết tệp điều kiện bán được (L11) và khai chính tệp đó cùng vùng Cao vào `cong/vung-nhay-cam.txt`, trên nhánh gốc.
 2. Có SRS thì đi đường A, chưa có thì đường B (mục 5); dựng `docs/phase/` và `docs/DECISIONS.md` nếu chưa có.
 3. Thư ký hộp thư giao module cho **một** Điều phối khi chặng 3 đủ điều kiện ra.
 4. Phase đầu tiên là thí điểm. Đo: điểm chạm của chủ dự án · token mỗi task · tỉ lệ tài liệu / code · lỗi bắt ở demo · lỗi lọt 14 ngày sau phát hành.
