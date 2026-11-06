@@ -64,7 +64,7 @@ class TestTheDuyet(unittest.TestCase):
         self.assertLessEqual(len(the.encode("utf-8")), the_duyet.GIOI_HAN)
         self.assertIn("Đã cắt", the)
         for i in range(5):  # tệp nào cũng còn tên và diff, không tệp nào bị đẩy ra
-            self.assertEqual(the.count("**`cong/t%d.py`**" % i), 1)
+            self.assertEqual(the.count("**[%d] `cong/t%d.py`**" % (i + 1, i)), 1)
         self.assertEqual(the_duyet._rao_dang_mo(the), 0)
 
     def test_tep_thuong_noi_ro_chua_ai_soat(self):
@@ -133,9 +133,39 @@ class TestTheDuyet(unittest.TestCase):
     def test_ten_cat_khong_trung_nhau(self):
         ds = [tep("src/payments/%s%s%s.py" % ("p" * 120, giua, "q" * 120), patch="@@ -0,0 +1 @@\n+" + giua)
               for giua in ("EVIL", "SAFE")]
-        ten = [the_duyet._ten(t) for t in ds]
+        ten = [the_duyet._ten(t, i + 1) for i, t in enumerate(ds)]
         self.assertNotEqual(ten[0], ten[1])
-        self.assertLessEqual(max(len(x.encode("utf-8")) for x in ten), the_duyet.TRAN_BYTE_TEN + 12)
+        self.assertLessEqual(max(len(x.encode("utf-8")) for x in ten), the_duyet.TRAN_BYTE_TEN + 12 + 8)
+
+    def test_bam_trung_van_khac_nhau_nho_so_thu_tu(self):
+        # Dấu băm 8 hex dò trùng được: giả lập băm trùng, hai dòng vẫn khác nhau vì có số thứ tự tệp.
+        class BamGia:
+            def __init__(self, *_):
+                pass
+
+            def hexdigest(self):
+                return "0" * 64
+
+        goc = the_duyet.hashlib.sha256
+        the_duyet.hashlib.sha256 = BamGia
+        try:
+            ds = [tep("cong/%s%s%s.py" % ("p" * 120, giua, "q" * 120), patch="@@ -0,0 +1 @@\n+" + giua)
+                  for giua in ("EVIL", "SAFE")]
+            the = self.the(ds_tep=ds)
+        finally:
+            the_duyet.hashlib.sha256 = goc
+        dong = [d for d in the.split("\n") if d.startswith("**[")]
+        self.assertEqual(len(dong), 2)
+        self.assertTrue(dong[0].startswith("**[1] "))
+        self.assertTrue(dong[1].startswith("**[2] "))
+        self.assertNotEqual(dong[0], dong[1])
+
+    def test_so_thu_tu_theo_danh_sach_tep_cua_pr(self):
+        # Tệp Thường đứng trước vẫn giữ số 1; tệp Cao đứng sau mang số 2 ở cả mục 1 và mục 4.
+        the = self.the(ds_tep=[tep("README.md"), tep("cong/kiem_pr.py", 1, 1, patch=PATCH_CONG)])
+        self.assertIn("[1] `README.md` +1 −0", the)
+        self.assertIn("- [2] `cong/kiem_pr.py`", the)
+        self.assertIn("**[2] `cong/kiem_pr.py`**", the)
 
     def test_lu_phieu_giu_phieu_moi_nhat(self):
         an = "\u200b" * 200
@@ -200,7 +230,7 @@ class TestTheDuyet(unittest.TestCase):
 
     def test_test_moi_duoc_liet_ke(self):
         the = self.the(ds_tep=[tep("cong/x.py"), tep("cong/tests/test_moi.py", status="added")])
-        self.assertIn("Tệp test mới: `cong/tests/test_moi.py`", the)
+        self.assertIn("Tệp test mới: [2] `cong/tests/test_moi.py`", the)
 
     def test_qua_co_thuong_van_co_the(self):
         the = self.the(ds_tep=[tep("app/a.py", 401, 0)])

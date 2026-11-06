@@ -100,13 +100,15 @@ def _gon(gia_tri, tran_byte):
     return chu
 
 
-def _ten(tep):
+def _ten(tep, so):
+    """Tên tệp trong thẻ, mở đầu bằng số thứ tự trong danh sách tệp của PR. Số thứ tự là thứ làm hai dòng khác nhau:
+    dấu băm 8 hex của tên bị cắt vẫn dò trùng được, số thứ tự thì không (để PR sau từ phản bác lượt 4, 06/11)."""
     # Cắt tên chứ không bỏ tệp: tệp nào cũng phải còn tên trong thẻ (phản bác lượt 3, 06/11).
     goc = tep.get("filename") if isinstance(tep, dict) else "?"
     ten = _gon(goc, TRAN_BYTE_TEN)
-    if ten != rui_ro.hien_thi(goc):  # đã cắt: thêm dấu băm để hai tên chỉ khác ở giữa không trùng nhau (phản bác lượt 4)
+    if ten != rui_ro.hien_thi(goc):  # đã cắt: dấu băm giúp tìm tệp ở tab Files
         ten += " #" + hashlib.sha256(str(goc).encode("utf-8", "surrogatepass")).hexdigest()[:8]
-    return ten
+    return "[%d] %s" % (so, ten)
 
 
 def _trong_tran(dong, tran_byte):
@@ -149,6 +151,7 @@ def lap_the(du_lieu, q, phieu, nhanh):
     phieu: [(bac|khong-bac, review, tai_hien)] đã lọc người có quyền ghi. nhanh: (xanh|do|cho, lý do)."""
     sha = str(du_lieu.get("sha_dau") or "")
     ds_tep = du_lieu.get("tep") if isinstance(du_lieu.get("tep"), list) else []
+    so_tep = {id(t): i + 1 for i, t in enumerate(ds_tep)}
     theo_tep = list(q.get("theo_tep") or [])
     if q.get("tran_l4"):
         # Trần L4: duyệt là merge cả phần Thường mà không phiếu nào soát, nên thẻ đưa diff mọi tệp.
@@ -174,7 +177,7 @@ def lap_the(du_lieu, q, phieu, nhanh):
     phan += ["- " + x for x in vi_sao]
     if cao:
         # Danh sách nào do người mở PR làm dài cũng có trần byte, để phiếu, test và diff còn chỗ.
-        ds_dong, con = _trong_tran(["- %s %s: %s" % (_ten(t), _so(t), "; ".join(ly)) for t, ly in cao[:TRAN_TEN]],
+        ds_dong, con = _trong_tran(["- %s %s: %s" % (_ten(t, so_tep[id(t)]), _so(t), "; ".join(ly)) for t, ly in cao[:TRAN_TEN]],
                                    GIOI_HAN // 6)
         con += max(0, len(cao) - TRAN_TEN)
         phan.append("Tệp cần anh đọc (diff ở mục 4):\n" + "\n".join(ds_dong)
@@ -185,7 +188,7 @@ def lap_the(du_lieu, q, phieu, nhanh):
             ai_soat = "đã có phiếu không bác trên đúng SHA (mục 2)"
         else:
             ai_soat = "**chưa có phiếu không bác trên đúng SHA: phần này chưa ai soát, cổng còn chặn**"
-        ten_thuong, con = _trong_tran(["%s %s" % (_ten(t), _so(t)) for t in thuong[:TRAN_TEN]], GIOI_HAN // 10)
+        ten_thuong, con = _trong_tran(["%s %s" % (_ten(t, so_tep[id(t)]), _so(t)) for t in thuong[:TRAN_TEN]], GIOI_HAN // 10)
         con += max(0, len(thuong) - TRAN_TEN)
         phan.append("Tệp mức Thường, thẻ không đưa diff, %s: " % ai_soat + ", ".join(ten_thuong)
                     + (" và %d tệp nữa" % con if con else ""))
@@ -204,7 +207,7 @@ def lap_the(du_lieu, q, phieu, nhanh):
                 ("" if trang_thai == "xanh" else " (%s)" % ly_do))
     moi = [t for t in ds_tep if isinstance(t, dict) and t.get("status") == "added"
            and rui_ro._la_test(rui_ro._chuan_hoa(str(t.get("filename") or "")), str(t.get("filename") or ""))]
-    phan.append("- Tệp test mới: %s" % (", ".join(_ten(t) for t in moi[:20]) if moi else "không có"))
+    phan.append("- Tệp test mới: %s" % (", ".join(_ten(t, so_tep[id(t)]) for t in moi[:20]) if moi else "không có"))
     phan.append("- Đỏ trước, xanh sau: cổng chưa đo (cần chạy test mới trên nhánh gốc).")
     if q.get("nguoi_duyet"):
         phan.append("_Đã có lượt duyệt hợp lệ của %s._" % ", ".join(q["nguoi_duyet"]))
@@ -215,7 +218,7 @@ def lap_the(du_lieu, q, phieu, nhanh):
     dau = "\n\n".join(phan)
     hien, dong_ten = [], []
     for t, _ in cao[:TRAN_TEN]:  # dòng tên của mục 4 cũng có trần byte, để còn chỗ cho diff
-        d = "\n\n**%s** %s\n\n" % (_ten(t), _so(t))
+        d = "\n\n**%s** %s\n\n" % (_ten(t, so_tep[id(t)]), _so(t))
         if sum(map(_byte, dong_ten)) + _byte(d) > GIOI_HAN // 4:
             break
         hien.append(t)
