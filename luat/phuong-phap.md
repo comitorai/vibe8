@@ -2,6 +2,7 @@
 
 Áp cho mọi repo cài vibe8, từ một PR lẻ tới cả một module (mô-đun) hay một phase (giai đoạn).
 Nhãn căn cứ: `[ĐÃ KIỂM: …]` · `[SUY LUẬN từ …]` · `[CHƯA KIỂM]`. «Nội bộ» là số đo trên repo riêng của chủ dự án, không đăng ở đây.
+Đường đi từ ý tưởng tới phát hành và vai Điều phối: `luat/kien-truc.md`, `luat/vai/dieu-phoi.md` (thí điểm, chưa là luật §3).
 
 ## 0. Mục tiêu (chủ dự án chốt 05/11, xếp theo thứ tự)
 
