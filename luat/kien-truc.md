@@ -152,7 +152,7 @@ Yêu cầu đổi giữa phase, hay khách sửa SRS: phiếu theo mẫu `mau/ph
 | Tỉ lệ PR Cao của repo sản phẩm | ≤ 30% (vibe8 không áp, vì repo này là cổng) | `do_vong.py` theo mức `[CHƯA CÓ dòng tỉ lệ]` |
 | Giấy tờ | đặc tả phase ≤ 2 trang · thiết kế ≤ 6 · tờ khung ≤ 1 · dòng tài liệu mới / dòng code mới ≤ 1 mỗi phase | `[CHƯA CÓ]` |
 
-Số 5 chưa có căn cứ đo. 300 k là trung vị token mỗi PR cộng chừng một nửa; 600 k là gấp đôi mức Thường, vì task Cao thêm phản bác model mạnh và lượt vá `[SUY LUẬN từ số đo nội bộ · 06/11]`. Cả ba là mốc khởi đầu, đặt lại sau 30 PR có số.
+Số 5 chưa có căn cứ đo. 300 k là trung vị token mỗi PR cộng chừng một nửa; 600 k là gấp đôi mức Thường, vì task Cao viết bằng model mạnh (L12) và thường có lượt vá kèm phản bác lại `[SUY LUẬN từ số đo nội bộ · 06/11]`. Cả ba là mốc khởi đầu, đặt lại sau 30 PR có số.
 
 ## 13. Vai
 
