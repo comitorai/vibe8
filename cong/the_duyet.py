@@ -151,14 +151,14 @@ def lap_the(du_lieu, q, phieu, nhanh):
     phieu: [(bac|khong-bac, review, tai_hien)] đã lọc người có quyền ghi. nhanh: (xanh|do|cho, lý do)."""
     sha = str(du_lieu.get("sha_dau") or "")
     ds_tep = du_lieu.get("tep") if isinstance(du_lieu.get("tep"), list) else []
-    so_tep = {id(t): i + 1 for i, t in enumerate(ds_tep)}
     theo_tep = list(q.get("theo_tep") or [])
     if q.get("tran_l4"):
         # Trần L4: duyệt là merge cả phần Thường mà không phiếu nào soát, nên thẻ đưa diff mọi tệp.
         theo_tep = [ly or ["mức Thường, chưa có phiếu không bác: anh duyệt là merge tệp này không ai soát"]
                     for ly in theo_tep + [[]] * (len(ds_tep) - len(theo_tep))]
-    cao = [(t, ly) for t, ly in zip(ds_tep, theo_tep) if ly]
-    thuong = [t for t, ly in zip(ds_tep, theo_tep) if not ly]
+    # Số thứ tự đi kèm tệp từ đầu, không tra lại theo id(): cùng một đối tượng xuất hiện hai lần vẫn mang hai số.
+    cao = [(i, t, ly) for i, (t, ly) in enumerate(zip(ds_tep, theo_tep), 1) if ly]
+    thuong = [(i, t) for i, (t, ly) in enumerate(zip(ds_tep, theo_tep), 1) if not ly]
     phan = ["## Thẻ duyệt", "SHA `%s` · %d tệp · %d dòng. Duyệt là duyệt đúng SHA này; có commit mới thì duyệt lại."
             % (sha[:12], len(ds_tep), q.get("so_dong", 0))]
 
@@ -177,7 +177,7 @@ def lap_the(du_lieu, q, phieu, nhanh):
     phan += ["- " + x for x in vi_sao]
     if cao:
         # Danh sách nào do người mở PR làm dài cũng có trần byte, để phiếu, test và diff còn chỗ.
-        ds_dong, con = _trong_tran(["- %s %s: %s" % (_ten(t, so_tep[id(t)]), _so(t), "; ".join(ly)) for t, ly in cao[:TRAN_TEN]],
+        ds_dong, con = _trong_tran(["- %s %s: %s" % (_ten(t, i), _so(t), "; ".join(ly)) for i, t, ly in cao[:TRAN_TEN]],
                                    GIOI_HAN // 6)
         con += max(0, len(cao) - TRAN_TEN)
         phan.append("Tệp cần anh đọc (diff ở mục 4):\n" + "\n".join(ds_dong)
@@ -188,7 +188,7 @@ def lap_the(du_lieu, q, phieu, nhanh):
             ai_soat = "đã có phiếu không bác trên đúng SHA (mục 2)"
         else:
             ai_soat = "**chưa có phiếu không bác trên đúng SHA: phần này chưa ai soát, cổng còn chặn**"
-        ten_thuong, con = _trong_tran(["%s %s" % (_ten(t, so_tep[id(t)]), _so(t)) for t in thuong[:TRAN_TEN]], GIOI_HAN // 10)
+        ten_thuong, con = _trong_tran(["%s %s" % (_ten(t, i), _so(t)) for i, t in thuong[:TRAN_TEN]], GIOI_HAN // 10)
         con += max(0, len(thuong) - TRAN_TEN)
         phan.append("Tệp mức Thường, thẻ không đưa diff, %s: " % ai_soat + ", ".join(ten_thuong)
                     + (" và %d tệp nữa" % con if con else ""))
@@ -205,9 +205,9 @@ def lap_the(du_lieu, q, phieu, nhanh):
     trang_thai, ly_do = nhanh
     phan.append("- `cong-nhanh` trên đúng SHA: " + {"xanh": "xanh", "do": "**đỏ**"}.get(trang_thai, "đang chờ") +
                 ("" if trang_thai == "xanh" else " (%s)" % ly_do))
-    moi = [t for t in ds_tep if isinstance(t, dict) and t.get("status") == "added"
+    moi = [(i, t) for i, t in enumerate(ds_tep, 1) if isinstance(t, dict) and t.get("status") == "added"
            and rui_ro._la_test(rui_ro._chuan_hoa(str(t.get("filename") or "")), str(t.get("filename") or ""))]
-    phan.append("- Tệp test mới: %s" % (", ".join(_ten(t, so_tep[id(t)]) for t in moi[:20]) if moi else "không có"))
+    phan.append("- Tệp test mới: %s" % (", ".join(_ten(t, i) for i, t in moi[:20]) if moi else "không có"))
     phan.append("- Đỏ trước, xanh sau: cổng chưa đo (cần chạy test mới trên nhánh gốc).")
     if q.get("nguoi_duyet"):
         phan.append("_Đã có lượt duyệt hợp lệ của %s._" % ", ".join(q["nguoi_duyet"]))
@@ -217,8 +217,8 @@ def lap_the(du_lieu, q, phieu, nhanh):
         phan.append("_Không tệp nào ở mức Cao._")
     dau = "\n\n".join(phan)
     hien, dong_ten = [], []
-    for t, _ in cao[:TRAN_TEN]:  # dòng tên của mục 4 cũng có trần byte, để còn chỗ cho diff
-        d = "\n\n**%s** %s\n\n" % (_ten(t, so_tep[id(t)]), _so(t))
+    for i, t, _ in cao[:TRAN_TEN]:  # dòng tên của mục 4 cũng có trần byte, để còn chỗ cho diff
+        d = "\n\n**%s** %s\n\n" % (_ten(t, i), _so(t))
         if sum(map(_byte, dong_ten)) + _byte(d) > GIOI_HAN // 4:
             break
         hien.append(t)
