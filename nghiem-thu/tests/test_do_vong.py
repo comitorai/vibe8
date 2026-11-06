@@ -192,5 +192,39 @@ class TestDocToken(unittest.TestCase):
         self.assertIsNone(do_vong.doc_token([{"body": None, "author_association": "OWNER"}]))
 
 
+class GhTrang:
+    """Giả API trả `tong` mục chia trang 100, mục mới cập nhật trước."""
+    def __init__(self, tong):
+        self.tong, self.da_goi = tong, []
+
+    def goi(self, phuong_thuc, duong, body=None):
+        so = int(duong.rsplit("page=", 1)[1])
+        self.da_goi.append(so)
+        dau = (so - 1) * 100
+        return [{"so": i, "updated_at": "2026-11-%02dT00:00:00Z" % max(1, 30 - i // 20)} for i in range(dau, min(dau + 100, self.tong))]
+
+
+class TestDocTrang(unittest.TestCase):
+    def test_doc_het_cac_trang_toi_trang_thieu(self):
+        gh = GhTrang(250)
+        ds, du = do_vong.doc_trang(gh, "/pulls?state=all")
+        self.assertEqual((len(ds), du, gh.da_goi), (250, True, [1, 2, 3]))
+
+    def test_dung_khi_trang_cu_hon_dau_ky(self):
+        gh = GhTrang(900)
+        ds, du = do_vong.doc_trang(gh, "/pulls?state=all", het=lambda t: t[-1]["updated_at"] < "2026-11-25")
+        self.assertEqual((len(ds), du, gh.da_goi), (200, True, [1, 2]))
+
+    def test_cham_tran_thi_bao_chua_du(self):
+        gh = GhTrang(1000)
+        ds, du = do_vong.doc_trang(gh, "/pulls?state=all", tran=3)
+        self.assertEqual((len(ds), du), (300, False))
+
+    def test_dung_100_muc_doc_them_mot_trang_rong(self):
+        gh = GhTrang(100)
+        ds, du = do_vong.doc_trang(gh, "/pulls?state=all")
+        self.assertEqual((len(ds), du, gh.da_goi), (100, True, [1, 2]))
+
+
 if __name__ == "__main__":
     unittest.main()

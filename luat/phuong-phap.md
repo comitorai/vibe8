@@ -136,7 +136,7 @@ Hai trường đầu là **nhãn** trên issue, đúng một nhãn mỗi trườ
 | Mức rủi ro của PR gây lỗi | Thường · Cao (PR trước 06/11: Thấp · Vừa · Cao) | máy, từ kết luận của cổng trên PR đó |
 
 **8.3 Đo — máy đọc nhãn, không đếm tay.**
-`GH_TOKEN=... python3 nghiem-thu/do_vong.py --repo chu/repo --ngay 30` chỉ gọi GET, ra bảng Markdown để dán vào issue `xet-vong`: năm số của mục 5 và bảng «lỗi lọt theo mức nặng · khâu». `[ĐÃ KIỂM: chạy trên comitorai/vibe8 · 05/11; 10 test ở nghiem-thu/tests/test_do_vong.py]`
+`GH_TOKEN=... python3 nghiem-thu/do_vong.py --repo chu/repo --ngay 14` chỉ gọi GET, đọc từng trang tới 1000 mục mỗi danh sách, ra bảng Markdown để dán vào issue `xet-vong`: năm số của mục 5 và bảng «lỗi lọt theo mức nặng · khâu». `[ĐÃ KIỂM: chạy trên comitorai/vibe8 · 05/11; 10 test ở nghiem-thu/tests/test_do_vong.py]`
 - Số nào dưới ngưỡng «đủ để kết luận» của mục 5 thì bảng ghi «chưa đủ mẫu».
 - PR thuộc kỳ khi mở hoặc merge trong kỳ. Issue `loi-lot` thiếu hoặc viết lệch dòng `pr-gay-loi` được liệt kê riêng, không đoán.
 - **Độ đúng:** lý do chặn đọc từ mục «Lý do» của check `cong-cuoi` trên mọi commit của PR (mục «Chi tiết» là phân loại rủi ro, không tính). Người duyệt thấy chặn oan thì gắn nhãn `chan-oan` lên PR; mọi lý do chặn của PR đó tính là oan. Nhãn do chính tác giả PR gắn thì không tính và được liệt kê.
@@ -145,7 +145,7 @@ Hai trường đầu là **nhãn** trên issue, đúng một nhãn mỗi trườ
 - **Giới hạn:** mỗi danh sách đọc 100 mục mới nhất (bảng cảnh báo khi chạm trần); PR sửa gấp mà không có issue hay Revert thì máy không thấy; người có quyền ghi vẫn gỡ được nhãn `loi-lot`, hạ mức nặng hay sửa dòng `pr-gay-loi` mà máy không thấy (chỉ `chan-oan` được kiểm người gắn); hai PR chung một SHA thì lượt check của SHA đó tính cho cả hai.
 
 **8.4 Xét và đề xuất.**
-- **Lịch:** 7 ngày một lần (chủ dự án chọn, 06/11): việc định giờ chạy `do_vong.py --ngay 7` cho mọi repo đã áp và mở issue `xet-vong` kèm bảng số **trong chính repo đó**, vì số của repo riêng ở lại repo riêng. Đề xuất đổi luật mang sang repo này chỉ gồm khâu hở và cách sửa. Luật nào tới ngày ở cột «Xét» của mục 3 thì xét ở buổi đầu tiên sau ngày đó. Script không chạy được thì hoãn buổi xét của repo đó, không đoán số.
+- **Lịch:** 7 ngày một lần (chủ dự án chọn, 06/11). Mỗi buổi đo **cửa sổ trượt 14 ngày** (`do_vong.py --ngay 14`): tỉ lệ thay đổi gây hỏng chỉ tính PR đã merge đủ 7 ngày, nên cửa sổ 7 ngày luôn ra 0 PR; hai buổi liền nhau chung 7 ngày số liệu, đề xuất chỉ dựa vào lỗi lọt mới kể từ buổi trước. Repo này chạy bằng `.github/workflows/xet-vong.yml`; repo khác đã áp thì việc định giờ của chủ dự án chạy `do_vong.py` từ bản sao repo này và mở issue `xet-vong` **trong chính repo đó**, vì số của repo riêng ở lại repo riêng. Đề xuất đổi luật mang sang repo này chỉ gồm khâu hở và cách sửa. Luật nào tới ngày ở cột «Xét» của mục 3 thì xét ở buổi đầu tiên sau ngày đó, với số đo lại bằng `--ngay <số ngày cột Xét>`. Script không chạy được thì hoãn buổi xét của repo đó, không đoán số.
 - **Không chờ lịch:** mỗi lỗi N1 có buổi xét riêng trong 3 ngày, tìm khâu hở, không tìm người có lỗi.
 - **Mỗi buổi tối đa 3 đề xuất**, ưu tiên khâu có nhiều lỗi N1 và N2 nhất. Mỗi đề xuất ghi: khâu hở và các issue làm căn cứ · thay đổi gì (sửa máy, thêm, sửa hay bỏ luật) · đủ bốn thứ của mục 1 · tốn thêm bao nhiêu token và thời gian.
 - **Sửa máy trước, thêm chữ sau:** khâu hở mà cổng hoặc test chặn được thì sửa cổng hoặc test, không thêm luật.

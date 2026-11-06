@@ -4,7 +4,7 @@
     GH_TOKEN=... python3 nghiem-thu/do_vong.py --repo chu/repo [--ngay 30] [--json]
 
 Ra bảng Markdown để dán vào issue `xet-vong`. Số nào chưa đủ mẫu thì ghi «chưa đủ mẫu», không kết luận.
-Giới hạn: mỗi danh sách chỉ đọc 100 mục mới nhất (bảng báo khi chạm trần). PR thuộc kỳ khi mở hoặc merge trong kỳ.
+Giới hạn: mỗi danh sách đọc tối đa 1000 mục mới nhất, từng trang 100 (bảng báo khi chạm trần). PR thuộc kỳ khi mở hoặc merge trong kỳ.
 Hai PR chung một SHA thì lượt check của SHA đó tính cho cả hai.
 Thời gian ra tính tới lúc merge: repo chưa có bước phát hành riêng.
 """
@@ -27,6 +27,7 @@ NANG = ("N1", "N2", "N3")
 KHAU = ("dac-ta", "test", "phan-bac", "khong-phan-bac", "cong", "chay-that", "ngoai-tam")
 MUC = ("thuong", "cao", "thap", "trung_binh")  # thap, trung_binh: PR trước 06/11, khi cổng còn ba mức
 MUC_CU = ("thap", "trung_binh")  # bảng chỉ in khi kỳ còn PR mang mức này, ghi rõ là mức cũ
+TRAN_TRANG = 10  # mỗi danh sách đọc tối đa 10 trang · 1000 mục; quá thì bảng báo «chạm trần»
 DU_MAU = {"loi_lot": 10, "ti_le_hong": 30, "thoi_gian_ra": 30, "do_dung": 30, "token": 30}
 _MUC_TIEU_DE = re.compile(r"\((thuong|cao|thap|trung_binh)\)")
 _GAY_LOI = re.compile(r"^pr-gay-loi:\s*#(\d+)\s*$", re.M)
@@ -265,16 +266,29 @@ def bang(k):
         d += ["", "**Cảnh báo:** nhánh %s chưa ghim App cho `%s` và không có `--app-id`: không tin check nào, "
               "mức rủi ro và độ đúng của cổng để trống." % (ten.NHANH_GOC, ten.CHECK_CUOI)]
     if k.get("cham_tran"):
-        d += ["", "**Cảnh báo:** danh sách chạm trần 100 mục, số có thể thiếu: " + ", ".join(k["cham_tran"])]
+        d += ["", "**Cảnh báo:** danh sách chạm trần %d mục, số có thể thiếu: %s" % (100 * TRAN_TRANG, ", ".join(k["cham_tran"]))]
     return "\n".join(d)
+
+
+def doc_trang(gh, duong, het=lambda trang: False, tran=TRAN_TRANG):
+    """Đọc từng trang 100 mục tới trang thiếu hoặc `het(trang)` đúng. Trả (mục, đủ); đủ = False khi chạm `tran` trang."""
+    ra = []
+    for so in range(1, tran + 1):
+        trang = gh.goi("GET", "%s&per_page=100&page=%d" % (duong, so))
+        ra += trang
+        if len(trang) < 100 or het(trang):
+            return ra, True
+    return ra, False
 
 
 def thu_thap(gh, ngay, nay, app_id):
     dau = (_gio(nay) - datetime.timedelta(days=ngay)).strftime("%Y-%m-%dT%H:%M:%SZ")
     tran = []
-    # Sắp theo lần cập nhật: PR mở trước kỳ mà merge trong kỳ vẫn lọt vào trang đầu.
-    ds = gh.goi("GET", "/pulls?state=all&base=%s&sort=updated&direction=desc&per_page=100" % ten.NHANH_GOC)
-    if len(ds) == 100:
+    # Sắp theo lần cập nhật: PR mở trước kỳ mà merge trong kỳ vẫn lọt vào. Mở và merge đều không muộn hơn lần cập nhật,
+    # nên đọc tới trang có PR cập nhật trước đầu kỳ là đủ.
+    ds, du = doc_trang(gh, "/pulls?state=all&base=%s&sort=updated&direction=desc" % ten.NHANH_GOC,
+                       het=lambda trang: trang[-1]["updated_at"] < dau)
+    if not du:
         tran.append("PR")
     ds_pr = []
     for p in ds:
@@ -299,8 +313,8 @@ def thu_thap(gh, ngay, nay, app_id):
                       "dong": p.get("state") == "closed", "token": token, "usd": usd})
     ds_issue = []
     for nhan in ("loi-lot", "bat-truoc-merge"):
-        ds = gh.goi("GET", "/issues?labels=%s&state=all&since=%s&per_page=100" % (nhan, dau))
-        if len(ds) == 100:
+        ds, du = doc_trang(gh, "/issues?labels=%s&state=all&since=%s" % (nhan, dau))
+        if not du:
             tran.append(nhan)
         ds_issue += [{"so": i["number"], "mo": i["created_at"], "nhan": [n["name"] for n in i.get("labels") or []],
                       "than": i.get("body") or "", "la_pr": "pull_request" in i}

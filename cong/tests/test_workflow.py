@@ -157,7 +157,7 @@ class TestTinHieuDuyet(unittest.TestCase):
 
 
 class TestXetVong(unittest.TestCase):
-    """Luật §8.4: mỗi 14 ngày máy chạy do_vong.py và mở issue xet-vong."""
+    """Luật §8.4: mỗi 7 ngày máy chạy do_vong.py (cửa sổ 14 ngày) và mở issue xet-vong."""
 
     def test_chi_chay_dinh_gio_hoac_tay(self):
         su_kien = re.findall(r"^  (\w+):", XET_VONG.split("\non:\n")[1].split("\npermissions:")[0], re.M)
@@ -169,11 +169,10 @@ class TestXetVong(unittest.TestCase):
         self.assertEqual(XET_VONG.count("permissions:"), 1)
         self.assertNotIn("secrets.", XET_VONG)
 
-    def test_14_ngay_mot_lan(self):
-        self.assertRegex(XET_VONG, r'cron: "\d+ \d+ \* \* 1"')  # mỗi thứ Hai
-        self.assertIn("/ 604800 % 2", XET_VONG)  # bỏ tuần lẻ tính từ epoch: cách nhau đúng 14 ngày
-        self.assertIn('[ "$SU_KIEN" = "schedule" ]', XET_VONG)  # chạy tay thì không bỏ
-        self.assertIn("--ngay 14", XET_VONG)
+    def test_7_ngay_mot_lan_cua_so_14(self):
+        self.assertRegex(XET_VONG, r'cron: "\d+ \d+ \* \* 1"')  # mỗi thứ Hai, không bỏ tuần nào
+        self.assertNotIn("604800", XET_VONG)
+        self.assertIn("--ngay 14", XET_VONG)  # cửa sổ 7 ngày làm tỉ lệ hỏng luôn 0 PR (do_vong.py chỉ tính PR merge đủ 7 ngày)
 
     def test_script_hong_thi_khong_mo_issue(self):
         khoi = khoi_run(XET_VONG)[0]
