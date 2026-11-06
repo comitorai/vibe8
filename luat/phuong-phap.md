@@ -33,7 +33,7 @@ Alex chốt 06/11 (1a): chỉ có **đạt** hoặc **không đạt**; không đ
 - **Thường**: mọi thứ còn lại, gồm tài liệu, test mới, mã và cấu hình chạy được.
 - **Repo chưa có `cong/vung-nhay-cam.txt` trên nhánh gốc thì cổng chặn mọi PR**: không biết đâu là tiền thì không phân được hai mức. Repo không có vùng nào thì để tệp chỉ có chú thích. Tệp này thuộc `cong/` nên khai hay sửa đều là Cao.
 
-`[ĐÃ KIỂM: test cổng · 06/11]` Cổng xếp hai mức như trên và đọc vùng từ nhánh gốc, nên PR không tự gỡ vùng được. Mọi PR Thường cần phiếu phản bác của L3 trên đúng SHA, không còn rút thăm; trần 2 phiếu bác của L4; phiếu bác trên một SHA thì phiếu không bác ghi sau không gỡ được, phải có commit mới; cách ghi phiếu ở README. Máy không phân biệt được hai agent chung tài khoản, nên «agent khác» vẫn là lời dặn, chưa là hàng rào. Chưa làm tài khoản thứ hai cho người phản bác (Alex 1a, 06/11): khi token của nó nằm cùng máy với agent viết code thì hai tài khoản chỉ khác tên. Làm khi một trong hai điều sau xảy ra: lỗi lọt từ PR Thường tăng trong bản đo tuần của `do_vong.py`, hoặc người phản bác chạy ngoài máy với token mà agent viết code không đọc được. Mức Cao chưa bắt phiếu, chỉ bắt người duyệt.
+`[ĐÃ KIỂM: test cổng · 06/11]` Cổng xếp hai mức như trên và đọc vùng từ nhánh gốc, nên PR không tự gỡ vùng được. Mọi PR, cả mức Cao, cần phiếu phản bác của L3 trên đúng SHA, không còn rút thăm; trần L4 là bác trên 2 SHA khác nhau, khi đó người admin quyết bằng lượt duyệt ghi sau phiếu bác cuối, có dòng `quyet-l4:`, và thẻ đưa diff mọi tệp; phiếu bác trên một SHA thì phiếu không bác ghi sau không gỡ được, phải có commit mới; cách ghi phiếu ở README. Máy không phân biệt được hai agent chung tài khoản, nên «agent khác» vẫn là lời dặn, chưa là hàng rào. Chưa làm tài khoản thứ hai cho người phản bác (Alex 1a, 06/11): khi token của nó nằm cùng máy với agent viết code thì hai tài khoản chỉ khác tên. Làm khi một trong hai điều sau xảy ra: lỗi lọt từ PR Thường tăng trong bản đo tuần của `do_vong.py`, hoặc người phản bác chạy ngoài máy với token mà agent viết code không đọc được. Mức Cao cần cả phiếu lẫn người duyệt (Alex 1a, 06/11): thẻ duyệt chỉ đưa diff của tệp Cao, phần Thường của PR đó do phiếu soát.
 `[ĐÃ KIỂM: PR 28 · 05/11]` PR thật chỉ sửa một tệp tài liệu trong vùng đã khai ra `chan (cao)`.
 Giới hạn đã biết: cổng chỉ thấy đường dẫn, nên mã tiền đặt ngoài vùng đã khai thì là Thường; vùng khai thiếu là lỗ của repo, người duyệt PR khai vùng phải soát. Tách một thay đổi lớn thành nhiều PR nhỏ vẫn lọt qua trần cỡ của L2.
 
@@ -43,9 +43,9 @@ Giới hạn đã biết: cổng chỉ thấy đường dẫn, nên mã tiền �
 | Test | test có sẵn xanh; thêm test cho hành vi mới | như Thường; sửa lỗi thì có test đỏ trước khi sửa |
 | Phản bác của agent | 1 lượt (L3) | 1 lượt + 1 lượt hẹp sau khi sửa logic |
 | Người duyệt | không | admin, khác tác giả, đúng SHA |
-| Merge | tự, khi cổng xanh và phiếu không bác | sau duyệt |
+| Merge | tự, khi cổng xanh và phiếu không bác | sau duyệt và phiếu không bác |
 
-**Làn sửa gấp** (lỗi đang hại người dùng): mức nào vẫn giữ mức đó, nhưng lượt phản bác được chạy sau merge, trong 24 giờ; người duyệt của mức Cao vẫn bắt buộc trước merge. Cổng không biết PR nào là sửa gấp: PR Thường muốn merge trước phiếu thì cần người admin duyệt đúng SHA.
+**Làn sửa gấp** (lỗi đang hại người dùng): mức nào vẫn giữ mức đó. Cổng không biết PR nào là sửa gấp và chặn mọi PR chưa có phiếu `khong-bac` trên đúng SHA (Alex 1a, 06/11), nên trước merge chỉ cần một lượt phản bác hẹp trên chỗ sửa; lượt đầy đủ chạy sau merge, trong 24 giờ. Người duyệt của mức Cao vẫn bắt buộc trước merge.
 
 ## 3. Các luật
 
@@ -118,7 +118,7 @@ Hai trường đầu là **nhãn** trên issue, đúng một nhãn mỗi trườ
 | Trường | Giá trị | Ai điền |
 |---|---|---|
 | Mức nặng | **N1** mất hoặc sai dữ liệu, lộ dữ liệu, sai tiền, vượt quyền · **N2** chức năng chính hỏng, không có đường vòng · **N3** có đường vòng hoặc chỉ sai giao diện | agent không viết PR gây lỗi đề xuất; người duyệt chốt N1 |
-| Khâu lẽ ra chặn | khâu **sớm nhất** lẽ ra bắt được, chỉ một: `dac-ta` (tiêu chí thiếu) · `test` (thiếu test) · `phan-bac` (có lượt mà sót) · `khong-phan-bac` (merge không phiếu, vd làn sửa gấp) · `cong` (xếp sai mức) · `chay-that` (L7) · `ngoai-tam` (môi trường, bên thứ ba) | như trên |
+| Khâu lẽ ra chặn | khâu **sớm nhất** lẽ ra bắt được, chỉ một: `dac-ta` (tiêu chí thiếu) · `test` (thiếu test) · `phan-bac` (có lượt mà sót) · `khong-phan-bac` (merge không phiếu, vd người admin vượt cổng) · `cong` (xếp sai mức) · `chay-that` (L7) · `ngoai-tam` (môi trường, bên thứ ba) | như trên |
 | Mức rủi ro của PR gây lỗi | Thường · Cao (PR trước 06/11: Thấp · Vừa · Cao) | máy, từ kết luận của cổng trên PR đó |
 
 **8.3 Đo — máy đọc nhãn, không đếm tay.**

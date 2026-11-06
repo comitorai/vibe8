@@ -51,7 +51,10 @@ _TEN_TEST_HOA = re.compile(r"[a-z0-9](Tests?|Spec)\.(java|kt|cs|rb|php|swift|sca
 
 def hien_thi(duong):
     """Tên tệp do người mở PR đặt: làm sạch trước khi đưa vào log hay check run."""
-    chu = [c if c.isprintable() and unicodedata.category(c) != "Cf" else "\\u%04x" % ord(c) for c in str(duong)[:200]]
+    duong = str(duong)
+    if len(duong) > 200:  # giữ cả đầu lẫn đuôi: phần đuôi thường nói tệp nằm ở đâu
+        duong = duong[:80] + "…" + duong[-119:]
+    chu = [c if c.isprintable() and unicodedata.category(c) != "Cf" else "\\u%04x" % ord(c) for c in duong]
     return "`" + "".join(chu).replace("`", "'") + "`"
 
 
@@ -209,15 +212,18 @@ def _xet_muc_moi(tep, vung):
 
 
 def phan_loai(ds_tep, vung=()):
-    """Trả {muc, ly_do, so_dong, qua_co}. vung: mẫu đường dẫn nhạy cảm đọc từ nhánh gốc (doc_vung)."""
+    """Trả {muc, ly_do, so_dong, qua_co, theo_tep}. theo_tep[i]: lý do Cao của ds_tep[i]. vung: mẫu đường dẫn nhạy cảm đọc từ nhánh gốc (doc_vung)."""
     if not isinstance(ds_tep, list):
-        return {"muc": CAO, "ly_do": ["không có danh sách tệp"], "so_dong": 0, "qua_co": False}
-    muc, ly_do, tong, ma_chay = THUONG, [], 0, []
+        return {"muc": CAO, "ly_do": ["không có danh sách tệp"], "so_dong": 0, "qua_co": False, "theo_tep": []}
+    muc, ly_do, tong, ma_chay, theo_tep = THUONG, [], 0, [], []
     for tep in ds_tep:
         la_ma, cao = _xet_muc_moi(tep, vung)
         if la_ma:
             ma_chay.append(tep["filename"])
-        for muc_tep, vi_sao in _xet_tep(tep) + [(CAO, x) for x in cao]:
+        cua_tep = _xet_tep(tep) + [(CAO, x) for x in cao]
+        # Thẻ duyệt cần biết tệp nào làm PR thành Cao để chỉ đưa diff của tệp đó cho người duyệt.
+        theo_tep.append([vi_sao for muc_tep, vi_sao in cua_tep if muc_tep == CAO])
+        for muc_tep, vi_sao in cua_tep:
             ly_do.append(vi_sao)
             if _THU_TU[muc_tep] > _THU_TU[muc]:
                 muc = muc_tep
@@ -226,4 +232,4 @@ def phan_loai(ds_tep, vung=()):
         tong += sum(so) if so and not _la_lockfile(tep) else 0
     if ma_chay:
         ly_do.append("%d tệp mã hoặc cấu hình chạy được, vd %s" % (len(ma_chay), hien_thi(ma_chay[0])))
-    return {"muc": muc, "ly_do": ly_do, "so_dong": tong, "qua_co": tong > NGUONG_CO_DONG}
+    return {"muc": muc, "ly_do": ly_do, "so_dong": tong, "qua_co": tong > NGUONG_CO_DONG, "theo_tep": theo_tep}

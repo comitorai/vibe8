@@ -6,7 +6,7 @@ nguoi_tin [login], nguoi_ghi [login có quyền ghi], duyet [{user, user_type, s
 """
 import re
 
-from . import rui_ro, ten
+from . import rui_ro, ten, the_duyet
 
 CHO_QUA, CHAN, CHO = "cho_qua", "chan", "cho"
 
@@ -15,31 +15,55 @@ _TRANG_THAI_XET = {"APPROVED", "CHANGES_REQUESTED", "DISMISSED"}
 _NGOAI_LE = re.compile(r"^ngoai-le-co:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
 # Phiếu phản bác (luật L3): một lượt review, thân có hai dòng này. Tái hiện bắt buộc cả khi không bác: ghi đã thử gì.
 _PHIEU = re.compile(r"^phieu-phan-bac:[ \t]*(bac|khong-bac)[ \t\r]*$", re.M)
-_TAI_HIEN = re.compile(r"^tai-hien:[ \t]*\S.{8,}\S[ \t\r]*$", re.M)
+_TAI_HIEN = re.compile(r"^tai-hien:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
+# Ở trần L4 admin quyết thay phiếu: lượt duyệt phải có dòng này, vì thời điểm không đủ (review cũ sửa thành bác giữ submitted_at).
+_QUYET_L4 = re.compile(r"^quyet-l4:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
 _TRANG_THAI_PHIEU = {"COMMENTED", "APPROVED", "CHANGES_REQUESTED"}
 TRAN_PHIEU_BAC = 2  # L4: quá hai vòng bác thì người quyết
 
 
-def _xet_phieu(du_lieu, sha):
-    """Trả (lý do chặn hoặc None, chi tiết). Chỉ người có quyền ghi được ghi phiếu: repo công khai thì ai cũng gửi được review.
-    Máy không phân biệt được hai agent dùng chung tài khoản, nên tác giả cũng ghi phiếu được (giới hạn ghi ở luật)."""
+def _doc_phieu(du_lieu):
+    """Phiếu hợp lệ theo thứ tự thời gian: [(bac|khong-bac, review, dòng tái hiện)]. Chỉ người có quyền ghi được ghi phiếu:
+    repo công khai thì ai cũng gửi được review. Máy không phân biệt được hai agent dùng chung tài khoản, nên tác giả cũng
+    ghi phiếu được (giới hạn ghi ở luật)."""
     ghi = {str(x).casefold() for x in du_lieu.get("nguoi_ghi") or [] if x}
     ds = []
     for r in sorted(du_lieu.get("duyet") or [], key=lambda r: str(r.get("submitted_at") or "")):
         than = str(r.get("body") or "")
-        m = _PHIEU.search(than)
+        m, tai_hien = _PHIEU.search(than), _TAI_HIEN.search(than)
         if not m or r.get("state") not in _TRANG_THAI_PHIEU:  # PENDING là nháp, DISMISSED đã bị gỡ
             continue
         login = str(r.get("user") or "").casefold()
-        if login not in ghi or r.get("user_type") != "User" or login.endswith("[bot]") or not _TAI_HIEN.search(than):
+        if login not in ghi or r.get("user_type") != "User" or login.endswith("[bot]") or not tai_hien:
             continue
-        ds.append((m.group(1), r))
-    so_bac = sum(1 for ket, _ in ds if ket == "bac")
+        ds.append((m.group(1), r, tai_hien.group(1)))
+    return ds
+
+
+def _so_bac(du_lieu):
+    """Số vòng bác: số SHA khác nhau có phiếu bác. Một người bác hai lần trên một SHA vẫn là một vòng (L4 đếm vòng)."""
+    return len({r.get("commit_id") for ket, r, _ in _doc_phieu(du_lieu)
+                if ket == "bac" and SHA_HOP_LE.fullmatch(str(r.get("commit_id") or ""))})
+
+
+def _duyet_sau_bac(du_lieu, hop_le):
+    """Lượt duyệt ghi sau phiếu bác cuối và có dòng `quyet-l4:`: chỉ lượt này mới đã đọc thẻ trần L4 (phản bác 06/11).
+    Sửa review cũ thành bác không đổi submitted_at, nên chỉ so thời điểm thì lượt duyệt cũ vẫn lọt; dòng quyet-l4 thì
+    tác giả không ghi thay admin được, và admin chỉ ghi khi thẻ đã báo trần L4."""
+    moc = max((str(r.get("submitted_at") or "") for ket, r, _ in _doc_phieu(du_lieu) if ket == "bac"), default="")
+    return [r for r in hop_le if str(r.get("submitted_at") or "") > moc and _QUYET_L4.search(str(r.get("body") or ""))]
+
+
+def _xet_phieu(du_lieu, sha):
+    """Trả (lý do chặn hoặc None, chi tiết)."""
+    ds = [(ket, r) for ket, r, _ in _doc_phieu(du_lieu)]
+    so_bac = _so_bac(du_lieu)
     dung_sha = [(ket, r) for ket, r in ds if r.get("commit_id") == sha]
     if so_bac >= TRAN_PHIEU_BAC:
-        return "đã %d phiếu phản bác bác (trần L4): cần người có quyền admin, khác tác giả, duyệt đúng SHA" % so_bac, []
+        return ("đã bác trên %d SHA khác nhau (trần L4): cần người có quyền admin, khác tác giả, duyệt đúng SHA "
+                "sau phiếu bác cuối, có dòng `quyet-l4: <lý do>` (đã đọc diff mọi tệp ở thẻ)") % so_bac, []
     if not dung_sha:
-        return ("mức thường: cần phiếu phản bác trên đúng SHA, là một review có dòng `phieu-phan-bac: bac|khong-bac` "
+        return ("cần phiếu phản bác trên đúng SHA (mọi mức), là một review có dòng `phieu-phan-bac: bac|khong-bac` "
                 "và `tai-hien: <cách tái hiện hoặc đã thử gì>` (L3)"), []
     # Một phiếu bác trên SHA này thì phiếu không bác ghi sau không gỡ được: phải có commit mới (Alex 1a, 06/11).
     bac = [r for ket, r in dung_sha if ket == "bac"]
@@ -104,7 +128,7 @@ def _xet_duyet(du_lieu, sha):
 
 
 def quyet_dinh(du_lieu):
-    """Trả {ket_luan, ly_do, chi_tiet, sha, rui_ro, so_dong, so_mau_vung, nguoi_duyet}."""
+    """Trả {ket_luan, ly_do, chi_tiet, sha, rui_ro, so_dong, so_mau_vung, nguoi_duyet, qua_co, theo_tep, the_duyet, tran_l4}."""
     sha = du_lieu.get("sha_dau")
     ds_tep = du_lieu.get("tep")
     vung = du_lieu.get("vung_nhay_cam")
@@ -136,14 +160,16 @@ def quyet_dinh(du_lieu):
         chan.append("người duyệt đang yêu cầu sửa hoặc lượt xét đã bị gỡ: " + ", ".join(dang_chan))
     if rr["muc"] == rui_ro.CAO and not hop_le:
         chan.append("rủi ro cao: cần người có quyền admin, khác tác giả, duyệt đúng SHA")
-    if rr["muc"] == rui_ro.THUONG:
-        if hop_le:
-            bo.append("có người admin duyệt đúng SHA: không cần phiếu phản bác")
-        else:
-            ly_do_phieu, chi_tiet_phieu = _xet_phieu(du_lieu, sha)
-            bo += chi_tiet_phieu
-            if ly_do_phieu:
-                chan.append(ly_do_phieu)
+    # Mọi mức đều cần phiếu (Alex 1a, 06/11): thẻ duyệt Cao chỉ đưa diff tệp Cao, phần Thường do phiếu soát.
+    # Admin duyệt không thay phiếu; chỉ khi chạm trần L4 (đủ phiếu bác) thì admin là người quyết.
+    ly_do_phieu, chi_tiet_phieu = _xet_phieu(du_lieu, sha)
+    # Lượt duyệt ghi trước khi chạm trần không tính: lúc đó thẻ còn ghi phần Thường «cổng còn chặn».
+    if ly_do_phieu and _so_bac(du_lieu) >= TRAN_PHIEU_BAC and _duyet_sau_bac(du_lieu, hop_le):
+        bo.append("đã chạm trần L4, người admin duyệt đúng SHA quyết thay phiếu")
+    elif ly_do_phieu:
+        chan.append(ly_do_phieu)
+    else:
+        bo += chi_tiet_phieu
     if rr["qua_co"]:
         ly_do_le = [m.group(1) for m in (_NGOAI_LE.search(str(r.get("body") or "")) for r in hop_le) if m]
         if not ly_do_le:
@@ -158,8 +184,14 @@ def quyet_dinh(du_lieu):
         ket_luan, ly_do = CHO, [ly_do_nhanh]
     else:
         ket_luan, ly_do = CHO_QUA, ["cong-nhanh xanh trên đúng SHA, không vướng điều kiện nào"]
-    return {
+    q = {
         "ket_luan": ket_luan, "ly_do": ly_do, "chi_tiet": rr["ly_do"] + bo, "sha": sha,
         "rui_ro": rr["muc"], "so_dong": rr["so_dong"], "so_mau_vung": len(vung),
         "nguoi_duyet": [rui_ro.hien_thi(r.get("user")) for r in hop_le],
+        "qua_co": rr["qua_co"], "theo_tep": rr["theo_tep"], "the_duyet": None,
+        "tran_l4": bool(ly_do_phieu) and _so_bac(du_lieu) >= TRAN_PHIEU_BAC,
     }
+    # Thẻ chỉ dựng khi PR cần người admin: mức Cao, quá cỡ, hoặc chạm trần L4 (admin quyết thay phiếu, kể cả PR Thường).
+    if rr["muc"] == rui_ro.CAO or rr["qua_co"] or q["tran_l4"]:
+        q["the_duyet"] = the_duyet.lap_the(du_lieu, q, _doc_phieu(du_lieu), (nhanh, ly_do_nhanh))
+    return q

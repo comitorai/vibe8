@@ -180,15 +180,19 @@ def tom_tat(q):
     dong += ["- " + x for x in q["ly_do"][:50]]
     if q["chi_tiet"]:
         dong += ["", "**Chi tiết:**"] + ["- " + x for x in q["chi_tiet"][:50]]
+    if q.get("the_duyet"):
+        dong += ["", "**Thẻ duyệt ở ngay dưới:** lý do, phiếu phản bác, test và diff của tệp cần anh đọc."]
     return "\n".join(dong)[:_GIOI_HAN_TOM_TAT]
 
 
 def phat_check(gh, sha, q):
     # Chỉ hai giá trị: neutral và skipped có thể được coi như qua, nên không bao giờ dùng.
     ket_luan = "success" if q["ket_luan"] == kiem_pr.CHO_QUA else "failure"
+    output = {"title": "%s (%s)" % (q["ket_luan"], q["rui_ro"]), "summary": tom_tat(q)}
+    if q.get("the_duyet"):
+        output["text"] = q["the_duyet"]  # thẻ duyệt hiện ngay dưới tóm tắt trên trang check
     gh.goi("POST", "/check-runs", {
-        "name": ten.CHECK_CUOI, "head_sha": sha, "status": "completed", "conclusion": ket_luan,
-        "output": {"title": "%s (%s)" % (q["ket_luan"], q["rui_ro"]), "summary": tom_tat(q)},
+        "name": ten.CHECK_CUOI, "head_sha": sha, "status": "completed", "conclusion": ket_luan, "output": output,
     })
     return ket_luan
 
