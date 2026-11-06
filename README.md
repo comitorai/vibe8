@@ -15,6 +15,8 @@ Mới chạy với các ca thử và PR của chính repo này, chưa qua PR vi�
 | `cong/gate_app.py` | Đọc REST, phát một check run `cong-cuoi` |
 | `.github/workflows/` | `cong-nhanh` chạy test, `cong-cuoi` chạy cổng, `tin-hieu-duyet` đánh thức cổng khi có lượt duyệt |
 | `nghiem-thu/` | App mẫu, bản vá lỗi L1-L7, bài cục bộ, script bật cổng, công cụ đo nhịp PR, kết quả trên GitHub thật |
+| `luat/` | Phương pháp một PR (`phuong-phap.md`); đường đi từ ý tưởng tới phát hành (`kien-truc.md`) và thẻ vai (`vai/`), bản thí điểm |
+| `mau/` | Mẫu tài liệu cho từng chặng: thẻ ý tưởng, tờ khung, yêu cầu, thiết kế, gói Cổng 2, sổ giữ chỗ phase, phiếu đổi, hậu kiểm |
 
 Python 3.9 trở lên, chỉ stdlib.
 
