@@ -12,6 +12,7 @@ from unittest import mock
 from cong import gate_app, ten
 
 MAU = Path(__file__).with_name("pr_mau.json")
+VUNG_MAU = str(Path(__file__).with_name("vung_mau.txt"))  # repo đã khai «không có vùng»: test điều kiện khác không vướng luật chưa khai
 SHA = "a" * 40
 SHA_MOI = "c" * 40
 TOKEN = "ghs_bimatgiaodenkhonginra"
@@ -21,13 +22,13 @@ def du_lieu():
     return json.loads(MAU.read_text(encoding="utf-8"))
 
 
-def chay(gh, sha=SHA, nguoi_tin=("khac", "tac-gia")):
+def chay(gh, sha=SHA, nguoi_tin=("khac", "tac-gia"), tep_vung=VUNG_MAU):
     # Người duyệt là ai có quyền admin: danh sách này là phía GitHub trả về, không phải cấu hình.
     if isinstance(gh, gate_app.GiaLap):
         gh.du_lieu.update({"/collaborators/%s/permission" % x: {"permission": "admin"} for x in nguoi_tin})
     ra = io.StringIO()
     with contextlib.redirect_stdout(ra):
-        ma = gate_app.chay(gh, sha)
+        ma = gate_app.chay(gh, sha, tep_vung)
     return ma, ra.getvalue()
 
 
@@ -37,8 +38,9 @@ def lan_chay(d):
 
 def can_duyet(d, login="khac", **khac):
     d["/pulls/4/files"][0]["filename"] = "CODEOWNERS"
+    # Giữ phiếu mẫu phía sau: lượt duyệt là [0], test nào hạ PR về mức thường vẫn có phiếu.
     d["/pulls/4/reviews"] = [dict({"user": {"login": login, "type": "User"}, "state": "APPROVED", "commit_id": SHA,
-                                   "submitted_at": "2026-11-02T00:00:00Z", "body": ""}, **khac)]
+                                   "submitted_at": "2026-11-02T00:00:00Z", "body": ""}, **khac)] + d["/pulls/4/reviews"]
     return d
 
 
@@ -103,7 +105,6 @@ class TestChay(unittest.TestCase):
         for quyen, ket in (("write", "success"), ("maintain", "success"), ("admin", "success"), ("read", "failure"), ("none", "failure")):
             with self.subTest(quyen):
                 d = du_lieu()
-                d["/pulls/4"]["number"] = 7  # số PR không bị rút thăm bỏ phản bác
                 d["/pulls/4/files"][0]["filename"] = "app.py"
                 d["/pulls/4/reviews"] = [{"user": {"login": "phan-bac", "type": "User"}, "state": "COMMENTED", "commit_id": SHA,
                                           "submitted_at": "2026-11-02T00:00:00Z",
@@ -705,6 +706,14 @@ class TestVungNhayCam(unittest.TestCase):
         ma, body = self._chay(b"# quyen\nhoa_don/\n")
         self.assertEqual((ma, body["conclusion"], body["output"]["title"]), (0, "failure", "chan (cao)"))
         self.assertIn("Vùng nhạy cảm đã khai:** 1 mẫu", body["output"]["summary"])
+
+    def test_repo_chua_khai_vung_thi_chan(self):
+        # Alex 1a 06/11: repo không có tệp vùng thì cổng không biết đâu là tiền, đâu là xác thực, nên không cho qua PR nào.
+        gh = gate_app.GiaLap(du_lieu())
+        ma, _ = chay(gh, tep_vung=os.path.join(os.path.dirname(VUNG_MAU), "khong-co-tep-nay.txt"))
+        body = gh.da_phat[-1][2]
+        self.assertEqual((ma, body["conclusion"]), (0, "failure"))
+        self.assertIn("chưa khai vùng nhạy cảm", body["output"]["summary"])
 
     def test_tep_vung_hong_thi_khong_qua(self):
         ma, body = self._chay(b"\xff\xfe")

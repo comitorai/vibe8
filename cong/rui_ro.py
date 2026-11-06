@@ -13,10 +13,11 @@ import unicodedata
 
 from . import ten
 
-THAP, TRUNG_BINH, CAO = "thap", "trung_binh", "cao"
+# Hai mức (Alex 1a, 06/11): Cao là chạm bảo mật hay tiền, cần người duyệt; còn lại là Thường, cần phiếu phản bác.
+THUONG, CAO = "thuong", "cao"
 NGUONG_CO_DONG = 400
 
-_THU_TU = {THAP: 0, TRUNG_BINH: 1, CAO: 2}
+_THU_TU = {THUONG: 0, CAO: 1}
 _GOC_BAO_VE = ("cong/", "luat/", "docs/bao-mat.md", "nghiem-thu/kiem_cuc_bo.py", "nghiem-thu/bat_cong.py", "nghiem-thu/loi/")
 _TEP_BAO_VE = {ten.TEP_CAU_HINH, "codeowners", "makefile", "justfile", "noxfile.py", "tox.ini", "pytest.ini", "conftest.py",
                ".gitattributes", ".gitmodules", "sitecustomize.py", "usercustomize.py"}
@@ -24,7 +25,7 @@ _TEP_AGENT = {".mcp.json"}
 # Mã máy chạy được mà diff không đọc được: Python nạp `.pyc` hash-based thay cho `.py` mà không so với mã nguồn.
 _MA_MAY = (".pyc", ".pyo", ".pyd", ".so", ".dylib", ".dll", ".node", ".wasm", ".jar", ".class")
 _KHONG_CHAY = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".woff", ".woff2", ".ttf")  # Tệp không chữ nhưng không tự chạy.
-# Mức Thấp chỉ cho tài liệu và tệp tĩnh (luat/phuong-phap.md mục 2). Danh sách cho phép: đuôi lạ là mã hoặc cấu hình chạy được, mức Vừa.
+# Tài liệu và tệp tĩnh: không đổi mức, chỉ để ghi lý do «tệp mã chạy được». Danh sách cho phép: đuôi lạ là mã hoặc cấu hình chạy được.
 _TAI_LIEU = (".md", ".markdown", ".rst", ".txt", ".adoc")
 _TEN_TAI_LIEU = {"license", "licence", "notice", "authors", "contributors", "changelog", "copying", "readme"}
 _TXT_CHAY = {"cmakelists.txt"}
@@ -112,7 +113,7 @@ def _la_tai_lieu(duong):
 
 
 def _la_ma_chay(tep, moi, cu):
-    """Thêm tệp test mới là Thấp; còn lại, tên mới hay tên cũ không phải tài liệu, tệp tĩnh thì là mã chạy được."""
+    """Thêm tệp test mới không tính là mã chạy được; còn lại, tên mới hay tên cũ không phải tài liệu, tệp tĩnh thì là mã chạy được."""
     if tep.get("status") == "added" and _la_test(moi, tep["filename"]) and moi.split("/")[-1] != "__init__.py":
         return False
     return any(not _la_tai_lieu(d) for d in [moi] + ([] if cu is None else [cu]))
@@ -133,9 +134,10 @@ def _khop_vung(duong, mau):
 
 def doc_vung(duong):
     """Mẫu đường dẫn nhạy cảm repo tự khai, mỗi dòng một mẫu; `#` đầu dòng hoặc sau dấu cách là chú thích. Cú pháp: _khop_vung.
-    Không có tệp thì là chưa khai. Tệp có mà hỏng, hay có mẫu không bao giờ khớp được, thì báo lỗi: lặng lẽ bỏ qua là mở cổng."""
+    Không có tệp thì trả None: repo chưa khai, cổng chặn mọi PR. Tệp có mà không mẫu nào là đã khai «không có vùng».
+    Tệp có mà hỏng, hay có mẫu không bao giờ khớp được, thì báo lỗi: lặng lẽ bỏ qua là mở cổng."""
     if not duong or not os.path.lexists(duong):
-        return []
+        return None
     if os.path.islink(duong) or not os.path.isfile(duong):
         raise LoiVung("tệp vùng nhạy cảm không phải tệp thường")
     with open(duong, "rb") as f:
@@ -186,14 +188,14 @@ def _xet_tep(tep):
     if _la_test(moi, ten_moi) or (cu is not None and _la_test(cu, ten_cu)):
         ket += _xet_test(tep, moi)
     if trang_thai not in ("added", "modified", "removed", "renamed"):
-        ket.append((TRUNG_BINH, "loại thay đổi khác thường " + hien_thi(ten_moi)))
+        ket.append((THUONG, "loại thay đổi khác thường " + hien_thi(ten_moi)))
     elif trang_thai in ("added", "modified") and not (them + xoa and tep.get("patch")):
-        ket.append((TRUNG_BINH if moi.endswith(_KHONG_CHAY) else CAO, "không có diff dạng chữ " + hien_thi(ten_moi)))
+        ket.append((THUONG if moi.endswith(_KHONG_CHAY) else CAO, "không có diff dạng chữ " + hien_thi(ten_moi)))
     return ket
 
 
 def _xet_muc_moi(tep, vung):
-    """Mức Vừa và vùng nhạy cảm. Tên lạ, dữ liệu hỏng đã là Cao ở _xet_tep. Trả (mã chạy được?, [lý do Cao])."""
+    """Mã chạy được và vùng nhạy cảm. Tên lạ, dữ liệu hỏng đã là Cao ở _xet_tep. Trả (mã chạy được?, [lý do Cao])."""
     if not isinstance(tep, dict):
         return False, []
     if any(_la_ten_la(d) for d in [tep.get("filename")] + ([] if tep.get("previous_filename") is None else [tep["previous_filename"]])):
@@ -210,7 +212,7 @@ def phan_loai(ds_tep, vung=()):
     """Trả {muc, ly_do, so_dong, qua_co}. vung: mẫu đường dẫn nhạy cảm đọc từ nhánh gốc (doc_vung)."""
     if not isinstance(ds_tep, list):
         return {"muc": CAO, "ly_do": ["không có danh sách tệp"], "so_dong": 0, "qua_co": False}
-    muc, ly_do, tong, ma_chay = THAP, [], 0, []
+    muc, ly_do, tong, ma_chay = THUONG, [], 0, []
     for tep in ds_tep:
         la_ma, cao = _xet_muc_moi(tep, vung)
         if la_ma:
@@ -224,5 +226,4 @@ def phan_loai(ds_tep, vung=()):
         tong += sum(so) if so and not _la_lockfile(tep) else 0
     if ma_chay:
         ly_do.append("%d tệp mã hoặc cấu hình chạy được, vd %s" % (len(ma_chay), hien_thi(ma_chay[0])))
-        muc = muc if _THU_TU[muc] > _THU_TU[TRUNG_BINH] else TRUNG_BINH
     return {"muc": muc, "ly_do": ly_do, "so_dong": tong, "qua_co": tong > NGUONG_CO_DONG}
