@@ -19,10 +19,12 @@ Theo model (luật L12): mỗi lượt Claude Code ghi thêm model và bốn lo�
 gói tháng không trả đúng số này, số chỉ để so model với nhau. Model không có trong bảng ghi "chưa có giá", không quy USD.
 Giới hạn: việc ở nhánh gốc sau khi merge PR trước (dọn, kiểm) bị tính cho PR kế tiếp của phiên; việc ở nhánh gốc
 sau nhánh cuối của phiên không tính cho PR nào; phiên Codex đổi nhánh giữa chừng
-vẫn tính cho nhánh lúc mở; lượt tóm tắt ngữ cảnh chưa tính;
-Worktree: Claude Code ghi gitBranch theo thư mục mở phiên, không theo worktree mà phiên `cd` vào, nên lượt có cwd trong
-một worktree còn trên đĩa lấy nhánh của worktree đó (`git worktree list`). Worktree đã xoá thì đành dùng gitBranch;
-hook ghi trước merge, lúc worktree còn, nên không vướng. người có quyền ghi vẫn sửa tay được comment.
+vẫn tính cho nhánh lúc mở; lượt tóm tắt ngữ cảnh chưa tính; người có quyền ghi vẫn sửa tay được comment.
+Worktree: Claude Code ghi gitBranch theo thư mục mở phiên, không theo worktree mà phiên `cd` vào. Lượt có cwd trong
+một worktree còn trên đĩa lấy nhánh mà worktree đó đang ở ĐÚNG LÚC lượt chạy, đọc từ reflog HEAD của worktree
+(`git worktree list` rồi `git log -g`): dùng lại worktree cho PR sau, hay xoá rồi tạo lại cùng tên, không làm PR sau
+ôm số của PR trước. Lượt trước lúc worktree được tạo, lúc HEAD rời, hay worktree không có reflog thì giữ gitBranch.
+Worktree đã xoá thì đành dùng gitBranch; hook ghi trước merge, lúc worktree còn, nên không vướng.
 """
 import argparse
 import datetime
@@ -74,34 +76,86 @@ def cac_tep(goc_repo, nha=None, tu_luc=0.0):
 
 
 def nhanh_cua_worktree(goc):
-    """{đường dẫn worktree phụ: nhánh} từ `git worktree list --porcelain`; bỏ bản làm việc chính và HEAD rời."""
+    """{đường dẫn worktree phụ: lịch nhánh} cho mọi worktree phụ (bỏ bản làm việc chính); lịch từ _lich_nhanh."""
     try:
         ra = _git(goc, "worktree", "list", "--porcelain")
     except (OSError, subprocess.CalledProcessError):
         return {}
-    return _doc_worktree(ra, str(goc).rstrip("/"))
+    kq = {}
+    for duong, nhanh in _doc_worktree(ra, str(goc).rstrip("/")).items():
+        try:
+            reflog = _git(duong, "log", "-g", "--date=unix", "--format=%gd|%gs", "HEAD")
+        except (OSError, subprocess.CalledProcessError):
+            continue
+        lich = _lich_nhanh(reflog, nhanh)
+        if lich:
+            kq[duong] = lich
+    return kq
 
 
 def _doc_worktree(ra, goc):
+    """{đường dẫn: nhánh hiện tại hoặc None nếu HEAD rời}, bỏ bản chính."""
     kq, duong = {}, None
     for dong in ra.splitlines():
         if dong.startswith("worktree "):
             duong = dong[len("worktree "):].rstrip("/")
-        elif dong.startswith("branch refs/heads/") and duong and duong != goc:
+            if duong != goc:
+                kq[duong] = None
+        elif dong.startswith("branch refs/heads/") and duong in kq:
             kq[duong] = dong[len("branch refs/heads/"):]
     return kq
 
 
-def _nhanh_theo_cwd(cwd, nhanh, nhanh_wt):
-    """Nhánh của worktree sâu nhất chứa cwd; không có thì giữ gitBranch."""
+_CHUYEN = re.compile(r"^checkout: moving from (?P<tu>\S+) to (?P<toi>\S+)$")
+_SHA = re.compile(r"^[0-9a-f]{40}$|^HEAD$")
+
+
+def _lich_nhanh(reflog, nhanh_nay):
+    """Reflog HEAD (mới trước, dòng `HEAD@{<giây>}|<việc>`) → [(từ giây, nhánh hoặc None nếu HEAD rời)], cũ trước.
+    Mốc đầu là lúc worktree có dòng reflog đầu tiên; nhánh ban đầu là «from» của lần chuyển đầu, chưa chuyển lần nào
+    thì là nhánh hiện tại."""
+    muc = []
+    for dong in reversed(reflog.splitlines()):
+        gd, _, viec = dong.partition("|")
+        m = re.match(r"^HEAD@\{(\d+)\}$", gd.strip())
+        if m:
+            muc.append((int(m.group(1)), viec.strip()))
+    if not muc:
+        return []
+    ten = lambda x: None if _SHA.match(x) else x  # noqa: E731
+    chuyen = [(t, _CHUYEN.match(v)) for t, v in muc if _CHUYEN.match(v)]
+    lich = [(muc[0][0], ten(chuyen[0][1].group("tu")) if chuyen else nhanh_nay)]
+    lich += [(t, ten(m.group("toi"))) for t, m in chuyen]
+    return lich
+
+
+def _giay(luc):
+    try:
+        return datetime.datetime.fromisoformat(luc.replace("Z", "+00:00")).timestamp()
+    except (AttributeError, ValueError):
+        return None
+
+
+def _nhanh_theo_cwd(cwd, nhanh, nhanh_wt, luc=None):
+    """Nhánh của worktree sâu nhất chứa cwd, đúng lúc `luc` (ISO); không xác định được thì giữ gitBranch.
+    Giá trị của nhanh_wt là chuỗi (nhánh cố định) hoặc lịch [(từ giây, nhánh|None)] cũ trước."""
     hop = [d for d in (nhanh_wt or {}) if cwd == d or cwd.startswith(d + "/")]
-    return nhanh_wt[max(hop, key=len)] if hop else nhanh
+    if not hop:
+        return nhanh
+    lich = nhanh_wt[max(hop, key=len)]
+    if isinstance(lich, str):
+        return lich
+    t = _giay(luc)
+    if t is None or not lich or t < lich[0][0]:
+        return nhanh
+    hien = [n for tu, n in lich if tu <= t][-1]
+    return hien or nhanh
 
 
 def _luot_goi(cac_tep, goc, nhanh_wt=None):
     """Mỗi lượt gọi model trong repo đúng một lần: (phiên, lúc, nhánh, token mới, đọc đệm, chi tiết).
     Chi tiết = (model, vào, ghi đệm 5 phút, ghi đệm 1 giờ, ra); thiếu phần tách ghi đệm thì tính cả là 5 phút.
-    nhanh_wt: {đường dẫn worktree: nhánh}, thay gitBranch cho lượt có cwd trong worktree đó."""
+    nhanh_wt: {đường dẫn worktree: lịch nhánh}, thay gitBranch cho lượt có cwd trong worktree đó (_nhanh_theo_cwd)."""
     da_tinh, kq = set(), []
     for tep in cac_tep:
         with open(tep, encoding="utf-8", errors="replace") as f:
@@ -117,7 +171,7 @@ def _luot_goi(cac_tep, goc, nhanh_wt=None):
                     continue
                 if not (isinstance(nhanh, str) and nhanh and isinstance(tin, dict) and isinstance(luc, str)):
                     continue
-                nhanh = _nhanh_theo_cwd(cwd, nhanh, nhanh_wt)
+                nhanh = _nhanh_theo_cwd(cwd, nhanh, nhanh_wt, luc)
                 u = tin.get("usage")
                 khoa = (tin.get("id"), e.get("requestId"))
                 if not isinstance(u, dict) or None in khoa or khoa in da_tinh:
