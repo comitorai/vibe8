@@ -258,9 +258,18 @@ class TestPhieuPhanBac(unittest.TestCase):
         self.assertEqual(q["ket_luan"], CHAN)
         self.assertIn("bác", q["ly_do"][0])
 
-    def test_phieu_moi_nhat_tren_sha_quyet(self):
-        self.assertEqual(quyet_dinh(vua([phieu("bac"), phieu(gio=MUON_HON)]))["ket_luan"], CHO_QUA)
-        self.assertEqual(quyet_dinh(vua([phieu(), phieu("bac", gio=MUON_HON)]))["ket_luan"], CHAN)
+    def test_bac_tren_sha_khong_bi_khong_bac_go(self):
+        # Alex 1a 06/11: phiếu không bác ghi sau, kể cả của người khác, không gỡ được phiếu bác cùng SHA.
+        for ds in ([phieu("bac"), phieu(gio=MUON_HON)],
+                   [phieu("bac"), phieu(user="tac-gia", gio=MUON_HON)],
+                   [phieu(), phieu("bac", gio=MUON_HON)]):
+            with self.subTest(ds=[p["body"][:22] for p in ds]):
+                q = quyet_dinh(vua(ds))
+                self.assertEqual(q["ket_luan"], CHAN)
+                self.assertIn("không gỡ được", q["ly_do"][0])
+
+    def test_phieu_bac_bi_go_thi_khong_tinh(self):
+        self.assertEqual(quyet_dinh(vua([dict(phieu("bac"), state="DISMISSED"), phieu(gio=MUON_HON)]))["ket_luan"], CHO_QUA)
 
     def test_phieu_sha_cu_khong_tinh(self):
         self.assertEqual(quyet_dinh(vua([phieu(commit=SHA_CU)]))["ket_luan"], CHAN)

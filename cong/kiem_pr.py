@@ -41,10 +41,13 @@ def _xet_phieu(du_lieu, sha):
     if not dung_sha:
         return ("mức thường: cần phiếu phản bác trên đúng SHA, là một review có dòng `phieu-phan-bac: bac|khong-bac` "
                 "và `tai-hien: <cách tái hiện hoặc đã thử gì>` (L3)"), []
-    ket, r = dung_sha[-1]
-    nguoi = rui_ro.hien_thi(r.get("user"))
-    if ket == "bac":
-        return "phiếu phản bác của %s trên SHA này bác: sửa rồi xin phiếu mới, lượt sau chỉ xét phần vừa sửa (L4)" % nguoi, []
+    # Một phiếu bác trên SHA này thì phiếu không bác ghi sau không gỡ được: phải có commit mới (Alex 1a, 06/11).
+    bac = [r for ket, r in dung_sha if ket == "bac"]
+    if bac:
+        nguoi = rui_ro.hien_thi(bac[-1].get("user"))
+        return ("phiếu phản bác của %s trên SHA này bác, phiếu không bác ghi sau không gỡ được: "
+                "sửa bằng commit mới rồi xin phiếu mới, lượt sau chỉ xét phần vừa sửa (L4)") % nguoi, []
+    nguoi = rui_ro.hien_thi(dung_sha[-1][1].get("user"))
     return None, ["phiếu phản bác không bác của %s" % nguoi]
 
 
