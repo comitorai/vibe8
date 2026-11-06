@@ -182,6 +182,7 @@ Số 5 chưa có căn cứ đo. 300 k là trung vị token mỗi PR cộng chừ
 | Mỗi mã được nhắc có test mang mã, đỏ ở commit trước code; mã đã đổi thì báo, không chặn | check `cong-cuoi` | chưa |
 | Ma trận truy vết mã → task → PR → test sinh từ thân PR và tên test | script | chưa |
 | Phiên đóng mà chưa để lại dấu (mục 2) | hook đóng phiên của máy agent, chỉ là trợ giúp | chưa |
+| Phiên mới không biết repo đang theo kiến trúc này, đang ở phase nào, mình giữ vai gì | dòng trỏ ở `CLAUDE.md` / `AGENTS.md` (mục 15) · hook mở phiên của máy agent đọc `docs/phase/`, chỉ là trợ giúp | dòng trỏ: lời dặn · hook: chưa |
 | Hàng đợi PR Cao, trần token, tỉ lệ tài liệu / code | script báo | chưa |
 | Tách vai ở chặng 3–4, câu hỏi giữa phase, độ chín của thẻ | lời dặn | — |
 
@@ -191,6 +192,7 @@ Thứ tự làm máy: theo «sửa máy trước, thêm chữ sau» (`phuong-pha
 
 1. Cài cổng như README; viết tệp điều kiện bán được (L11) và khai chính tệp đó cùng vùng Cao vào `cong/vung-nhay-cam.txt`, trên nhánh gốc.
 2. Có SRS thì đi đường A, chưa có thì đường B (mục 5); dựng `docs/phase/` và `docs/DECISIONS.md` nếu chưa có.
+   Thêm vào `CLAUDE.md` và `AGENTS.md` của repo một dòng trỏ tới `luat/kien-truc.md` và `luat/vai/dieu-phoi.md` của vibe8, kèm đường tới `docs/phase/`: phiên mới chỉ đọc những gì được nạp sẵn, không có dòng này thì nó làm theo thói quen cũ.
 3. Thư ký hộp thư giao module cho **một** Điều phối khi chặng 3 đủ điều kiện ra.
 4. Phase đầu tiên là thí điểm. Đo: điểm chạm của chủ dự án · token mỗi task · tỉ lệ tài liệu / code · lỗi bắt ở demo · lỗi lọt 14 ngày sau phát hành.
    **Chỉ báo để giữ** (một phase chưa đủ làm đường cơ sở): đúng 3 cổng, không phiếu đổi vượt ngân sách, không lỗi lọt mức N1 trong 14 ngày.
