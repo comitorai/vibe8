@@ -39,16 +39,17 @@ def _doc_phieu(du_lieu):
 
 
 def _so_bac(du_lieu):
-    return sum(1 for ket, _, _ in _doc_phieu(du_lieu) if ket == "bac")
+    """Số vòng bác: số SHA khác nhau có phiếu bác. Một người bác hai lần trên một SHA vẫn là một vòng (L4 đếm vòng)."""
+    return len({str(r.get("commit_id") or "") for ket, r, _ in _doc_phieu(du_lieu) if ket == "bac"})
 
 
 def _xet_phieu(du_lieu, sha):
     """Trả (lý do chặn hoặc None, chi tiết)."""
     ds = [(ket, r) for ket, r, _ in _doc_phieu(du_lieu)]
-    so_bac = sum(1 for ket, _ in ds if ket == "bac")
+    so_bac = _so_bac(du_lieu)
     dung_sha = [(ket, r) for ket, r in ds if r.get("commit_id") == sha]
     if so_bac >= TRAN_PHIEU_BAC:
-        return "đã %d phiếu phản bác bác (trần L4): cần người có quyền admin, khác tác giả, duyệt đúng SHA" % so_bac, []
+        return "đã bác trên %d SHA khác nhau (trần L4): cần người có quyền admin, khác tác giả, duyệt đúng SHA" % so_bac, []
     if not dung_sha:
         return ("cần phiếu phản bác trên đúng SHA (mọi mức), là một review có dòng `phieu-phan-bac: bac|khong-bac` "
                 "và `tai-hien: <cách tái hiện hoặc đã thử gì>` (L3)"), []
@@ -115,7 +116,7 @@ def _xet_duyet(du_lieu, sha):
 
 
 def quyet_dinh(du_lieu):
-    """Trả {ket_luan, ly_do, chi_tiet, sha, rui_ro, so_dong, so_mau_vung, nguoi_duyet, qua_co, theo_tep, the_duyet}."""
+    """Trả {ket_luan, ly_do, chi_tiet, sha, rui_ro, so_dong, so_mau_vung, nguoi_duyet, qua_co, theo_tep, the_duyet, tran_l4}."""
     sha = du_lieu.get("sha_dau")
     ds_tep = du_lieu.get("tep")
     vung = du_lieu.get("vung_nhay_cam")
@@ -175,8 +176,9 @@ def quyet_dinh(du_lieu):
         "rui_ro": rr["muc"], "so_dong": rr["so_dong"], "so_mau_vung": len(vung),
         "nguoi_duyet": [rui_ro.hien_thi(r.get("user")) for r in hop_le],
         "qua_co": rr["qua_co"], "theo_tep": rr["theo_tep"], "the_duyet": None,
+        "tran_l4": bool(ly_do_phieu) and _so_bac(du_lieu) >= TRAN_PHIEU_BAC,
     }
-    # Thẻ chỉ dựng khi PR cần người admin; PR Thường đi bằng phiếu phản bác.
-    if rr["muc"] == rui_ro.CAO or rr["qua_co"]:
+    # Thẻ chỉ dựng khi PR cần người admin: mức Cao, quá cỡ, hoặc chạm trần L4 (admin quyết thay phiếu, kể cả PR Thường).
+    if rr["muc"] == rui_ro.CAO or rr["qua_co"] or q["tran_l4"]:
         q["the_duyet"] = the_duyet.lap_the(du_lieu, q, _doc_phieu(du_lieu), (nhanh, ly_do_nhanh))
     return q

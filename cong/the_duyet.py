@@ -1,4 +1,4 @@
-"""Thẻ duyệt: thứ người admin đọc trước khi duyệt PR cần họ (mức Cao hoặc quá cỡ). Hàm thuần.
+"""Thẻ duyệt: thứ người admin đọc trước khi duyệt PR cần họ (mức Cao, quá cỡ, hoặc chạm trần L4). Hàm thuần.
 
 Đề xuất điểm duyệt §2 (Alex, 06/11): mỗi lượt duyệt Cao dưới 5 phút. Thẻ gồm vì sao cần duyệt, các phiếu phản bác,
 trạng thái test, rồi CHỈ diff của tệp làm PR thành Cao. Tệp Thường chỉ có tên và số dòng, kèm câu nói rõ ai đã soát
@@ -15,7 +15,8 @@ from . import rui_ro
 GIOI_HAN = 60000          # byte UTF-8; output.text của check run tối đa 65535
 DONG_MOI_TEP = 200        # diff dài hơn thì cắt, ghi rõ đã cắt
 KY_TU_MOI_DONG = 400      # dòng dài hơn thì cắt, ghi rõ đã cắt
-TRAN_PHIEU = 10           # phiếu không bác hiện tối đa; phiếu bác luôn hiện hết
+TRAN_PHIEU = 10           # phiếu không bác hiện tối đa (mỗi người phiếu mới nhất)
+TRAN_PHIEU_BAC_HIEN = 20  # phiếu bác hiện tối đa, mới nhất; còn lại báo số
 TRAN_TEN = 50
 
 
@@ -90,10 +91,12 @@ def _ten(tep):
 
 
 def _phieu(du_lieu, phieu, sha):
-    """Mọi phiếu bác luôn hiện. Phiếu không bác: mỗi người chỉ phiếu mới nhất, tối đa TRAN_PHIEU. Phiếu của tác giả
+    """Phiếu bác: TRAN_PHIEU_BAC_HIEN phiếu mới nhất. Phiếu không bác: mỗi người chỉ phiếu mới nhất, tối đa TRAN_PHIEU. Phiếu của tác giả
     hoặc người có commit trong PR được gắn nhãn: không phải phản bác độc lập."""
     tac_gia = {str(x).casefold() for x in [du_lieu.get("tac_gia")] + list(du_lieu.get("nguoi_commit") or []) if x}
-    bac = [p for p in phieu if p[0] == "bac"]
+    bac = sorted((p for p in phieu if p[0] == "bac"), key=lambda p: str(p[1].get("submitted_at") or ""))
+    bo_bac = max(0, len(bac) - TRAN_PHIEU_BAC_HIEN)
+    bac = bac[bo_bac:]
     moi_nhat = {}
     for p in phieu:
         if p[0] != "bac":
@@ -106,8 +109,8 @@ def _phieu(du_lieu, phieu, sha):
         nhan = " (**tác giả PR, không độc lập**)" if str(r.get("user") or "").casefold() in tac_gia else ""
         dong.append("- **%s** của %s%s, %s. Tái hiện: %s" % (ket, rui_ro.hien_thi(r.get("user")), nhan, dung,
                                                             rui_ro.hien_thi(tai_hien)))
-    if bo:
-        dong.append("_Còn %d phiếu không bác cũ hơn ở tab Conversation._" % bo)
+    if bo or bo_bac:
+        dong.append("_Còn %d phiếu bác và %d phiếu không bác cũ hơn ở tab Conversation._" % (bo_bac, bo))
     return dong
 
 
@@ -116,7 +119,11 @@ def lap_the(du_lieu, q, phieu, nhanh):
     phieu: [(bac|khong-bac, review, tai_hien)] đã lọc người có quyền ghi. nhanh: (xanh|do|cho, lý do)."""
     sha = str(du_lieu.get("sha_dau") or "")
     ds_tep = du_lieu.get("tep") if isinstance(du_lieu.get("tep"), list) else []
-    theo_tep = q.get("theo_tep") or []
+    theo_tep = list(q.get("theo_tep") or [])
+    if q.get("tran_l4"):
+        # Trần L4: duyệt là merge cả phần Thường mà không phiếu nào soát, nên thẻ đưa diff mọi tệp.
+        theo_tep = [ly or ["mức Thường, chưa có phiếu không bác: anh duyệt là merge tệp này không ai soát"]
+                    for ly in theo_tep + [[]] * (len(ds_tep) - len(theo_tep))]
     cao = [(t, ly) for t, ly in zip(ds_tep, theo_tep) if ly]
     thuong = [t for t, ly in zip(ds_tep, theo_tep) if not ly]
     phan = ["## Thẻ duyệt", "SHA `%s` · %d tệp · %d dòng. Duyệt là duyệt đúng SHA này; có commit mới thì duyệt lại."
@@ -128,13 +135,16 @@ def lap_the(du_lieu, q, phieu, nhanh):
         vi_sao.append("mức Cao: %d tệp chạm cổng, bảo mật, tiền, test có sẵn hoặc phụ thuộc" % len(cao))
         if not ds_tep:
             vi_sao.append("cổng không đọc được danh sách tệp")
+    if q.get("tran_l4"):
+        vi_sao.append("**chạm trần L4**: đã bác trên đủ số SHA, không còn phiếu không bác; anh duyệt là anh quyết thay phiếu "
+                      "cho **mọi tệp**, nên diff mọi tệp ở mục 4")
     if q.get("qua_co"):
         vi_sao.append("quá %d dòng: lượt duyệt phải có dòng `ngoai-le-co: <lý do>`" % rui_ro.NGUONG_CO_DONG)
     phan += ["- " + x for x in vi_sao]
     if cao:
-        phan.append("Tệp mức Cao (diff ở mục 4):\n" + "\n".join(
+        phan.append("Tệp cần anh đọc (diff ở mục 4):\n" + "\n".join(
             "- %s %s: %s" % (_ten(t), _so(t), "; ".join(ly)) for t, ly in cao[:TRAN_TEN])
-            + ("\n- và %d tệp Cao nữa: mở tab Files" % (len(cao) - TRAN_TEN) if len(cao) > TRAN_TEN else ""))
+            + ("\n- và %d tệp nữa: mở tab Files" % (len(cao) - TRAN_TEN) if len(cao) > TRAN_TEN else ""))
     if thuong:
         dung_sha = [p for p in phieu if p[1].get("commit_id") == sha]
         if dung_sha and all(p[0] == "khong-bac" for p in dung_sha):
@@ -160,14 +170,15 @@ def lap_the(du_lieu, q, phieu, nhanh):
     if q.get("nguoi_duyet"):
         phan.append("_Đã có lượt duyệt hợp lệ của %s._" % ", ".join(q["nguoi_duyet"]))
 
-    phan.append("### 4. Diff của tệp mức Cao (%d/%d tệp)" % (len(cao), len(ds_tep)))
+    phan.append("### 4. Diff của tệp cần anh đọc (%d/%d tệp)" % (len(cao), len(ds_tep)))
     if not cao:
         phan.append("_Không tệp nào ở mức Cao._")
     dau = "\n\n".join(phan)
     hien = cao[:TRAN_TEN]
-    ngan_sach = (GIOI_HAN - _byte(dau) - 2000) // max(1, len(hien))
-    for t, ly in hien:
-        dau += "\n\n**%s** %s\n\n%s" % (_ten(t), _so(t), _diff_tep(t, ngan_sach))
+    dong_ten = ["\n\n**%s** %s\n\n" % (_ten(t), _so(t)) for t, _ in hien]
+    ngan_sach = (GIOI_HAN - _byte(dau) - 2000 - sum(map(_byte, dong_ten))) // max(1, len(hien))
+    for (t, ly), ten_tep in zip(hien, dong_ten):
+        dau += ten_tep + _diff_tep(t, ngan_sach)
     if len(cao) > TRAN_TEN:
         dau += "\n\n_Còn %d tệp Cao không đưa diff vào thẻ: đọc ở tab Files trước khi duyệt._" % (len(cao) - TRAN_TEN)
     if _byte(dau) > GIOI_HAN:  # phòng hờ: ngân sách từng tệp đã giữ dưới trần

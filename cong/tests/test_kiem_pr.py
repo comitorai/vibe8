@@ -303,6 +303,17 @@ class TestPhieuPhanBac(unittest.TestCase):
         self.assertEqual(q["ket_luan"], CHO_QUA)
         self.assertIn("trần L4", " ".join(q["chi_tiet"]))
 
+    def test_hai_phieu_bac_cung_sha_la_mot_vong(self):
+        # L4 đếm vòng: bác hai lần trên một SHA chưa chạm trần, admin duyệt không mở được.
+        ds = [phieu("bac"), phieu("bac", gio=MUON_HON)]
+        self.assertEqual(quyet_dinh(vua(ds + [duyet()], ds_tep=CAO))["ket_luan"], CHAN)
+
+    def test_tran_l4_thuong_cung_co_the(self):
+        ds = [phieu("bac", commit=SHA_CU), phieu("bac", commit="c" * 40)]
+        q = quyet_dinh(vua(ds))
+        self.assertTrue(q["tran_l4"])
+        self.assertIn("chạm trần L4", q["the_duyet"])
+
     def test_nguoi_khong_co_quyen_ghi_khong_ghi_duoc_phieu(self):
         self.assertEqual(quyet_dinh(vua([phieu(user="nguoi-la")]))["ket_luan"], CHAN)
 
