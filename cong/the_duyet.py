@@ -140,14 +140,14 @@ def lap_the(du_lieu, q, phieu, nhanh):
         if dung_sha and all(p[0] == "khong-bac" for p in dung_sha):
             ai_soat = "đã có phiếu không bác trên đúng SHA (mục 2)"
         else:
-            ai_soat = "**chưa có phiếu không bác trên đúng SHA: phần này chưa ai soát ngoài anh**"
+            ai_soat = "**chưa có phiếu không bác trên đúng SHA: phần này chưa ai soát, cổng còn chặn**"
         phan.append("Tệp mức Thường, thẻ không đưa diff, %s: " % ai_soat
                     + ", ".join("%s %s" % (_ten(t), _so(t)) for t in thuong[:TRAN_TEN])
                     + (" và %d tệp nữa" % (len(thuong) - TRAN_TEN) if len(thuong) > TRAN_TEN else ""))
 
     phan.append("### 2. Phản bác đã thử")
     dong_phieu = _phieu(du_lieu, phieu, sha)
-    phan += dong_phieu or ["_Chưa có phiếu phản bác nào: anh là người soát duy nhất._"]
+    phan += dong_phieu or ["_Chưa có phiếu phản bác nào: cổng chặn tới khi có phiếu `khong-bac` trên đúng SHA._"]
 
     phan.append("### 3. Test")
     trang_thai, ly_do = nhanh

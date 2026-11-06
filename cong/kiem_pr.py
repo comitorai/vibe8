@@ -38,6 +38,10 @@ def _doc_phieu(du_lieu):
     return ds
 
 
+def _so_bac(du_lieu):
+    return sum(1 for ket, _, _ in _doc_phieu(du_lieu) if ket == "bac")
+
+
 def _xet_phieu(du_lieu, sha):
     """Trả (lý do chặn hoặc None, chi tiết)."""
     ds = [(ket, r) for ket, r, _ in _doc_phieu(du_lieu)]
@@ -46,7 +50,7 @@ def _xet_phieu(du_lieu, sha):
     if so_bac >= TRAN_PHIEU_BAC:
         return "đã %d phiếu phản bác bác (trần L4): cần người có quyền admin, khác tác giả, duyệt đúng SHA" % so_bac, []
     if not dung_sha:
-        return ("mức thường: cần phiếu phản bác trên đúng SHA, là một review có dòng `phieu-phan-bac: bac|khong-bac` "
+        return ("cần phiếu phản bác trên đúng SHA (mọi mức), là một review có dòng `phieu-phan-bac: bac|khong-bac` "
                 "và `tai-hien: <cách tái hiện hoặc đã thử gì>` (L3)"), []
     # Một phiếu bác trên SHA này thì phiếu không bác ghi sau không gỡ được: phải có commit mới (Alex 1a, 06/11).
     bac = [r for ket, r in dung_sha if ket == "bac"]
@@ -143,14 +147,15 @@ def quyet_dinh(du_lieu):
         chan.append("người duyệt đang yêu cầu sửa hoặc lượt xét đã bị gỡ: " + ", ".join(dang_chan))
     if rr["muc"] == rui_ro.CAO and not hop_le:
         chan.append("rủi ro cao: cần người có quyền admin, khác tác giả, duyệt đúng SHA")
-    if rr["muc"] == rui_ro.THUONG:
-        if hop_le:
-            bo.append("có người admin duyệt đúng SHA: không cần phiếu phản bác")
-        else:
-            ly_do_phieu, chi_tiet_phieu = _xet_phieu(du_lieu, sha)
-            bo += chi_tiet_phieu
-            if ly_do_phieu:
-                chan.append(ly_do_phieu)
+    # Mọi mức đều cần phiếu (Alex 1a, 06/11): thẻ duyệt Cao chỉ đưa diff tệp Cao, phần Thường do phiếu soát.
+    # Admin duyệt không thay phiếu; chỉ khi chạm trần L4 (đủ phiếu bác) thì admin là người quyết.
+    ly_do_phieu, chi_tiet_phieu = _xet_phieu(du_lieu, sha)
+    if ly_do_phieu and hop_le and _so_bac(du_lieu) >= TRAN_PHIEU_BAC:
+        bo.append("đã chạm trần L4, người admin duyệt đúng SHA quyết thay phiếu")
+    elif ly_do_phieu:
+        chan.append(ly_do_phieu)
+    else:
+        bo += chi_tiet_phieu
     if rr["qua_co"]:
         ly_do_le = [m.group(1) for m in (_NGOAI_LE.search(str(r.get("body") or "")) for r in hop_le) if m]
         if not ly_do_le:
@@ -171,7 +176,7 @@ def quyet_dinh(du_lieu):
         "nguoi_duyet": [rui_ro.hien_thi(r.get("user")) for r in hop_le],
         "qua_co": rr["qua_co"], "theo_tep": rr["theo_tep"], "the_duyet": None,
     }
-    # Thẻ chỉ dựng khi PR cần người admin; Thường đi bằng phiếu phản bác, không ai cần đọc.
+    # Thẻ chỉ dựng khi PR cần người admin; PR Thường đi bằng phiếu phản bác.
     if rr["muc"] == rui_ro.CAO or rr["qua_co"]:
         q["the_duyet"] = the_duyet.lap_the(du_lieu, q, _doc_phieu(du_lieu), (nhanh, ly_do_nhanh))
     return q

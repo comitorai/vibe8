@@ -76,7 +76,7 @@ Cũng trên repo thử, bằng token giả:
    commit trung gian thêm `edited` vào workflow, commit cuối xung đột và trả workflow về như cũ nên diff không thấy gì, PR khác merge làm hết xung đột, rồi sửa
    tiêu đề. Lượt đó chạy workflow của ref cũ mà mang SHA cuối. Cần cộng tác viên cố ý và nhiều bước.
 2. **PR mức thường merge không có người đọc.** Đây là chính sách, Alex chốt 06/11 (1a): cần cổng xanh và phiếu phản bác không bác trên đúng SHA
-   của người có quyền ghi. Máy không phân biệt được hai agent chung tài khoản, nên tác giả cũng tự ghi phiếu được. Muốn mọi PR phải có người duyệt thì phải đổi `kiem_pr.py`.
+   của người có quyền ghi. Máy không phân biệt được hai agent chung tài khoản, nên tác giả cũng tự ghi phiếu được. Muốn mọi PR phải có người duyệt thì phải đổi `kiem_pr.py`. PR mức Cao cần cả phiếu lẫn người admin duyệt; thẻ duyệt chỉ đưa diff của tệp Cao, nên phần Thường trong PR Cao cũng chỉ có phiếu soát.
 3. **Khoảng hở nhỏ giữa yêu cầu sửa và lượt xét mới.** Check cũ còn `success` cho tới khi `tin-hieu-duyet` và `cong-cuoi` chạy xong.
    Nếu bước tạo token hỏng hoặc khoá hết hạn thì không phát được gì, `success` cũ ở lại đến lần xét sau. Cộng tác viên gây được việc này
    có chủ ý: xem giới hạn 18.

