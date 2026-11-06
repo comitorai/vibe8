@@ -33,7 +33,7 @@ Alex chốt 06/11 (1a): chỉ có **đạt** hoặc **không đạt**; không đ
 - **Thường**: mọi thứ còn lại, gồm tài liệu, test mới, mã và cấu hình chạy được.
 - **Repo chưa có `cong/vung-nhay-cam.txt` trên nhánh gốc thì cổng chặn mọi PR**: không biết đâu là tiền thì không phân được hai mức. Repo không có vùng nào thì để tệp chỉ có chú thích. Tệp này thuộc `cong/` nên khai hay sửa đều là Cao.
 
-`[ĐÃ KIỂM: test cổng · 06/11]` Cổng xếp hai mức như trên và đọc vùng từ nhánh gốc, nên PR không tự gỡ vùng được. Mọi PR Thường cần phiếu phản bác của L3 trên đúng SHA, không còn rút thăm; trần 2 phiếu bác của L4; cách ghi phiếu ở README. Máy không phân biệt được hai agent chung tài khoản, nên «agent khác» vẫn là lời dặn, chưa là hàng rào. Mức Cao chưa bắt phiếu, chỉ bắt người duyệt.
+`[ĐÃ KIỂM: test cổng · 06/11]` Cổng xếp hai mức như trên và đọc vùng từ nhánh gốc, nên PR không tự gỡ vùng được. Mọi PR Thường cần phiếu phản bác của L3 trên đúng SHA, không còn rút thăm; trần 2 phiếu bác của L4; phiếu bác trên một SHA thì phiếu không bác ghi sau không gỡ được, phải có commit mới; cách ghi phiếu ở README. Máy không phân biệt được hai agent chung tài khoản, nên «agent khác» vẫn là lời dặn, chưa là hàng rào. Mức Cao chưa bắt phiếu, chỉ bắt người duyệt.
 `[ĐÃ KIỂM: PR 28 · 05/11]` PR thật chỉ sửa một tệp tài liệu trong vùng đã khai ra `chan (cao)`.
 Giới hạn đã biết: cổng chỉ thấy đường dẫn, nên mã tiền đặt ngoài vùng đã khai thì là Thường; vùng khai thiếu là lỗ của repo, người duyệt PR khai vùng phải soát. Tách một thay đổi lớn thành nhiều PR nhỏ vẫn lọt qua trần cỡ của L2.
 

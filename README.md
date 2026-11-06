@@ -62,7 +62,7 @@ vì chúng chạy lệnh trên máy người mở repo.
   **Repo chưa có tệp vùng ở nhánh gốc thì cổng chặn mọi PR.** Repo không có vùng nào thì để tệp chỉ có chú thích.
 - **Mọi PR mức thường cần một phiếu phản bác** (luật L3) trên đúng head SHA: một lượt review, thường là `gh pr review <số> --comment`, thân có hai dòng đứng đầu dòng:
   `phieu-phan-bac: khong-bac` (hoặc `bac`) và `tai-hien: <cách tái hiện, hay đã thử gì>`, tối thiểu 10 ký tự. Chỉ tính phiếu của người có quyền ghi trên repo, không tính máy.
-  Phiếu mới nhất trên SHA quyết. Đủ 2 phiếu `bac` trên PR (L4) thì chỉ người admin duyệt mới mở được. Người admin duyệt đúng SHA thì không cần phiếu.
+  Có một phiếu `bac` trên SHA thì SHA đó bị chặn: phiếu `khong-bac` ghi sau không gỡ được, phải sửa bằng commit mới. Phiếu bị gỡ (dismiss) thì không tính. Đủ 2 phiếu `bac` trên PR (L4) thì chỉ người admin duyệt mới mở được. Người admin duyệt đúng SHA thì không cần phiếu.
   Giới hạn: máy không phân biệt được hai agent dùng chung một tài khoản, nên chính tác giả ghi phiếu cũng tính. Vì vậy phải có ô tái hiện để người đọc lại kiểm.
 - Merge kiểu rebase phải tắt: cổng xét theo diff, còn rebase phát lại từng commit. Chưa tái hiện được kết quả lệch, đây là biện pháp phòng. `bat_cong.py` tắt và đọc lại.
 - Quá 400 dòng (không tính lockfile): chặn, trừ khi người duyệt hợp lệ ghi dòng `ngoai-le-co: <lý do>` trong lượt duyệt.
