@@ -16,6 +16,8 @@ _NGOAI_LE = re.compile(r"^ngoai-le-co:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
 # Phiếu phản bác (luật L3): một lượt review, thân có hai dòng này. Tái hiện bắt buộc cả khi không bác: ghi đã thử gì.
 _PHIEU = re.compile(r"^phieu-phan-bac:[ \t]*(bac|khong-bac)[ \t\r]*$", re.M)
 _TAI_HIEN = re.compile(r"^tai-hien:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
+# Ở trần L4 admin quyết thay phiếu: lượt duyệt phải có dòng này, vì thời điểm không đủ (review cũ sửa thành bác giữ submitted_at).
+_QUYET_L4 = re.compile(r"^quyet-l4:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
 _TRANG_THAI_PHIEU = {"COMMENTED", "APPROVED", "CHANGES_REQUESTED"}
 TRAN_PHIEU_BAC = 2  # L4: quá hai vòng bác thì người quyết
 
@@ -45,9 +47,11 @@ def _so_bac(du_lieu):
 
 
 def _duyet_sau_bac(du_lieu, hop_le):
-    """Lượt duyệt ghi sau phiếu bác cuối: chỉ lượt này mới đọc được thẻ trần L4 (phản bác 06/11, lỗi A)."""
+    """Lượt duyệt ghi sau phiếu bác cuối và có dòng `quyet-l4:`: chỉ lượt này mới đã đọc thẻ trần L4 (phản bác 06/11).
+    Sửa review cũ thành bác không đổi submitted_at, nên chỉ so thời điểm thì lượt duyệt cũ vẫn lọt; dòng quyet-l4 thì
+    tác giả không ghi thay admin được, và admin chỉ ghi khi thẻ đã báo trần L4."""
     moc = max((str(r.get("submitted_at") or "") for ket, r, _ in _doc_phieu(du_lieu) if ket == "bac"), default="")
-    return [r for r in hop_le if str(r.get("submitted_at") or "") > moc]
+    return [r for r in hop_le if str(r.get("submitted_at") or "") > moc and _QUYET_L4.search(str(r.get("body") or ""))]
 
 
 def _xet_phieu(du_lieu, sha):
@@ -57,7 +61,7 @@ def _xet_phieu(du_lieu, sha):
     dung_sha = [(ket, r) for ket, r in ds if r.get("commit_id") == sha]
     if so_bac >= TRAN_PHIEU_BAC:
         return ("đã bác trên %d SHA khác nhau (trần L4): cần người có quyền admin, khác tác giả, duyệt đúng SHA "
-                "sau phiếu bác cuối, tức là sau khi thẻ hiện diff mọi tệp") % so_bac, []
+                "sau phiếu bác cuối, có dòng `quyet-l4: <lý do>` (đã đọc diff mọi tệp ở thẻ)") % so_bac, []
     if not dung_sha:
         return ("cần phiếu phản bác trên đúng SHA (mọi mức), là một review có dòng `phieu-phan-bac: bac|khong-bac` "
                 "và `tai-hien: <cách tái hiện hoặc đã thử gì>` (L3)"), []

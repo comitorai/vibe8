@@ -17,6 +17,8 @@ DONG_MOI_TEP = 200        # diff dài hơn thì cắt, ghi rõ đã cắt
 KY_TU_MOI_DONG = 400      # dòng dài hơn thì cắt, ghi rõ đã cắt
 TRAN_PHIEU = 10           # phiếu không bác hiện tối đa (mỗi người phiếu mới nhất)
 TRAN_PHIEU_BAC_HIEN = 20  # phiếu bác hiện tối đa, mới nhất; còn lại báo số
+TRAN_BYTE_TEN = 160       # mỗi tên tệp trong thẻ
+TRAN_BYTE_TAI_HIEN = 400  # mỗi dòng tái hiện của phiếu
 TRAN_TEN = 50
 
 
@@ -86,8 +88,31 @@ def _so(tep):
     return "+%s −%s" % (them if type(them) is int else "?", xoa if type(xoa) is int else "?")
 
 
+def _gon(gia_tri, tran_byte):
+    """hien_thi nhưng giữ dưới tran_byte: rút đầu và đuôi chuỗi gốc, ký tự ẩn hiện thành \\uXXXX nên tính sau khi làm sạch."""
+    goc = str(gia_tri)
+    chu, n = rui_ro.hien_thi(goc), len(goc)
+    while _byte(chu) > tran_byte and n > 8:
+        n = n * 3 // 4
+        dau = n * 2 // 5
+        chu = rui_ro.hien_thi(goc[:dau] + "…" + goc[len(goc) - (n - dau):])
+    return chu
+
+
 def _ten(tep):
-    return rui_ro.hien_thi(tep.get("filename") if isinstance(tep, dict) else "?")
+    # Cắt tên chứ không bỏ tệp: tệp nào cũng phải còn tên trong thẻ (phản bác lượt 3, 06/11).
+    return _gon(tep.get("filename") if isinstance(tep, dict) else "?", TRAN_BYTE_TEN)
+
+
+def _trong_tran(dong, tran_byte):
+    """Các dòng đầu vừa trần byte, và số dòng bị bỏ."""
+    giu, dung = [], 0
+    for d in dong:
+        if dung + _byte(d) + 2 > tran_byte:
+            break
+        giu.append(d)
+        dung += _byte(d) + 2
+    return giu, len(dong) - len(giu)
 
 
 def _phieu(du_lieu, phieu, sha):
@@ -107,8 +132,8 @@ def _phieu(du_lieu, phieu, sha):
     for ket, r, tai_hien in sorted(bac + khong_bac[bo:], key=lambda p: str(p[1].get("submitted_at") or "")):
         dung = "đúng SHA" if r.get("commit_id") == sha else "SHA cũ `%s`" % rui_ro.hien_thi(r.get("commit_id"))[1:8]
         nhan = " (**tác giả PR, không độc lập**)" if str(r.get("user") or "").casefold() in tac_gia else ""
-        dong.append("- **%s** của %s%s, %s. Tái hiện: %s" % (ket, rui_ro.hien_thi(r.get("user")), nhan, dung,
-                                                            rui_ro.hien_thi(tai_hien)))
+        dong.append("- **%s** của %s%s, %s. Tái hiện: %s" % (ket, _gon(r.get("user"), 80), nhan, dung,
+                                                            _gon(tai_hien, TRAN_BYTE_TAI_HIEN)))
     if bo or bo_bac:
         dong.append("_Còn %d phiếu bác và %d phiếu không bác cũ hơn ở tab Conversation._" % (bo_bac, bo))
     return dong
@@ -137,19 +162,16 @@ def lap_the(du_lieu, q, phieu, nhanh):
             vi_sao.append("cổng không đọc được danh sách tệp")
     if q.get("tran_l4"):
         vi_sao.append("**chạm trần L4**: đã bác trên đủ số SHA, không còn phiếu không bác; anh duyệt là anh quyết thay phiếu "
-                      "cho **mọi tệp**, nên diff mọi tệp ở mục 4")
+                      "cho **mọi tệp**, nên diff mọi tệp ở mục 4. "
+                      "Lượt duyệt phải ghi sau phiếu bác cuối và có dòng `quyet-l4: <lý do>`")
     if q.get("qua_co"):
         vi_sao.append("quá %d dòng: lượt duyệt phải có dòng `ngoai-le-co: <lý do>`" % rui_ro.NGUONG_CO_DONG)
     phan += ["- " + x for x in vi_sao]
     if cao:
-        ds_dong, dung = [], 0
-        for t, ly in cao[:TRAN_TEN]:
-            d = "- %s %s: %s" % (_ten(t), _so(t), "; ".join(ly))
-            if dung + _byte(d) > GIOI_HAN // 6:  # tên tệp dài không được ăn chỗ của phiếu, test và diff
-                break
-            ds_dong.append(d)
-            dung += _byte(d) + 1
-        con = len(cao) - len(ds_dong)
+        # Danh sách nào do người mở PR làm dài cũng có trần byte, để phiếu, test và diff còn chỗ.
+        ds_dong, con = _trong_tran(["- %s %s: %s" % (_ten(t), _so(t), "; ".join(ly)) for t, ly in cao[:TRAN_TEN]],
+                                   GIOI_HAN // 6)
+        con += max(0, len(cao) - TRAN_TEN)
         phan.append("Tệp cần anh đọc (diff ở mục 4):\n" + "\n".join(ds_dong)
                     + ("\n- và %d tệp nữa: tên ở mục 4 hoặc tab Files" % con if con else ""))
     if thuong:
@@ -158,12 +180,15 @@ def lap_the(du_lieu, q, phieu, nhanh):
             ai_soat = "đã có phiếu không bác trên đúng SHA (mục 2)"
         else:
             ai_soat = "**chưa có phiếu không bác trên đúng SHA: phần này chưa ai soát, cổng còn chặn**"
-        phan.append("Tệp mức Thường, thẻ không đưa diff, %s: " % ai_soat
-                    + ", ".join("%s %s" % (_ten(t), _so(t)) for t in thuong[:TRAN_TEN])
-                    + (" và %d tệp nữa" % (len(thuong) - TRAN_TEN) if len(thuong) > TRAN_TEN else ""))
+        ten_thuong, con = _trong_tran(["%s %s" % (_ten(t), _so(t)) for t in thuong[:TRAN_TEN]], GIOI_HAN // 10)
+        con += max(0, len(thuong) - TRAN_TEN)
+        phan.append("Tệp mức Thường, thẻ không đưa diff, %s: " % ai_soat + ", ".join(ten_thuong)
+                    + (" và %d tệp nữa" % con if con else ""))
 
     phan.append("### 2. Phản bác đã thử")
-    dong_phieu = _phieu(du_lieu, phieu, sha)
+    dong_phieu, con = _trong_tran(_phieu(du_lieu, phieu, sha), GIOI_HAN // 6)
+    if con:
+        dong_phieu.append("_Còn %d dòng phiếu không đưa vào thẻ: xem tab Conversation._" % con)
     phan += dong_phieu or ["_Chưa có phiếu phản bác nào: cổng chặn tới khi có phiếu `khong-bac` trên đúng SHA._"]
 
     phan.append("### 3. Test")

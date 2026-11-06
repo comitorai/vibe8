@@ -282,7 +282,7 @@ class TestPhieuPhanBac(unittest.TestCase):
         q = quyet_dinh(vua(ds))
         self.assertEqual(q["ket_luan"], CHAN)
         self.assertIn("trần L4", q["ly_do"][0])
-        self.assertEqual(quyet_dinh(vua(ds + [duyet(gio=MUON_HON)]))["ket_luan"], CHO_QUA)
+        self.assertEqual(quyet_dinh(vua(ds + [duyet(gio=MUON_HON, body="quyet-l4: đã đọc diff mọi tệp ở thẻ")]))["ket_luan"], CHO_QUA)
 
     def test_admin_duyet_khong_thay_phieu(self):
         # Alex 1a 06/11: mọi mức cần phiếu. Phiếu phản bác thẻ duyệt: PR Cao kèm mã độc ở tệp Thường, admin duyệt
@@ -299,7 +299,7 @@ class TestPhieuPhanBac(unittest.TestCase):
     def test_cao_tran_l4_admin_quyet(self):
         ds = [phieu("bac", commit=SHA_CU), phieu("bac", commit="c" * 40)]
         self.assertEqual(quyet_dinh(vua(ds, ds_tep=CAO))["ket_luan"], CHAN)
-        q = quyet_dinh(vua(ds + [duyet(gio=MUON_HON)], ds_tep=CAO))
+        q = quyet_dinh(vua(ds + [duyet(gio=MUON_HON, body="quyet-l4: đã đọc diff mọi tệp ở thẻ")], ds_tep=CAO))
         self.assertEqual(q["ket_luan"], CHO_QUA)
         self.assertIn("trần L4", " ".join(q["chi_tiet"]))
 
@@ -310,6 +310,16 @@ class TestPhieuPhanBac(unittest.TestCase):
             with self.subTest(ds_tep=ds_tep):
                 khac = {"ds_tep": ds_tep} if ds_tep else {}
                 self.assertEqual(quyet_dinh(vua(ds, **khac))["ket_luan"], CHAN)
+
+    def test_tran_l4_can_dong_quyet_l4(self):
+        # Phản bác lượt 3: review cũ sửa thành bác giữ submitted_at cũ, nên lượt duyệt ghi «sau» chưa chắc đã đọc thẻ L4.
+        ds = [phieu("bac", commit=SHA_CU, gio="2026-11-01T08:00:00Z"), phieu("bac", commit="c" * 40, gio="2026-11-01T09:00:00Z")]
+        for ds_tep in (CAO, None):
+            with self.subTest(ds_tep=ds_tep):
+                khac = {"ds_tep": ds_tep} if ds_tep else {}
+                self.assertEqual(quyet_dinh(vua(ds + [duyet(gio=MUON_HON)], **khac))["ket_luan"], CHAN)
+                co = duyet(gio=MUON_HON, body="quyet-l4: đã đọc diff mọi tệp ở thẻ")
+                self.assertEqual(quyet_dinh(vua(ds + [co], **khac))["ket_luan"], CHO_QUA)
 
     def test_phieu_bac_khong_co_sha_khong_tinh_vong(self):
         ds = [phieu("bac", commit=SHA_CU), phieu("bac", commit=None), phieu("bac", commit="")]

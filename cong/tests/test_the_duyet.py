@@ -126,7 +126,26 @@ class TestTheDuyet(unittest.TestCase):
                 self.assertIn("### 3. Test", the)
                 self.assertIn("+NGAN_0", the)
                 self.assertNotIn("Thẻ quá dài, đã cắt", the)
-                self.assertIn("Còn ", the)
+                # Tên bị cắt chứ tệp không bị bỏ: tệp nào cũng còn tên trong thẻ (phản bác lượt 3).
+                for i in range(50):
+                    self.assertIn("cong/%02d_" % i, the)
+
+    def test_phieu_va_tep_thuong_dai_khong_an_diff_cao(self):
+        # Phản bác lượt 3 (lỗi 3): 50 tên Thường dài + 20 phiếu bác có tái hiện toàn ký tự ẩn từng làm ngân sách diff âm.
+        an = "\u200b" * 200
+        ds = [tep("src/payments/charge.py", patch="@@ -0,0 +1 @@\n+CAO_NGAN")]
+        ds += [tep("src/%02d_%s.py" % (i, "\u1eef" * 190)) for i in range(50)]
+        phieu_ = [("bac", {"user": "u%d" % i, "commit_id": "%040x" % i, "submitted_at": "2026-11-01T10:%02d:00Z" % i}, an)
+                  for i in range(20)]
+        phieu_ += [("khong-bac", {"user": "v%d" % i, "commit_id": "a" * 40, "submitted_at": "2026-11-01T11:%02d:00Z" % i}, an)
+                   for i in range(10)]
+        q = {"rui_ro": "cao", "so_dong": 51, "qua_co": False, "theo_tep": [["vùng thanh toán"]] + [[]] * 50,
+             "nguoi_duyet": []}
+        the = the_duyet.lap_the({"sha_dau": "a" * 40, "tep": ds, "tac_gia": "u0"}, q, phieu_, ("xanh", ""))
+        self.assertLessEqual(len(the.encode("utf-8")), the_duyet.GIOI_HAN)
+        self.assertIn("+CAO_NGAN", the)
+        for muc in ("### 2.", "### 3.", "### 4."):
+            self.assertIn(muc, the)
 
     def test_lu_phieu_bac_khong_day_test_ra(self):
         lu = [phieu("bac", gio="2026-11-01T%02d:%02d:00Z" % (i // 60, i % 60), tai_hien="x" * 300) for i in range(200)]
