@@ -181,7 +181,7 @@ def tom_tat(q):
     if q["chi_tiet"]:
         dong += ["", "**Chi tiết:**"] + ["- " + x for x in q["chi_tiet"][:50]]
     if q.get("the_duyet"):
-        dong += ["", "**Thẻ duyệt ở ngay dưới:** lý do, phiếu phản bác, test và diff của tệp mức Cao."]
+        dong += ["", "**Thẻ duyệt ở ngay dưới:** lý do, phiếu phản bác, test và diff của tệp cần anh đọc."]
     return "\n".join(dong)[:_GIOI_HAN_TOM_TAT]
 
 

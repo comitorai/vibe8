@@ -115,6 +115,19 @@ class TestTheDuyet(unittest.TestCase):
         self.assertIn("+LAST_FILE_MARKER", the)
         self.assertNotIn("Thẻ quá dài, đã cắt", the)
 
+    def test_nhieu_ten_dai_van_giu_phieu_test_va_diff(self):
+        # Phản bác 06/11 (lỗi B): 50 tên dài không đẩy mục 2, 3 ra; tệp 1 dòng vẫn có diff.
+        for ky_tu in ("\u1eef", "\u200b"):
+            with self.subTest(ky_tu=ky_tu):
+                ds = [tep("cong/%02d_%s.py" % (i, ky_tu * 190), patch="@@ -0,0 +1 @@\n+NGAN_%d" % i) for i in range(50)]
+                the = self.the(ds_tep=ds)
+                self.assertLessEqual(len(the.encode("utf-8")), the_duyet.GIOI_HAN)
+                self.assertIn("### 2. Phản bác đã thử", the)
+                self.assertIn("### 3. Test", the)
+                self.assertIn("+NGAN_0", the)
+                self.assertNotIn("Thẻ quá dài, đã cắt", the)
+                self.assertIn("Còn ", the)
+
     def test_lu_phieu_bac_khong_day_test_ra(self):
         lu = [phieu("bac", gio="2026-11-01T%02d:%02d:00Z" % (i // 60, i % 60), tai_hien="x" * 300) for i in range(200)]
         the = self.the(ds_tep=[tep("cong/x.py", patch=PATCH_CONG)], co_phieu=False, ds_duyet=lu)

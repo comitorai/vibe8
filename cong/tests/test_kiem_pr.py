@@ -282,7 +282,7 @@ class TestPhieuPhanBac(unittest.TestCase):
         q = quyet_dinh(vua(ds))
         self.assertEqual(q["ket_luan"], CHAN)
         self.assertIn("trần L4", q["ly_do"][0])
-        self.assertEqual(quyet_dinh(vua(ds + [duyet()]))["ket_luan"], CHO_QUA)
+        self.assertEqual(quyet_dinh(vua(ds + [duyet(gio=MUON_HON)]))["ket_luan"], CHO_QUA)
 
     def test_admin_duyet_khong_thay_phieu(self):
         # Alex 1a 06/11: mọi mức cần phiếu. Phiếu phản bác thẻ duyệt: PR Cao kèm mã độc ở tệp Thường, admin duyệt
@@ -299,9 +299,21 @@ class TestPhieuPhanBac(unittest.TestCase):
     def test_cao_tran_l4_admin_quyet(self):
         ds = [phieu("bac", commit=SHA_CU), phieu("bac", commit="c" * 40)]
         self.assertEqual(quyet_dinh(vua(ds, ds_tep=CAO))["ket_luan"], CHAN)
-        q = quyet_dinh(vua(ds + [duyet()], ds_tep=CAO))
+        q = quyet_dinh(vua(ds + [duyet(gio=MUON_HON)], ds_tep=CAO))
         self.assertEqual(q["ket_luan"], CHO_QUA)
         self.assertIn("trần L4", " ".join(q["chi_tiet"]))
+
+    def test_duyet_truoc_khi_cham_tran_l4_khong_tinh(self):
+        # Phản bác 06/11 (lỗi A): admin duyệt lúc thẻ còn ghi phần Thường «cổng còn chặn», rồi phiếu bác tới chạm trần.
+        ds = [phieu("bac", commit=SHA_CU, gio=SAU), duyet(gio="2026-11-01T11:30:00Z"), phieu("bac", gio=MUON_HON)]
+        for ds_tep in (CAO, None):
+            with self.subTest(ds_tep=ds_tep):
+                khac = {"ds_tep": ds_tep} if ds_tep else {}
+                self.assertEqual(quyet_dinh(vua(ds, **khac))["ket_luan"], CHAN)
+
+    def test_phieu_bac_khong_co_sha_khong_tinh_vong(self):
+        ds = [phieu("bac", commit=SHA_CU), phieu("bac", commit=None), phieu("bac", commit="")]
+        self.assertEqual(quyet_dinh(vua(ds + [duyet(gio=MUON_HON)], ds_tep=CAO))["ket_luan"], CHAN)
 
     def test_hai_phieu_bac_cung_sha_la_mot_vong(self):
         # L4 đếm vòng: bác hai lần trên một SHA chưa chạm trần, admin duyệt không mở được.

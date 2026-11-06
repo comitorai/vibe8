@@ -142,9 +142,16 @@ def lap_the(du_lieu, q, phieu, nhanh):
         vi_sao.append("quá %d dòng: lượt duyệt phải có dòng `ngoai-le-co: <lý do>`" % rui_ro.NGUONG_CO_DONG)
     phan += ["- " + x for x in vi_sao]
     if cao:
-        phan.append("Tệp cần anh đọc (diff ở mục 4):\n" + "\n".join(
-            "- %s %s: %s" % (_ten(t), _so(t), "; ".join(ly)) for t, ly in cao[:TRAN_TEN])
-            + ("\n- và %d tệp nữa: mở tab Files" % (len(cao) - TRAN_TEN) if len(cao) > TRAN_TEN else ""))
+        ds_dong, dung = [], 0
+        for t, ly in cao[:TRAN_TEN]:
+            d = "- %s %s: %s" % (_ten(t), _so(t), "; ".join(ly))
+            if dung + _byte(d) > GIOI_HAN // 6:  # tên tệp dài không được ăn chỗ của phiếu, test và diff
+                break
+            ds_dong.append(d)
+            dung += _byte(d) + 1
+        con = len(cao) - len(ds_dong)
+        phan.append("Tệp cần anh đọc (diff ở mục 4):\n" + "\n".join(ds_dong)
+                    + ("\n- và %d tệp nữa: tên ở mục 4 hoặc tab Files" % con if con else ""))
     if thuong:
         dung_sha = [p for p in phieu if p[1].get("commit_id") == sha]
         if dung_sha and all(p[0] == "khong-bac" for p in dung_sha):
@@ -174,13 +181,21 @@ def lap_the(du_lieu, q, phieu, nhanh):
     if not cao:
         phan.append("_Không tệp nào ở mức Cao._")
     dau = "\n\n".join(phan)
-    hien = cao[:TRAN_TEN]
-    dong_ten = ["\n\n**%s** %s\n\n" % (_ten(t), _so(t)) for t, _ in hien]
-    ngan_sach = (GIOI_HAN - _byte(dau) - 2000 - sum(map(_byte, dong_ten))) // max(1, len(hien))
-    for (t, ly), ten_tep in zip(hien, dong_ten):
-        dau += ten_tep + _diff_tep(t, ngan_sach)
-    if len(cao) > TRAN_TEN:
-        dau += "\n\n_Còn %d tệp Cao không đưa diff vào thẻ: đọc ở tab Files trước khi duyệt._" % (len(cao) - TRAN_TEN)
+    hien, dong_ten = [], []
+    for t, _ in cao[:TRAN_TEN]:  # dòng tên của mục 4 cũng có trần byte, để còn chỗ cho diff
+        d = "\n\n**%s** %s\n\n" % (_ten(t), _so(t))
+        if sum(map(_byte, dong_ten)) + _byte(d) > GIOI_HAN // 4:
+            break
+        hien.append(t)
+        dong_ten.append(d)
+    # Chia dần: tệp ngắn dùng ít thì phần dư sang tệp sau.
+    con_lai = GIOI_HAN - _byte(dau) - 1500 - sum(map(_byte, dong_ten))
+    for i, (t, ten_tep) in enumerate(zip(hien, dong_ten)):
+        khoi = _diff_tep(t, con_lai // (len(hien) - i))
+        con_lai -= _byte(khoi)
+        dau += ten_tep + khoi
+    if len(cao) > len(hien):
+        dau += "\n\n_Còn %d tệp không đưa diff vào thẻ: đọc ở tab Files trước khi duyệt._" % (len(cao) - len(hien))
     if _byte(dau) > GIOI_HAN:  # phòng hờ: ngân sách từng tệp đã giữ dưới trần
         dau = _cat_byte(dau, GIOI_HAN - 300)
         mo = _rao_dang_mo(dau)

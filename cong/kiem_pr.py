@@ -40,7 +40,14 @@ def _doc_phieu(du_lieu):
 
 def _so_bac(du_lieu):
     """Số vòng bác: số SHA khác nhau có phiếu bác. Một người bác hai lần trên một SHA vẫn là một vòng (L4 đếm vòng)."""
-    return len({str(r.get("commit_id") or "") for ket, r, _ in _doc_phieu(du_lieu) if ket == "bac"})
+    return len({r.get("commit_id") for ket, r, _ in _doc_phieu(du_lieu)
+                if ket == "bac" and SHA_HOP_LE.fullmatch(str(r.get("commit_id") or ""))})
+
+
+def _duyet_sau_bac(du_lieu, hop_le):
+    """Lượt duyệt ghi sau phiếu bác cuối: chỉ lượt này mới đọc được thẻ trần L4 (phản bác 06/11, lỗi A)."""
+    moc = max((str(r.get("submitted_at") or "") for ket, r, _ in _doc_phieu(du_lieu) if ket == "bac"), default="")
+    return [r for r in hop_le if str(r.get("submitted_at") or "") > moc]
 
 
 def _xet_phieu(du_lieu, sha):
@@ -49,7 +56,8 @@ def _xet_phieu(du_lieu, sha):
     so_bac = _so_bac(du_lieu)
     dung_sha = [(ket, r) for ket, r in ds if r.get("commit_id") == sha]
     if so_bac >= TRAN_PHIEU_BAC:
-        return "đã bác trên %d SHA khác nhau (trần L4): cần người có quyền admin, khác tác giả, duyệt đúng SHA" % so_bac, []
+        return ("đã bác trên %d SHA khác nhau (trần L4): cần người có quyền admin, khác tác giả, duyệt đúng SHA "
+                "sau phiếu bác cuối, tức là sau khi thẻ hiện diff mọi tệp") % so_bac, []
     if not dung_sha:
         return ("cần phiếu phản bác trên đúng SHA (mọi mức), là một review có dòng `phieu-phan-bac: bac|khong-bac` "
                 "và `tai-hien: <cách tái hiện hoặc đã thử gì>` (L3)"), []
@@ -151,7 +159,8 @@ def quyet_dinh(du_lieu):
     # Mọi mức đều cần phiếu (Alex 1a, 06/11): thẻ duyệt Cao chỉ đưa diff tệp Cao, phần Thường do phiếu soát.
     # Admin duyệt không thay phiếu; chỉ khi chạm trần L4 (đủ phiếu bác) thì admin là người quyết.
     ly_do_phieu, chi_tiet_phieu = _xet_phieu(du_lieu, sha)
-    if ly_do_phieu and hop_le and _so_bac(du_lieu) >= TRAN_PHIEU_BAC:
+    # Lượt duyệt ghi trước khi chạm trần không tính: lúc đó thẻ còn ghi phần Thường «cổng còn chặn».
+    if ly_do_phieu and _so_bac(du_lieu) >= TRAN_PHIEU_BAC and _duyet_sau_bac(du_lieu, hop_le):
         bo.append("đã chạm trần L4, người admin duyệt đúng SHA quyết thay phiếu")
     elif ly_do_phieu:
         chan.append(ly_do_phieu)
