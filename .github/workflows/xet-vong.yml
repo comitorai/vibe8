@@ -1,7 +1,7 @@
 name: xet-vong
 
-# Luật §8.4: mỗi 14 ngày máy chạy nghiem-thu/do_vong.py và mở issue xet-vong kèm bảng.
-# Cron của GitHub không có "mỗi 14 ngày": chạy mỗi thứ Hai, tuần lẻ tính từ epoch thì bỏ, nên hai lần chạy cách nhau đúng 14 ngày.
+# Luật §8.4: mỗi 7 ngày (thứ Hai) máy chạy nghiem-thu/do_vong.py và mở issue xet-vong kèm bảng.
+# Cửa sổ đo 14 ngày, trượt: tỉ lệ thay đổi gây hỏng chỉ tính PR đã merge đủ 7 ngày, cửa sổ 7 ngày thì luôn ra 0.
 # Script hỏng thì job đỏ và không mở issue: hoãn, không đoán.
 on:
   schedule:
@@ -31,13 +31,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          SU_KIEN: ${{ github.event_name }}
         run: |
           set -eu
-          if [ "$SU_KIEN" = "schedule" ] && [ $(( $(date -u +%s) / 604800 % 2 )) -ne 0 ]; then
-            echo "Tuần lẻ, bỏ qua."
-            exit 0
-          fi
           python3 nghiem-thu/do_vong.py --repo "$REPO" --ngay 14 > "$RUNNER_TEMP/bang.md"
-          gh label create xet-vong --repo "$REPO" --color 5319e7 --description "Bảng xét vòng 14 ngày (luật §8.4)" --force
+          gh label create xet-vong --repo "$REPO" --color 5319e7 --description "Bảng xét vòng 7 ngày, cửa sổ 14 ngày (luật §8.4)" --force
           gh issue create --repo "$REPO" --label xet-vong --title "Xét vòng $(date -u +%F)" --body-file "$RUNNER_TEMP/bang.md"
