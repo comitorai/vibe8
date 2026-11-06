@@ -26,6 +26,7 @@ from cong.gate_app import TOKEN_HOP_LE, GitHub, LoiApi  # noqa: E402
 NANG = ("N1", "N2", "N3")
 KHAU = ("dac-ta", "test", "phan-bac", "khong-phan-bac", "cong", "chay-that", "ngoai-tam")
 MUC = ("thuong", "cao", "thap", "trung_binh")  # thap, trung_binh: PR trước 06/11, khi cổng còn ba mức
+MUC_CU = ("thap", "trung_binh")  # bảng chỉ in khi kỳ còn PR mang mức này, ghi rõ là mức cũ
 DU_MAU = {"loi_lot": 10, "ti_le_hong": 30, "thoi_gian_ra": 30, "do_dung": 30, "token": 30}
 _MUC_TIEU_DE = re.compile(r"\((thuong|cao|thap|trung_binh)\)")
 _GAY_LOI = re.compile(r"^pr-gay-loi:\s*#(\d+)\s*$", re.M)
@@ -231,9 +232,9 @@ def bang(k):
              "-" if th["ti_le"] is None else "%d%%" % round(100 * th["ti_le"]), len(th["gay_hong"]), th["so_pr"], _mau(th))]
     for muc in MUC + ("chua_ro",):
         o = k["thoi_gian_ra"].get(muc)
-        if muc == "chua_ro" and not o:
+        if muc in MUC_CU + ("chua_ro",) and not o:
             continue
-        d.append("| Thời gian ra · %s | %s |" % (muc, "không có PR" if not o else "trung vị %s giờ, 1/10 chậm nhất %s giờ, %d PR%s" % (
+        d.append("| Thời gian ra · %s | %s |" % (muc + (" (mức cũ, trước 06/11)" if muc in MUC_CU else ""), "không có PR" if not o else "trung vị %s giờ, 1/10 chậm nhất %s giờ, %d PR%s" % (
             o["trung_vi_gio"], o["p90_gio"], o["so"], _mau(o))))
     tk = k["token"]
     d.append("| Token mỗi PR đã merge | %s |" % (
