@@ -7,6 +7,7 @@ Mọi chữ từ PR (tên tệp, diff, thân phiếu) do người mở PR viết
 ký tự điều khiển và ký tự ẩn (bidi, zero-width) hiện thành \\uXXXX để người duyệt thấy thứ máy thấy.
 Diff đặt cuối thẻ, mỗi tệp Cao có trần riêng: một tệp dài không đẩy được tệp Cao khác, phiếu hay test ra khỏi thẻ.
 """
+import hashlib
 import re
 import unicodedata
 
@@ -101,7 +102,11 @@ def _gon(gia_tri, tran_byte):
 
 def _ten(tep):
     # Cắt tên chứ không bỏ tệp: tệp nào cũng phải còn tên trong thẻ (phản bác lượt 3, 06/11).
-    return _gon(tep.get("filename") if isinstance(tep, dict) else "?", TRAN_BYTE_TEN)
+    goc = tep.get("filename") if isinstance(tep, dict) else "?"
+    ten = _gon(goc, TRAN_BYTE_TEN)
+    if ten != rui_ro.hien_thi(goc):  # đã cắt: thêm dấu băm để hai tên chỉ khác ở giữa không trùng nhau (phản bác lượt 4)
+        ten += " #" + hashlib.sha256(str(goc).encode("utf-8", "surrogatepass")).hexdigest()[:8]
+    return ten
 
 
 def _trong_tran(dong, tran_byte):
@@ -186,7 +191,9 @@ def lap_the(du_lieu, q, phieu, nhanh):
                     + (" và %d tệp nữa" % con if con else ""))
 
     phan.append("### 2. Phản bác đã thử")
-    dong_phieu, con = _trong_tran(_phieu(du_lieu, phieu, sha), GIOI_HAN // 6)
+    # Bỏ từ phía cũ: phiếu mới nhất (thường là phiếu trên đúng SHA) phải còn trong thẻ (phản bác lượt 4).
+    dong_phieu, con = _trong_tran(_phieu(du_lieu, phieu, sha)[::-1], GIOI_HAN // 6)
+    dong_phieu.reverse()
     if con:
         dong_phieu.append("_Còn %d dòng phiếu không đưa vào thẻ: xem tab Conversation._" % con)
     phan += dong_phieu or ["_Chưa có phiếu phản bác nào: cổng chặn tới khi có phiếu `khong-bac` trên đúng SHA._"]

@@ -130,6 +130,26 @@ class TestTheDuyet(unittest.TestCase):
                 for i in range(50):
                     self.assertIn("cong/%02d_" % i, the)
 
+    def test_ten_cat_khong_trung_nhau(self):
+        ds = [tep("src/payments/%s%s%s.py" % ("p" * 120, giua, "q" * 120), patch="@@ -0,0 +1 @@\n+" + giua)
+              for giua in ("EVIL", "SAFE")]
+        ten = [the_duyet._ten(t) for t in ds]
+        self.assertNotEqual(ten[0], ten[1])
+        self.assertLessEqual(max(len(x.encode("utf-8")) for x in ten), the_duyet.TRAN_BYTE_TEN + 12)
+
+    def test_lu_phieu_giu_phieu_moi_nhat(self):
+        an = "\u200b" * 200
+        phieu_ = [("bac", {"user": "tac-gia", "commit_id": "%040x" % i, "submitted_at": "2026-11-01T09:%02d:00Z" % i}, an)
+                  for i in range(20)]
+        phieu_ += [("khong-bac", {"user": "v%d" % i, "commit_id": "b" * 40, "submitted_at": "2026-11-01T10:%02d:00Z" % i}, an)
+                   for i in range(10)]
+        phieu_.append(("bac", {"user": "phan-bac", "commit_id": "a" * 40, "submitted_at": "2026-11-01T12:00:00Z"}, "REAL_BUG o day"))
+        q = {"rui_ro": "cao", "so_dong": 1, "qua_co": False, "theo_tep": [["vùng thanh toán"]], "nguoi_duyet": []}
+        the = the_duyet.lap_the({"sha_dau": "a" * 40, "tep": [tep("src/payments/x.py")], "tac_gia": "tac-gia"},
+                                q, phieu_, ("xanh", ""))
+        self.assertIn("REAL_BUG", the)
+        self.assertIn("dòng phiếu không đưa vào thẻ", the)
+
     def test_phieu_va_tep_thuong_dai_khong_an_diff_cao(self):
         # Phản bác lượt 3 (lỗi 3): 50 tên Thường dài + 20 phiếu bác có tái hiện toàn ký tự ẩn từng làm ngân sách diff âm.
         an = "\u200b" * 200
