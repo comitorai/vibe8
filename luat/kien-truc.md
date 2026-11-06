@@ -104,7 +104,7 @@ Bắt buộc có: mục tiêu và **không-mục-tiêu** · phương án chọn 
 
 Chủ dự án trả lời kiểu `1a 2b` là phase mở. **Từ đây tới Cổng 3, AI không hỏi**, trừ PR mức Cao, việc khó đảo ngược mới phát sinh, hay việc lệch đặc tả. Chạm hạn mà chưa xong thì không tự kéo dài: Điều phối soạn gói Cổng 2 mới (thu hẹp, hay gia hạn có lý do).
 
-**5b, sau cổng:** Điều phối cắt phase thành task trong `docs/phase/<MÃ>-<số>.md` (mẫu `mau/phase.md`). Mỗi task ghi: mã yêu cầu · 3–5 tiêu chí · hợp đồng giao diện (tên hàm, API, màn) để test viết được trước code · mức dự kiến, tách tệp Cao và tệp Thường ra PR khác nhau khi được · tệp giữ chỗ · model · máy.
+**5b, sau cổng:** Điều phối cắt phase thành task trong `docs/phase/<MÃ>-<số>.md` (mẫu `mau/phase.md`). Mỗi task ghi: mã yêu cầu · 3–5 tiêu chí · hợp đồng giao diện (tên hàm, API, màn) để test viết được trước code · mức dự kiến, tách tệp Cao và tệp Thường ra task khác nhau khi được · tệp giữ chỗ · model · máy.
 
 ## 8. Chặng 6 — Làm, PR, cổng
 
@@ -152,7 +152,7 @@ Yêu cầu đổi giữa phase, hay khách sửa SRS: phiếu theo mẫu `mau/ph
 | Tỉ lệ PR Cao của repo sản phẩm | ≤ 30% (vibe8 không áp, vì repo này là cổng) | `do_vong.py` theo mức `[CHƯA CÓ dòng tỉ lệ]` |
 | Giấy tờ | đặc tả phase ≤ 2 trang · thiết kế ≤ 6 · tờ khung ≤ 1 · dòng tài liệu mới / dòng code mới ≤ 1 mỗi phase | `[CHƯA CÓ]` |
 
-Số 5 chưa có căn cứ đo. 300 k, 600 k suy từ trung vị token mỗi PR cộng chừng một nửa `[SUY LUẬN từ số đo nội bộ · 06/11]`. Cả ba là mốc khởi đầu, đặt lại sau 30 PR có số.
+Số 5 chưa có căn cứ đo. 300 k là trung vị token mỗi PR cộng chừng một nửa; 600 k là gấp đôi mức Thường, vì task Cao thêm phản bác model mạnh và lượt vá `[SUY LUẬN từ số đo nội bộ · 06/11]`. Cả ba là mốc khởi đầu, đặt lại sau 30 PR có số.
 
 ## 13. Vai
 
