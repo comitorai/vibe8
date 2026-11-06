@@ -34,6 +34,7 @@ _HOAN_LAI = re.compile(r"^Reverts ([\w.-]+/[\w.-]+)#(\d+)\s*$", re.M)  # thân m
 _TOKEN = re.compile(r"^token-moi: (\d+)$", re.M)  # dòng do nghiem-thu/ghi_token.py ghi
 _DAU_TOKEN = "<!-- token-may-ghi -->"
 _USD = re.compile(r"^usd-quy-doi: (\d+\.\d+)$", re.M)  # luật L12, cũng do ghi_token.py ghi
+TRAN_USD = 1e6  # một PR quá 1 triệu USD là số bị sửa tay, không phải số đo
 _USD_MODEL = re.compile(r"^<!-- usd-model (\{.*\}) -->$", re.M)
 _TIN = {"OWNER", "MEMBER", "COLLABORATOR"}  # repo công khai: ai cũng comment được
 _CHUNG = "rủi ro cao"  # dòng lý do chung của mọi PR mức cao, không phải một luật
@@ -103,18 +104,29 @@ def doc_token(ds_comment):
 
 
 def doc_usd(ds_comment):
-    """(USD quy đổi, {model: USD}) máy ghi cho một PR (luật L12), None nếu comment chưa có phần theo model."""
+    """(USD quy đổi, {model: USD}) máy ghi cho một PR (luật L12), None nếu comment chưa có phần theo model.
+    Comment người trong repo sửa tay được: số phải hữu hạn, trong khoảng 0..TRAN_USD; tên trùng sau làm sạch thì cộng."""
     than = _than_token(ds_comment)
     m, mm = _USD.search(than), _USD_MODEL.search(than)
     if not m:
         return None
+    tong = float(m.group(1))
+    if not 0 <= tong <= TRAN_USD:
+        return None
     try:
-        theo = json.loads(mm.group(1)) if mm else {}
+        theo = json.loads(mm.group(1), parse_constant=_tu_choi) if mm else {}
     except ValueError:
         theo = {}
-    theo = theo if isinstance(theo, dict) else {}
-    return float(m.group(1)), {re.sub(r"[^a-z0-9.-]", "", str(k))[:40]: float(v) for k, v in theo.items()
-                               if type(v) in (int, float) and v >= 0}
+    kq = {}
+    for k, v in (theo.items() if isinstance(theo, dict) else ()):
+        if type(v) in (int, float) and 0 <= v <= TRAN_USD:
+            ten = re.sub(r"[^a-z0-9.-]", "", str(k).lower())[:40]
+            kq[ten] = kq.get(ten, 0.0) + float(v)
+    return tong, kq
+
+
+def _tu_choi(hang):
+    raise ValueError(hang)
 
 
 def _p90(so):

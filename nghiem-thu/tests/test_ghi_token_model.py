@@ -68,6 +68,22 @@ class TestTheoModel(unittest.TestCase):
         self.assertIsNone(do_vong.doc_usd([{"body": than + "\nusd-quy-doi: 9.0000", "author_association": "NONE"}]))
 
 
+    def test_so_sua_tay_qua_lon_hoac_vo_han_bi_bo(self):
+        # phiếu phản bác PR 44: số nguyên 400 chữ số làm float() văng, Infinity làm bang() văng
+        dau = ghi_token.than_comment("x", {"mn": {"phien": 1, "luot": 1, "moi": 1, "doc_dem": 0, "moi_truoc": 0}})
+        doc = lambda duoi: do_vong.doc_usd([{"body": dau + duoi, "author_association": "OWNER"}])  # noqa: E731
+        self.assertEqual(doc('\nusd-quy-doi: 1.0\n<!-- usd-model {"a": %s, "b": 1} -->' % ("9" * 400)), (1.0, {"b": 1.0}))
+        self.assertEqual(doc('\nusd-quy-doi: 1.0\n<!-- usd-model {"a": Infinity, "b": 1} -->'), (1.0, {}))
+        self.assertIsNone(doc("\nusd-quy-doi: %s.0" % ("9" * 400)))
+        self.assertEqual(doc('\nusd-quy-doi: 1.0\n<!-- usd-model {"A-1": 1, "a-1": 2} -->'), (1.0, {"a-1": 3.0}))
+
+    def test_so_token_sua_tay_qua_lon_bi_bo_ten_trung_thi_cong(self):
+        mot = dict.fromkeys(ghi_token._LOAI, 1)
+        hong = {"mn": {"phien": 1, "luot": 1, "moi": 1, "doc_dem": 0, "moi_truoc": 0,
+                       "model": {"a": dict(mot, vao=10 ** 400), "B": mot, "b": mot}}}
+        theo = ghi_token.doc_comment("<!-- du-lieu %s -->" % json.dumps(hong))["mn"]["model"]
+        self.assertEqual(theo, {"b": dict.fromkeys(ghi_token._LOAI, 2)})
+
 class TestDoVong(unittest.TestCase):
     def test_trung_vi_va_ti_trong(self):
         from test_do_vong import NAY, pr

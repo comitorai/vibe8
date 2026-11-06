@@ -51,6 +51,7 @@ GIA_NGAY = "2026-11-06"
 GIA = {"claude-fable-5-1": (10, 50, 0.25), "claude-fable-5": (10, 50, 1.0), "claude-opus-5-5": (4, 20, 0.20),
        "claude-opus-5": (5, 25, 0.5), "claude-opus-4-8": (5, 25, 0.5), "claude-sonnet-5-5": (2, 10, 0.20),
        "claude-sonnet-5": (2, 10, 0.20), "claude-haiku-5-5": (0.10, 0.50, 0.01)}
+TRAN_SO = 10 ** 13  # trần mỗi số theo model đọc lại từ comment (sửa tay được): đủ lớn cho số thật, đủ nhỏ để đổi ra float
 _LOAI = ("luot", "vao", "ghi_5m", "ghi_1h", "ra", "doc")
 
 
@@ -207,8 +208,12 @@ def doc_comment(than):
         o = kq[_TEN_MAY.sub("", str(k))[:60]] = dict({s: v[s] for s in _SO}, luc=re.sub(r"[^\d :-]", "", str(v.get("luc", "")))[:16])
         theo = v.get("model")
         if isinstance(theo, dict):
-            o["model"] = {_ten_model(str(m)): {s: so[s] for s in _LOAI} for m, so in theo.items()
-                          if isinstance(so, dict) and all(type(so.get(s)) is int and so[s] >= 0 for s in _LOAI)}
+            gom = o["model"] = {}
+            for m, so in theo.items():
+                if isinstance(so, dict) and all(type(so.get(s)) is int and 0 <= so[s] <= TRAN_SO for s in _LOAI):
+                    g = gom.setdefault(_ten_model(str(m)), dict.fromkeys(_LOAI, 0))
+                    for s in _LOAI:
+                        g[s] += so[s]
     return kq
 
 
