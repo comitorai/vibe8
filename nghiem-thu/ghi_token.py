@@ -19,7 +19,10 @@ Theo model (luật L12): mỗi lượt Claude Code ghi thêm model và bốn lo�
 gói tháng không trả đúng số này, số chỉ để so model với nhau. Model không có trong bảng ghi "chưa có giá", không quy USD.
 Giới hạn: việc ở nhánh gốc sau khi merge PR trước (dọn, kiểm) bị tính cho PR kế tiếp của phiên; việc ở nhánh gốc
 sau nhánh cuối của phiên không tính cho PR nào; phiên Codex đổi nhánh giữa chừng
-vẫn tính cho nhánh lúc mở; lượt tóm tắt ngữ cảnh chưa tính; người có quyền ghi vẫn sửa tay được comment.
+vẫn tính cho nhánh lúc mở; lượt tóm tắt ngữ cảnh chưa tính;
+Worktree: Claude Code ghi gitBranch theo thư mục mở phiên, không theo worktree mà phiên `cd` vào, nên lượt có cwd trong
+một worktree còn trên đĩa lấy nhánh của worktree đó (`git worktree list`). Worktree đã xoá thì đành dùng gitBranch;
+hook ghi trước merge, lúc worktree còn, nên không vướng. người có quyền ghi vẫn sửa tay được comment.
 """
 import argparse
 import datetime
@@ -70,9 +73,35 @@ def cac_tep(goc_repo, nha=None, tu_luc=0.0):
     return kq
 
 
-def _luot_goi(cac_tep, goc):
+def nhanh_cua_worktree(goc):
+    """{đường dẫn worktree phụ: nhánh} từ `git worktree list --porcelain`; bỏ bản làm việc chính và HEAD rời."""
+    try:
+        ra = _git(goc, "worktree", "list", "--porcelain")
+    except (OSError, subprocess.CalledProcessError):
+        return {}
+    return _doc_worktree(ra, str(goc).rstrip("/"))
+
+
+def _doc_worktree(ra, goc):
+    kq, duong = {}, None
+    for dong in ra.splitlines():
+        if dong.startswith("worktree "):
+            duong = dong[len("worktree "):].rstrip("/")
+        elif dong.startswith("branch refs/heads/") and duong and duong != goc:
+            kq[duong] = dong[len("branch refs/heads/"):]
+    return kq
+
+
+def _nhanh_theo_cwd(cwd, nhanh, nhanh_wt):
+    """Nhánh của worktree sâu nhất chứa cwd; không có thì giữ gitBranch."""
+    hop = [d for d in (nhanh_wt or {}) if cwd == d or cwd.startswith(d + "/")]
+    return nhanh_wt[max(hop, key=len)] if hop else nhanh
+
+
+def _luot_goi(cac_tep, goc, nhanh_wt=None):
     """Mỗi lượt gọi model trong repo đúng một lần: (phiên, lúc, nhánh, token mới, đọc đệm, chi tiết).
-    Chi tiết = (model, vào, ghi đệm 5 phút, ghi đệm 1 giờ, ra); thiếu phần tách ghi đệm thì tính cả là 5 phút."""
+    Chi tiết = (model, vào, ghi đệm 5 phút, ghi đệm 1 giờ, ra); thiếu phần tách ghi đệm thì tính cả là 5 phút.
+    nhanh_wt: {đường dẫn worktree: nhánh}, thay gitBranch cho lượt có cwd trong worktree đó."""
     da_tinh, kq = set(), []
     for tep in cac_tep:
         with open(tep, encoding="utf-8", errors="replace") as f:
@@ -88,6 +117,7 @@ def _luot_goi(cac_tep, goc):
                     continue
                 if not (isinstance(nhanh, str) and nhanh and isinstance(tin, dict) and isinstance(luc, str)):
                     continue
+                nhanh = _nhanh_theo_cwd(cwd, nhanh, nhanh_wt)
                 u = tin.get("usage")
                 khoa = (tin.get("id"), e.get("requestId"))
                 if not isinstance(u, dict) or None in khoa or khoa in da_tinh:
@@ -155,15 +185,18 @@ def chi_phi(model, so):
     return (so["vao"] * vao + so["ghi_5m"] * 1.25 * vao + so["ghi_1h"] * 2 * vao + so["ra"] * ra + so["doc"] * doc) / 1e6
 
 
-def cong_theo_nhanh(cac_tep, goc_repo, nhanh_goc=("main",), doc_luot=_luot_goi, sau_luc=None, theo_model=False):
+def cong_theo_nhanh(cac_tep, goc_repo, nhanh_goc=("main",), doc_luot=_luot_goi, sau_luc=None, theo_model=False,
+                    nhanh_wt=None):
     """{nhánh: {phien, luot, moi, doc_dem, moi_truoc}}. Lượt gọi ở nhánh gốc hay HEAD rời được tính cho nhánh
     kế tiếp mà cùng phiên chuyển sang (việc làm trước khi tạo nhánh); moi_truoc là phần đó.
     Lượt ở nhánh gốc sau nhánh cuối của phiên không tính cho nhánh nào. doc_luot=_luot_goi_codex cho Codex.
     sau_luc (ISO 8601, UTC): bỏ lượt gọi từ lúc đó trở về trước, so tới giây.
-    theo_model=True: thêm khoá "model" = {model: {luot, vao, ghi_5m, ghi_1h, ra, doc}} cho lượt có chi tiết."""
+    theo_model=True: thêm khoá "model" = {model: {luot, vao, ghi_5m, ghi_1h, ra, doc}} cho lượt có chi tiết.
+    nhanh_wt: chuyển cho doc_luot (chỉ bản Claude Code nhận) để lượt trong worktree lấy nhánh của worktree."""
     goc_cung = set(nhanh_goc) | {"HEAD"}
     theo_phien = {}
-    for l in doc_luot(cac_tep, str(goc_repo).rstrip("/")):
+    goc = str(goc_repo).rstrip("/")
+    for l in (doc_luot(cac_tep, goc, nhanh_wt) if nhanh_wt else doc_luot(cac_tep, goc)):
         if sau_luc and l[1][:19] <= sau_luc[:19]:
             continue
         theo_phien.setdefault(l[0], []).append(l)
@@ -320,7 +353,8 @@ def main(argv=None):
         tu_luc = time.time() - a.ngay * 86400
         moc = moc_dung_lai(gh, a.repo, so_pr, nhanh)
         sau = moc[1] if moc else None
-        moi = cong_theo_nhanh(cac_tep(goc, a.ban_ghi, tu_luc), goc, (nhanh_goc,), sau_luc=sau, theo_model=True).get(nhanh)
+        moi = cong_theo_nhanh(cac_tep(goc, a.ban_ghi, tu_luc), goc, (nhanh_goc,), sau_luc=sau, theo_model=True,
+                              nhanh_wt=nhanh_cua_worktree(goc)).get(nhanh)
         tep_codex = cac_tep(goc, a.ban_ghi_codex or Path.home() / ".codex" / "sessions", tu_luc)
         moi_codex = cong_theo_nhanh(tep_codex, goc, (nhanh_goc,), _luot_goi_codex, sau).get(nhanh)
         ds = gh.goi("GET", "/issues/%d/comments?per_page=100" % so_pr)
