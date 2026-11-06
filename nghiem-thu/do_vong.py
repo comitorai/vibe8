@@ -25,9 +25,9 @@ from cong.gate_app import TOKEN_HOP_LE, GitHub, LoiApi  # noqa: E402
 
 NANG = ("N1", "N2", "N3")
 KHAU = ("dac-ta", "test", "phan-bac", "khong-phan-bac", "cong", "chay-that", "ngoai-tam")
-MUC = ("thap", "trung_binh", "cao")
+MUC = ("thuong", "cao", "thap", "trung_binh")  # thap, trung_binh: PR trước 06/11, khi cổng còn ba mức
 DU_MAU = {"loi_lot": 10, "ti_le_hong": 30, "thoi_gian_ra": 30, "do_dung": 30, "token": 30}
-_MUC_TIEU_DE = re.compile(r"\((thap|trung_binh|cao)\)")
+_MUC_TIEU_DE = re.compile(r"\((thuong|cao|thap|trung_binh)\)")
 _GAY_LOI = re.compile(r"^pr-gay-loi:\s*#(\d+)\s*$", re.M)
 _CHUA_RO = re.compile(r"^pr-gay-loi:\s*chưa rõ\s*$", re.M)
 _HOAN_LAI = re.compile(r"^Reverts ([\w.-]+/[\w.-]+)#(\d+)\s*$", re.M)  # thân mặc định của nút Revert trên GitHub

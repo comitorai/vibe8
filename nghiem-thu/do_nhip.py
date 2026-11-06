@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from do_vong import app_ghim, loc_app  # noqa: E402
 
 _WORKFLOW_CI = ".github/workflows/%s.yml" % ten.CHECK_NHANH
-_MUC = re.compile(r"\((thap|trung_binh|cao)\)")
+_MUC = re.compile(r"\((thuong|cao|thap|trung_binh)\)")
 COT = ("mo_toi_cong", "ci_giay", "mo_toi_duyet", "mo_toi_merge")
 
 

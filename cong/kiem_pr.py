@@ -1,10 +1,9 @@
 """Quyết định của cổng cuối. Hàm thuần, không đọc thân PR, nhãn hay tiêu đề.
 
 Các khoá của du_lieu: sha_dau, trang_thai_pr, nhanh_dich, so_pr_vao_goc, tac_gia, nguoi_commit,
-so_commit_khai, so_commit_doc, so_tep_khai, tep, vung_nhay_cam [mẫu, đọc từ nhánh gốc], lan_chay_nhanh [{head_sha, status, conclusion}],
-nguoi_tin [login], nguoi_ghi [login có quyền ghi], so_pr, duyet [{user, user_type, state, commit_id, submitted_at, body}].
+so_commit_khai, so_commit_doc, so_tep_khai, tep, vung_nhay_cam [mẫu, đọc từ nhánh gốc; None là repo chưa khai], lan_chay_nhanh [{head_sha, status, conclusion}],
+nguoi_tin [login], nguoi_ghi [login có quyền ghi], duyet [{user, user_type, state, commit_id, submitted_at, body}].
 """
-import hashlib
 import re
 
 from . import rui_ro, ten
@@ -19,14 +18,6 @@ _PHIEU = re.compile(r"^phieu-phan-bac:[ \t]*(bac|khong-bac)[ \t\r]*$", re.M)
 _TAI_HIEN = re.compile(r"^tai-hien:[ \t]*\S.{8,}\S[ \t\r]*$", re.M)
 _TRANG_THAI_PHIEU = {"COMMENTED", "APPROVED", "CHANGES_REQUESTED"}
 TRAN_PHIEU_BAC = 2  # L4: quá hai vòng bác thì người quyết
-TI_LE_BOC_THAM = 5  # L3: máy bỏ phản bác ở 1/5 PR Vừa làm nhóm đối chứng
-
-
-def boc_tham_bo(so_pr):
-    """Rút thăm theo số PR, không theo SHA: đẩy commit mới không rút lại được. Không rõ số PR thì không bỏ."""
-    if not isinstance(so_pr, int) or isinstance(so_pr, bool):
-        return False
-    return int(hashlib.sha256(b"phieu-phan-bac:%d" % so_pr).hexdigest(), 16) % TI_LE_BOC_THAM == 0
 
 
 def _xet_phieu(du_lieu, sha):
@@ -45,12 +36,10 @@ def _xet_phieu(du_lieu, sha):
         ds.append((m.group(1), r))
     so_bac = sum(1 for ket, _ in ds if ket == "bac")
     dung_sha = [(ket, r) for ket, r in ds if r.get("commit_id") == sha]
-    if boc_tham_bo(du_lieu.get("so_pr")):
-        return None, ["máy rút thăm bỏ phản bác cho PR này (nhóm đối chứng L3)"]
     if so_bac >= TRAN_PHIEU_BAC:
         return "đã %d phiếu phản bác bác (trần L4): cần người có quyền admin, khác tác giả, duyệt đúng SHA" % so_bac, []
     if not dung_sha:
-        return ("mức Vừa: cần phiếu phản bác trên đúng SHA, là một review có dòng `phieu-phan-bac: bac|khong-bac` "
+        return ("mức thường: cần phiếu phản bác trên đúng SHA, là một review có dòng `phieu-phan-bac: bac|khong-bac` "
                 "và `tai-hien: <cách tái hiện hoặc đã thử gì>` (L3)"), []
     ket, r = dung_sha[-1]
     nguoi = rui_ro.hien_thi(r.get("user"))
@@ -115,12 +104,19 @@ def quyet_dinh(du_lieu):
     """Trả {ket_luan, ly_do, chi_tiet, sha, rui_ro, so_dong, so_mau_vung, nguoi_duyet}."""
     sha = du_lieu.get("sha_dau")
     ds_tep = du_lieu.get("tep")
-    vung = du_lieu.get("vung_nhay_cam") or []
-    if not isinstance(vung, list):
+    vung = du_lieu.get("vung_nhay_cam")
+    chua_khai = vung is None
+    if chua_khai:
+        vung = []
+    elif not isinstance(vung, list):
         vung = ["*"]  # dữ liệu vùng hỏng: coi mọi tệp là nhạy cảm
     rr = rui_ro.phan_loai(ds_tep, vung)
     hop_le, bo, dang_chan = _xet_duyet(du_lieu, sha)
     chan = []
+    if chua_khai:
+        # Máy không đọc được mã nào chạm tiền hay bảo mật: repo phải khai, kể cả khai «không có» bằng tệp chỉ có chú thích.
+        chan.append("repo chưa khai vùng nhạy cảm `%s` ở nhánh gốc: khai đường dẫn thanh toán, xác thực, khoá bí mật, "
+                    "migration (không có thì để tệp chỉ có chú thích), PR khai cần admin duyệt" % ten.TEP_VUNG)
     if not (isinstance(sha, str) and SHA_HOP_LE.fullmatch(sha)):
         chan.append("head SHA không hợp lệ")
     if du_lieu.get("trang_thai_pr") != "open":
@@ -137,7 +133,7 @@ def quyet_dinh(du_lieu):
         chan.append("người duyệt đang yêu cầu sửa hoặc lượt xét đã bị gỡ: " + ", ".join(dang_chan))
     if rr["muc"] == rui_ro.CAO and not hop_le:
         chan.append("rủi ro cao: cần người có quyền admin, khác tác giả, duyệt đúng SHA")
-    if rr["muc"] == rui_ro.TRUNG_BINH:
+    if rr["muc"] == rui_ro.THUONG:
         if hop_le:
             bo.append("có người admin duyệt đúng SHA: không cần phiếu phản bác")
         else:

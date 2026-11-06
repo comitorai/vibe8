@@ -48,7 +48,18 @@
       ]
     }
   ],
-  "/pulls/4/reviews": [],
+  "/pulls/4/reviews": [
+    {
+      "user": {
+        "login": "phan-bac",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "submitted_at": "2026-11-02T00:00:00Z",
+      "body": "phieu-phan-bac: khong-bac\ntai-hien: chạy test sẵn có, không thấy lỗi"
+    }
+  ],
   "/pulls?state=open&base=main": [
     {
       "number": 4,
@@ -93,5 +104,8 @@
       "created_at": "2026-11-01T00:00:00Z",
       "closed_at": null
     }
-  ]
+  ],
+  "/collaborators/phan-bac/permission": {
+    "permission": "write"
+  }
 }

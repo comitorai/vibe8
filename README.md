@@ -3,14 +3,14 @@
 Cổng chạy ở phía GitHub: quyết định chỉ dựa trên diff, kết quả CI và lượt duyệt theo đúng commit,
 không đọc lời khai trong thân PR. Tên `xuong` và `cong` là tên tạm, gom ở `cong/ten.py`.
 
-**Trạng thái: đã bật trên một repo thật. L1-L8 bị chặn ở đó, L8 sau bản vá cũng vậy, PR rủi ro thấp tự qua đúng. Riêng `--admin` của L5 chưa thử bằng admin thật.**
+**Trạng thái: đã bật trên một repo thật. L1-L8 bị chặn ở đó, L8 sau bản vá cũng vậy, PR rủi ro thấp tự qua đúng (hồi đó chưa đòi phiếu; nay là mức thường, cần phiếu phản bác). `--admin` của L5 bằng admin thật cũng bị chặn (PR 23).**
 Mới chạy với các ca thử và PR của chính repo này, chưa qua PR việc thật của sản phẩm nào. Kết quả từng ca: [nghiem-thu/ket-qua.md](nghiem-thu/ket-qua.md). Đã kiểm gì, giới hạn gì: [docs/bao-mat.md](docs/bao-mat.md).
 
 ## Gồm gì
 
 | Đường dẫn | Việc |
 |---|---|
-| `cong/rui_ro.py` | Phân rủi ro thấp, trung bình, cao từ diff |
+| `cong/rui_ro.py` | Xếp hai mức thường, cao từ diff và vùng nhạy cảm |
 | `cong/kiem_pr.py` | Hàm thuần: dữ liệu PR vào, quyết định và lý do ra |
 | `cong/gate_app.py` | Đọc REST, phát một check run `cong-cuoi` |
 | `.github/workflows/` | `cong-nhanh` chạy test, `cong-cuoi` chạy cổng, `tin-hieu-duyet` đánh thức cổng khi có lượt duyệt |
@@ -45,26 +45,24 @@ vì chúng chạy lệnh trên máy người mở repo.
 - **PR từng đổi base không qua được,** kể cả đổi đi rồi đổi lại và GitHub tự đổi base của stacked PR: lượt sau khi đổi vẫn có thể chạy ref merge
   của base cũ. Đóng PR đó, đẩy sang nhánh tên mới rồi mở PR mới thẳng vào `main`.
 - Đổi `.github/`, `xuong.yml`, thư mục `luat/`, `docs/bao-mat.md`, CODEOWNERS, script check, tệp khai phụ thuộc, lockfile: rủi ro cao, cần duyệt.
-  Đổi README tự qua: tệp này chỉ mô tả, cổng không đọc nó.
-- **Test có sẵn là điều kiện nghiệm thu:** sửa, đổi tên, xoá đều là rủi ro cao, cần duyệt. Muốn thêm test thì tạo tệp mới, tự qua.
+  Đổi README là mức thường: tệp này chỉ mô tả, cổng không đọc nó.
+- **Test có sẵn là điều kiện nghiệm thu:** sửa, đổi tên, xoá đều là rủi ro cao, cần duyệt. Muốn thêm test thì tạo tệp mới, là mức thường.
   Thêm `__init__.py` trong vùng test cũng cần duyệt, vì nó quyết định test nào được nạp.
 - Thêm tệp hay symlink trùng tên mô-đun chuẩn của Python (`pprint.py`, `app/json.py`, symlink `json`; tệp không đuôi nhiều dòng thì không tính) cũng cần duyệt, vì đủ làm CI xanh giả.
   Có thể báo oan với tệp vô hại như `app/calendar.py`; người duyệt bấm qua. Gói bên thứ ba thì không bắt được: xem giới hạn 9.
 - Tệp không có diff dạng chữ cần duyệt, vì không ai đọc được bên trong: tệp nhị phân, tệp rỗng, và mọi mã máy như `.pyc`, `.so`, `.wasm`.
-  Trừ ảnh, PDF, phông chữ: rủi ro trung bình. Thêm `__init__.py` thì ghi một dòng chú thích để khỏi phải duyệt.
-  Đổi tên kèm sửa tệp nhị phân thì tự qua, vì API không phân biệt được với đổi tên thuần: xem giới hạn 8.
+  Trừ ảnh, PDF, phông chữ: mức thường. Thêm `__init__.py` thì ghi một dòng chú thích để khỏi phải duyệt.
+  Đổi tên kèm sửa tệp nhị phân thì là mức thường, vì API không phân biệt được với đổi tên thuần: xem giới hạn 8.
 - Một số tệp vô hại có thể bị báo oan vì trùng tên tệp nhạy cảm (`docs/check.md`, `docs/requirements-q4.txt`, thư mục `docs/specs/`); người duyệt bấm qua.
-- Rủi ro thấp chỉ gồm tài liệu, thêm test mới và tệp tĩnh. Mọi tệp khác, gồm mã và cấu hình chạy được, là trung bình.
+- **Hai mức** (Alex 1a, 06/11): **cao** là chạm bảo mật hay tiền, cần người duyệt; còn lại là **thường**, cần phiếu phản bác. Không còn mức thấp.
 - **Vùng nhạy cảm do repo tự khai** trong `cong/vung-nhay-cam.txt`: chạm vùng là rủi ro cao. Mỗi dòng một mẫu, `#` là chú thích;
   `*` khớp cả `/`, `**/` là không hoặc nhiều thư mục, `[id]` là chữ thường. Mẫu khớp chính nó và mọi thứ bên dưới; mẫu không có `/` như `auth.py` khớp ở mọi tầng.
   Cổng đọc tệp ở nhánh gốc, nên PR không tự gỡ vùng được. Tệp hỏng, hay có mẫu không bao giờ khớp được (`!x`, dấu cách lạ), thì cổng báo lỗi.
   Khai vùng mới trên `main` không xét lại PR đang mở: PR đó xét lại ở lần đẩy kế tiếp.
-  Một số tệp chạy được vẫn ra Thấp, vd `dev-requirements.txt`, tệp mới trong `tests/`.
-- Rủi ro thấp tự qua khi đủ các điều kiện khác.
-- **Rủi ro trung bình cần một phiếu phản bác** (luật L3) trên đúng head SHA: một lượt review, thường là `gh pr review <số> --comment`, thân có hai dòng đứng đầu dòng:
+  **Repo chưa có tệp vùng ở nhánh gốc thì cổng chặn mọi PR.** Repo không có vùng nào thì để tệp chỉ có chú thích.
+- **Mọi PR mức thường cần một phiếu phản bác** (luật L3) trên đúng head SHA: một lượt review, thường là `gh pr review <số> --comment`, thân có hai dòng đứng đầu dòng:
   `phieu-phan-bac: khong-bac` (hoặc `bac`) và `tai-hien: <cách tái hiện, hay đã thử gì>`, tối thiểu 10 ký tự. Chỉ tính phiếu của người có quyền ghi trên repo, không tính máy.
   Phiếu mới nhất trên SHA quyết. Đủ 2 phiếu `bac` trên PR (L4) thì chỉ người admin duyệt mới mở được. Người admin duyệt đúng SHA thì không cần phiếu.
-  Máy rút thăm theo số PR, bỏ phiếu ở khoảng 1/5 PR làm nhóm đối chứng; đẩy commit mới không rút lại được.
   Giới hạn: máy không phân biệt được hai agent dùng chung một tài khoản, nên chính tác giả ghi phiếu cũng tính. Vì vậy phải có ô tái hiện để người đọc lại kiểm.
 - Merge kiểu rebase phải tắt: cổng xét theo diff, còn rebase phát lại từng commit. Chưa tái hiện được kết quả lệch, đây là biện pháp phòng. `bat_cong.py` tắt và đọc lại.
 - Quá 400 dòng (không tính lockfile): chặn, trừ khi người duyệt hợp lệ ghi dòng `ngoai-le-co: <lý do>` trong lượt duyệt.

@@ -24,26 +24,28 @@ Khi va nhau: lỗi lọt mức nặng thắng tốc độ; tốc độ thắng t
 - **Luật nền** (L1, L5, L10) giữ an toàn cho cổng nên không bỏ theo số; vẫn đo độ đúng để chỉnh.
 - **Trần: 15 luật.** Muốn thêm luật thứ 16 thì bỏ một luật có số kém nhất.
 
-## 2. Ba mức việc — chi tiêu theo rủi ro
+## 2. Hai mức việc — người chỉ duyệt chỗ chạm bảo mật hay tiền
+
+Alex chốt 06/11 (1a): chỉ có **đạt** hoặc **không đạt**; không đạt thì sửa tới khi đạt rồi merge. Người chỉ cần nhìn chỗ có thể mất an toàn hay mất tiền.
 
 **Mức do máy xếp theo đường dẫn tệp, agent không tự khai.**
-- Cao: những gì `cong/rui_ro.py` đã xếp cao (tệp của cổng, CI (tích hợp liên tục), sửa test có sẵn, phụ thuộc, mã máy) **cộng** các mẫu đường dẫn repo tự khai là nhạy cảm trong `cong/vung-nhay-cam.txt`: quyền, xoá dữ liệu, migration (di chuyển cơ sở dữ liệu), thanh toán.
-- Vừa: mọi tệp còn lại, gồm mã và cấu hình chạy được.
-- Thấp: chỉ tài liệu, thêm test mới, tệp tĩnh. Danh sách cho phép: tệp lạ thì xếp Vừa.
+- **Cao** (chạm bảo mật hay tiền): những gì `cong/rui_ro.py` xếp cao vì đủ làm cổng hay CI (tích hợp liên tục) báo sai, hoặc chạy lệnh trên máy người mở repo: tệp của cổng và `.github/`, cấu hình agent (tác tử) `.claude/`, sửa hay xoá test có sẵn, tệp khai phụ thuộc và lockfile, tệp trùng tên mô-đun chuẩn, mã máy và tệp không có diff dạng chữ (trừ ảnh, PDF, phông chữ), tên tệp lạ; **cộng** các mẫu đường dẫn repo tự khai trong `cong/vung-nhay-cam.txt`: thanh toán, xác thực, quyền, khoá bí mật, xoá dữ liệu, migration (giải nghĩa: tệp đổi cấu trúc database theo từng bước).
+- **Thường**: mọi thứ còn lại, gồm tài liệu, test mới, mã và cấu hình chạy được.
+- **Repo chưa có `cong/vung-nhay-cam.txt` trên nhánh gốc thì cổng chặn mọi PR**: không biết đâu là tiền thì không phân được hai mức. Repo không có vùng nào thì để tệp chỉ có chú thích. Tệp này thuộc `cong/` nên khai hay sửa đều là Cao.
 
-`[ĐÃ KIỂM: test cổng · 05/11]` Cổng đã xếp ba mức như trên và đọc vùng từ nhánh gốc, nên PR không tự gỡ vùng được. Mức Vừa bắt phiếu phản bác của L3 trên đúng SHA, rút thăm bỏ 1/5 theo số PR, trần 2 phiếu bác của L4; cách ghi phiếu ở README. Máy không phân biệt được hai agent chung tài khoản, nên «agent khác» vẫn là lời dặn, chưa là hàng rào. Mức Cao chưa bắt phiếu, chỉ bắt người duyệt.
-`[ĐÃ KIỂM: PR 28 · 05/11]` PR thật chỉ sửa một tệp tài liệu trong vùng đã khai ra `chan (cao)`, không có vùng thì là thấp.
-Giới hạn đã biết: tách một thay đổi lớn thành nhiều PR nhỏ vẫn lọt qua trần cỡ của L2.
+`[ĐÃ KIỂM: test cổng · 06/11]` Cổng xếp hai mức như trên và đọc vùng từ nhánh gốc, nên PR không tự gỡ vùng được. Mọi PR Thường cần phiếu phản bác của L3 trên đúng SHA, không còn rút thăm; trần 2 phiếu bác của L4; cách ghi phiếu ở README. Máy không phân biệt được hai agent chung tài khoản, nên «agent khác» vẫn là lời dặn, chưa là hàng rào. Mức Cao chưa bắt phiếu, chỉ bắt người duyệt.
+`[ĐÃ KIỂM: PR 28 · 05/11]` PR thật chỉ sửa một tệp tài liệu trong vùng đã khai ra `chan (cao)`.
+Giới hạn đã biết: cổng chỉ thấy đường dẫn, nên mã tiền đặt ngoài vùng đã khai thì là Thường; vùng khai thiếu là lỗ của repo, người duyệt PR khai vùng phải soát. Tách một thay đổi lớn thành nhiều PR nhỏ vẫn lọt qua trần cỡ của L2.
 
-| | Thấp | Vừa | Cao |
-|---|---|---|---|
-| Trước khi code | không | 3–5 dòng tiêu chí nghiệm thu trong thân PR | như Vừa + mục «KHÔNG được phá» |
-| Test | test có sẵn xanh | thêm test cho hành vi mới | như Vừa; sửa lỗi thì có test đỏ trước khi sửa |
-| Phản bác của agent | không | 1 lượt, trừ PR bị máy rút thăm bỏ qua (L3) | 1 lượt + 1 lượt hẹp sau khi sửa logic |
-| Người duyệt | không | không | admin, khác tác giả, đúng SHA |
-| Merge | tự, khi cổng xanh | tự, khi cổng xanh và phiếu không bác | sau duyệt |
+| | Thường | Cao |
+|---|---|---|
+| Trước khi code | 3–5 dòng tiêu chí nghiệm thu trong thân PR | như Thường + mục «KHÔNG được phá» |
+| Test | test có sẵn xanh; thêm test cho hành vi mới | như Thường; sửa lỗi thì có test đỏ trước khi sửa |
+| Phản bác của agent | 1 lượt (L3) | 1 lượt + 1 lượt hẹp sau khi sửa logic |
+| Người duyệt | không | admin, khác tác giả, đúng SHA |
+| Merge | tự, khi cổng xanh và phiếu không bác | sau duyệt |
 
-**Làn sửa gấp** (lỗi đang hại người dùng): mức nào vẫn giữ mức đó, nhưng lượt phản bác được chạy sau merge, trong 24 giờ; người duyệt của mức Cao vẫn bắt buộc trước merge. Cổng không biết PR nào là sửa gấp: PR Vừa muốn merge trước phiếu thì cần người admin duyệt đúng SHA.
+**Làn sửa gấp** (lỗi đang hại người dùng): mức nào vẫn giữ mức đó, nhưng lượt phản bác được chạy sau merge, trong 24 giờ; người duyệt của mức Cao vẫn bắt buộc trước merge. Cổng không biết PR nào là sửa gấp: PR Thường muốn merge trước phiếu thì cần người admin duyệt đúng SHA.
 
 ## 3. Các luật
 
@@ -51,7 +53,7 @@ Giới hạn đã biết: tách một thay đổi lớn thành nhiều PR nhỏ 
 |---|---|---|---|---|---|
 | L1 | Mọi thay đổi vào `main` qua PR và qua cổng `cong-cuoi` | đẩy thẳng, CI giả xanh, tự duyệt | sổ chặn của cổng | luật nền | 30 ngày |
 | L2 | PR ≤ 400 dòng, trừ khi người duyệt ghi `ngoai-le-co:` | PR lớn không ai đọc nổi | số vòng sửa và lỗi bắt trước merge theo cỡ PR | PR nhỏ ít vòng sửa hơn · không khác; cần ≥ 60 PR | 60 ngày |
-| L3 | Một lượt **phản bác** cho PR mức Vừa trở lên: agent khác tìm cách làm hỏng, phải kèm cách tái hiện. Máy rút thăm bỏ qua 1/5 PR Vừa làm nhóm đối chứng | lỗi hành vi, lỗi quyền mà test xanh | lỗi thật bắt được / lượt; sửa gấp trong 7 ngày: nhóm có so nhóm rút thăm | ≥ 1 lỗi thật / 10 lượt, cần ≥ 30 lượt · dưới mức đó | 60 ngày |
+| L3 | Một lượt **phản bác** cho mọi PR: agent khác tìm cách làm hỏng, phải kèm cách tái hiện. Bỏ rút thăm đối chứng (Alex 1a, 06/11) | lỗi hành vi, lỗi quyền mà test xanh | lỗi thật bắt được / lượt; sửa gấp trong 7 ngày sau merge | ≥ 1 lỗi thật / 10 lượt, cần ≥ 30 lượt · dưới mức đó | 60 ngày |
 | L4 | Trần 2 vòng phản bác mỗi PR; lượt sau khi sửa chỉ xét phần vừa sửa | vòng sửa không dứt, token đọc lại | token mới / PR và số vòng, máy ghi | trung vị token không tăng, L3 không giảm · ngược lại | 30 ngày |
 | L5 | Test có sẵn là điều kiện nghiệm thu; sửa, đổi tên, xoá cần người duyệt | agent sửa test cho xanh | cổng đã chặn | luật nền | 30 ngày |
 | L6 | Sửa lỗi có test đỏ trước khi sửa, xanh sau khi sửa, cùng PR | sửa sai chỗ, lỗi tái phát | lỗi tái phát trong 30 ngày | tái phát thấp hơn nhóm không có · không khác; cần ≥ 20 đơn mỗi nhóm | 90 ngày |
@@ -65,7 +67,7 @@ Trích dẫn cho bảng: lượt phản bác có bắt lỗi thật trước mer
 
 ## 4. Token — chi theo việc, không chi theo thói quen
 
-- Không phản bác mức Thấp; không chạy lượt review thường song song với phản bác: phản bác đã có lỗi thật kèm tái hiện, còn review thường chưa có số tách riêng `[ĐÃ KIỂM: nội bộ · 04/11]`. Nếu nhóm rút thăm của L3 cho thấy cần thêm, đưa lại qua mục 1.
+- Một lượt phản bác mỗi PR, không chạy lượt review thường song song: phản bác đã có lỗi thật kèm tái hiện, còn review thường chưa có số tách riêng `[ĐÃ KIỂM: nội bộ · 04/11]`. PR chỉ sửa tài liệu thì lượt phản bác ngắn: đọc diff, xác nhận không chạm mã.
 - Đọc nhiều tệp, tìm kiếm: agent con model rẻ; quyết định, viết mã khó: model mạnh.
 - File nạp sẵn mỗi phiên (`CLAUDE.md`, `AGENTS.md`) càng ngắn càng tốt; trần đặt theo số đo «token nạp sẵn mỗi phiên» `[CHƯA KIỂM: chưa có số]`.
 - Một phiên một việc; xong thì đóng. Phiên dài chiếm phần lớn chi phí `[SUY LUẬN từ số đo theo bước · nội bộ · 04/11]`.
@@ -96,7 +98,7 @@ Theo bảng chấm nội bộ 04/11:
 ## 7. Lời khuyên (chưa phải luật)
 
 - Hướng dẫn thao tác tay cho người: đúng màn hiện tại, một bước một dòng.
-- Đặc tả trước code có mục «KHÔNG được phá» cho mức Vừa: đang chờ số đo.
+- Đặc tả trước code có mục «KHÔNG được phá» cho mức Thường: đang chờ số đo.
 - Kiểm thử đột biến cho mã cổng và mã quyền: 0 token, vài phút, bắt được bài test yếu.
 
 ## 8. Vòng cải tiến — nhận diện, phân loại, đo, đề xuất
@@ -116,8 +118,8 @@ Hai trường đầu là **nhãn** trên issue, đúng một nhãn mỗi trườ
 | Trường | Giá trị | Ai điền |
 |---|---|---|
 | Mức nặng | **N1** mất hoặc sai dữ liệu, lộ dữ liệu, sai tiền, vượt quyền · **N2** chức năng chính hỏng, không có đường vòng · **N3** có đường vòng hoặc chỉ sai giao diện | agent không viết PR gây lỗi đề xuất; người duyệt chốt N1 |
-| Khâu lẽ ra chặn | khâu **sớm nhất** lẽ ra bắt được, chỉ một: `dac-ta` (tiêu chí thiếu) · `test` (thiếu test) · `phan-bac` (có lượt mà sót) · `khong-phan-bac` (mức Thấp hoặc bị rút thăm) · `cong` (xếp sai mức) · `chay-that` (L7) · `ngoai-tam` (môi trường, bên thứ ba) | như trên |
-| Mức rủi ro của PR gây lỗi | Thấp · Vừa · Cao | máy, từ kết luận của cổng trên PR đó |
+| Khâu lẽ ra chặn | khâu **sớm nhất** lẽ ra bắt được, chỉ một: `dac-ta` (tiêu chí thiếu) · `test` (thiếu test) · `phan-bac` (có lượt mà sót) · `khong-phan-bac` (merge không phiếu, vd làn sửa gấp) · `cong` (xếp sai mức) · `chay-that` (L7) · `ngoai-tam` (môi trường, bên thứ ba) | như trên |
+| Mức rủi ro của PR gây lỗi | Thường · Cao (PR trước 06/11: Thấp · Vừa · Cao) | máy, từ kết luận của cổng trên PR đó |
 
 **8.3 Đo — máy đọc nhãn, không đếm tay.**
 `GH_TOKEN=... python3 nghiem-thu/do_vong.py --repo chu/repo --ngay 30` chỉ gọi GET, ra bảng Markdown để dán vào issue `xet-vong`: năm số của mục 5 và bảng «lỗi lọt theo mức nặng · khâu». `[ĐÃ KIỂM: chạy trên comitorai/vibe8 · 05/11; 10 test ở nghiem-thu/tests/test_do_vong.py]`

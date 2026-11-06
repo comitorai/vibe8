@@ -22,6 +22,12 @@ TAC_GIA = "tac-gia"
 TRANG_THAI = {"A": "added", "M": "modified", "D": "removed", "R": "renamed", "C": "copied", "T": "changed"}
 
 
+def _phieu(sha):
+    # Từ 06/11 mọi PR mức thường cần phiếu phản bác: thêm một phiếu không bác để ca đối chứng chỉ thử điều nó muốn thử.
+    return {"user": "phan-bac", "user_type": "User", "state": "COMMENTED", "commit_id": sha, "submitted_at": SAU,
+            "body": "phieu-phan-bac: khong-bac\ntai-hien: chạy test của app mẫu, không thấy lỗi"}
+
+
 def _duyet(nguoi):
     return lambda sha: [{"user": nguoi, "user_type": "User", "state": "APPROVED",
                          "commit_id": sha, "submitted_at": SAU, "body": ""}]
@@ -125,7 +131,8 @@ def _dung_pr(tam, ban_va, ai_duyet):
     return {"sha_dau": sha, "trang_thai_pr": "open", "nhanh_dich": ten.NHANH_GOC, "so_pr_vao_goc": 1,
             "tac_gia": TAC_GIA, "nguoi_commit": [TAC_GIA], "so_commit_khai": 1, "so_commit_doc": 1,
             "so_tep_khai": len(ds_tep), "tep": ds_tep, "lan_chay_nhanh": lan_chay,
-            "nguoi_tin": ["nguoi-khac", TAC_GIA], "duyet": ai_duyet(sha) if ai_duyet else []}, nhanh
+            "nguoi_tin": ["nguoi-khac", TAC_GIA], "nguoi_ghi": ["nguoi-khac", TAC_GIA, "phan-bac"],
+            "vung_nhay_cam": [], "duyet": (ai_duyet(sha) if ai_duyet else []) + [_phieu(sha)]}, nhanh
 
 
 def _xet(ban_va, ai_duyet=None):

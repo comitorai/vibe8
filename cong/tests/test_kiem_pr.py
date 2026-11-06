@@ -8,7 +8,10 @@ SHA_CU = "b" * 40
 SAU = "2026-11-01T11:00:00Z"
 MUON_HON = "2026-11-01T12:00:00Z"
 NGUOI_TIN = ["nguoi-duyet", "tac-gia", "dong-tac"]
-SO_PR_BO, SO_PR_XET = 4, 7  # 4 bị máy rút thăm bỏ phản bác, 7 thì không: test cũ của mức Vừa không vướng phiếu
+
+
+PHIEU_SAN = {"user": "phan-bac", "user_type": "User", "state": "COMMENTED", "commit_id": SHA, "submitted_at": SAU,
+             "body": "phieu-phan-bac: khong-bac\ntai-hien: chạy test sẵn có, không thấy lỗi"}
 
 
 def check(sha=SHA, status="completed", conclusion="success"):
@@ -23,12 +26,14 @@ def tep(ten="a.py", them=1, xoa=0, status="modified", patch="@@ -1 +1 @@\n+x"):
     return {"filename": ten, "status": status, "additions": them, "deletions": xoa, "patch": patch}
 
 
-def pr(ds_tep=None, checks=None, ds_duyet=None, **khac):
+def pr(ds_tep=None, checks=None, ds_duyet=None, co_phieu=True, **khac):
+    """co_phieu: thêm một phiếu không bác trên đúng SHA, để test của điều kiện khác không vướng phiếu (mọi PR không Cao đều cần)."""
     ds_tep = [tep()] if ds_tep is None else ds_tep
+    ds_duyet = list(ds_duyet or []) + ([PHIEU_SAN] if co_phieu else [])
     d = {"sha_dau": SHA, "trang_thai_pr": "open", "nhanh_dich": "main", "so_pr_vao_goc": 1, "tac_gia": "tac-gia",
          "nguoi_commit": ["tac-gia"], "so_commit_khai": 1, "so_commit_doc": 1, "so_tep_khai": len(ds_tep),
          "tep": ds_tep, "lan_chay_nhanh": [check()] if checks is None else checks, "nguoi_tin": NGUOI_TIN,
-         "duyet": ds_duyet or [], "so_pr": SO_PR_BO, "nguoi_ghi": NGUOI_TIN + ["phan-bac"]}
+         "duyet": ds_duyet, "vung_nhay_cam": [], "nguoi_ghi": NGUOI_TIN + ["phan-bac"]}
     d.update(khac)
     return d
 
@@ -232,35 +237,21 @@ def phieu(ket="khong-bac", user="phan-bac", commit=SHA, gio=SAU, tai_hien="tai-h
 
 
 def vua(ds_duyet=None, **khac):
-    return pr(ds_duyet=ds_duyet, so_pr=SO_PR_XET, **khac)
+    return pr(ds_duyet=ds_duyet, co_phieu=False, **khac)
 
 
 class TestPhieuPhanBac(unittest.TestCase):
-    """Luật L3, L4: PR mức Vừa cần một phiếu phản bác không bác trên đúng SHA, trừ PR máy rút thăm bỏ."""
-
-    def test_rut_tham_theo_so_pr(self):
-        from cong.kiem_pr import boc_tham_bo
-        self.assertTrue(boc_tham_bo(SO_PR_BO))
-        self.assertFalse(boc_tham_bo(SO_PR_XET))
-        self.assertFalse(boc_tham_bo(None))
-        self.assertFalse(boc_tham_bo(True))
-        ti_le = sum(boc_tham_bo(n) for n in range(1, 10001)) / 10000
-        self.assertAlmostEqual(ti_le, 0.2, delta=0.02)
+    """Luật L3, L4: mọi PR không Cao cần một phiếu phản bác không bác trên đúng SHA (Alex 1a 06/11: bỏ rút thăm)."""
 
     def test_khong_phieu_thi_chan(self):
         q = quyet_dinh(vua())
-        self.assertEqual((q["ket_luan"], q["rui_ro"]), (CHAN, "trung_binh"))
+        self.assertEqual((q["ket_luan"], q["rui_ro"]), (CHAN, "thuong"))
         self.assertIn("phiếu phản bác", q["ly_do"][0])
 
     def test_phieu_khong_bac_thi_qua(self):
         q = quyet_dinh(vua([phieu()]))
         self.assertEqual(q["ket_luan"], CHO_QUA)
         self.assertIn("phiếu phản bác không bác của `phan-bac`", q["chi_tiet"])
-
-    def test_bi_rut_tham_bo_thi_qua_khong_can_phieu(self):
-        q = quyet_dinh(pr())
-        self.assertEqual(q["ket_luan"], CHO_QUA)
-        self.assertTrue(any("rút thăm" in x for x in q["chi_tiet"]))
 
     def test_phieu_bac_thi_chan(self):
         q = quyet_dinh(vua([phieu("bac")]))
@@ -315,8 +306,10 @@ class TestPhieuPhanBac(unittest.TestCase):
         # Hai agent dùng chung tài khoản thì máy không phân biệt được: giới hạn này ghi ở luật, không giả vờ chặn.
         self.assertEqual(quyet_dinh(vua([phieu(user="tac-gia")]))["ket_luan"], CHO_QUA)
 
-    def test_muc_thap_va_cao_khong_xet_phieu(self):
-        self.assertEqual(quyet_dinh(vua(ds_tep=[tep("README.md")]))["ket_luan"], CHO_QUA)
+    def test_tai_lieu_cung_can_phieu_cao_thi_khong_xet_phieu(self):
+        q = quyet_dinh(vua(ds_tep=[tep("README.md")]))
+        self.assertEqual((q["ket_luan"], q["rui_ro"]), (CHAN, "thuong"))
+        self.assertEqual(quyet_dinh(vua(ds_tep=[tep("README.md")], ds_duyet=[phieu()]))["ket_luan"], CHO_QUA)
         q = quyet_dinh(vua(ds_tep=CAO, ds_duyet=[phieu()]))
         self.assertEqual(q["ket_luan"], CHAN)
         self.assertNotIn("phiếu", " ".join(q["ly_do"]))
@@ -364,13 +357,29 @@ class TestDuLieuHong(unittest.TestCase):
 
 
 class TestVungNhayCam(unittest.TestCase):
+    def test_chua_khai_vung_thi_chan_ca_khi_co_phieu_va_admin_duyet(self):
+        # Alex 1a 06/11: không biết đâu là tiền, đâu là xác thực thì không phân được hai lớp, nên đóng.
+        for ds_duyet in ([], [duyet()]):
+            with self.subTest(len(ds_duyet)):
+                q = quyet_dinh(pr(ds_duyet=ds_duyet, vung_nhay_cam=None))
+                self.assertEqual(q["ket_luan"], CHAN)
+                self.assertTrue(any("chưa khai vùng nhạy cảm" in x for x in q["ly_do"]))
+
+    def test_khai_rong_la_khong_co_vung(self):
+        self.assertEqual(quyet_dinh(pr(vung_nhay_cam=[]))["ket_luan"], CHO_QUA)
+
+    def test_vung_khong_phai_danh_sach_thi_la_cao(self):
+        for vung in ("", "src/", 0, {"a": 1}):
+            q = quyet_dinh(pr(vung_nhay_cam=vung))
+            self.assertEqual((q["ket_luan"], q["rui_ro"]), (CHAN, "cao"), repr(vung))
+
     def test_cham_vung_khai_thi_can_duyet(self):
         q = quyet_dinh(pr([tep("src/quyen/a.py")], vung_nhay_cam=["src/quyen/"]))
         self.assertEqual((q["ket_luan"], q["rui_ro"]), (CHAN, "cao"))
 
     def test_ma_ngoai_vung_la_vua_va_tu_qua(self):
         q = quyet_dinh(pr([tep("src/khac.py")], vung_nhay_cam=["src/quyen/"]))
-        self.assertEqual((q["ket_luan"], q["rui_ro"]), (CHO_QUA, "trung_binh"))
+        self.assertEqual((q["ket_luan"], q["rui_ro"]), (CHO_QUA, "thuong"))
         self.assertEqual(q["so_mau_vung"], 1)
 
     def test_khong_khai_vung(self):

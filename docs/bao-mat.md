@@ -75,8 +75,8 @@ Cũng trên repo thử, bằng token giả:
    tin vào ref merge do GitHub dựng. PR xung đột hoặc đẩy commit lúc đang đóng thì không có lượt trên SHA đó, cổng báo chờ. Khe cố ý còn lại, chưa thử trên GitHub:
    commit trung gian thêm `edited` vào workflow, commit cuối xung đột và trả workflow về như cũ nên diff không thấy gì, PR khác merge làm hết xung đột, rồi sửa
    tiêu đề. Lượt đó chạy workflow của ref cũ mà mang SHA cuối. Cần cộng tác viên cố ý và nhiều bước.
-2. **PR rủi ro thấp tự merge, không có người đọc.** Đây là chính sách, người dùng quyết. Trung bình cũng được đối xử như thấp về
-   điều kiện qua. Muốn mọi PR phải có người duyệt thì phải đổi `kiem_pr.py`.
+2. **PR mức thường merge không có người đọc.** Đây là chính sách, Alex chốt 06/11 (1a): cần cổng xanh và phiếu phản bác không bác trên đúng SHA
+   của người có quyền ghi. Máy không phân biệt được hai agent chung tài khoản, nên tác giả cũng tự ghi phiếu được. Muốn mọi PR phải có người duyệt thì phải đổi `kiem_pr.py`.
 3. **Khoảng hở nhỏ giữa yêu cầu sửa và lượt xét mới.** Check cũ còn `success` cho tới khi `tin-hieu-duyet` và `cong-cuoi` chạy xong.
    Nếu bước tạo token hỏng hoặc khoá hết hạn thì không phát được gì, `success` cũ ở lại đến lần xét sau. Cộng tác viên gây được việc này
    có chủ ý: xem giới hạn 18.
@@ -87,19 +87,19 @@ Cũng trên repo thử, bằng token giả:
 7. **Force push A, B, rồi về A** làm lượt duyệt cũ trên A còn tính, và thu hồi trên A bị lượt xét mới ghi đè. Cây mã giống thứ đã duyệt,
    nhưng `main` có thể đã khác, nên kết quả merge có thể khác thứ đã đọc.
 8. **API files không cho biết mode của tệp.** Symlink mới hiện như tệp một dòng có nội dung là đích, nên chỉ bị bắt khi trùng tên mô-đun chuẩn.
-   Đổi quyền tệp thuần không có diff dạng chữ: loại `changed` xếp trung bình. Tệp không có diff dạng chữ thì cần duyệt, trừ ảnh, PDF và phông chữ.
-   Đổi tên kèm sửa tệp nhị phân trông giống hệt đổi tên thuần (0 dòng, không patch) nên tự qua.
+   Đổi quyền tệp thuần không có diff dạng chữ: loại `changed` xếp mức thường. Tệp không có diff dạng chữ thì cần duyệt, trừ ảnh, PDF và phông chữ.
+   Đổi tên kèm sửa tệp nhị phân trông giống hệt đổi tên thuần (0 dòng, không patch) nên là mức thường.
 9. **Cổng không chứng minh phần mềm đúng.** Tệp test mới hoặc mã thường vẫn có thể gọi `os._exit(0)`, hay gán đè `unittest.TestCase.run`, và
    CI xanh giả mà không có gì báo rủi ro cao. Luật test chỉ bịt các đường đi tắt qua test có sẵn, và nhận test theo tên nên không bao giờ đủ:
    thư mục hay đuôi lạ lọt, còn `docs/specs/x.md`, `test_utils.py` thì bị báo oan. Bước sau có thể đếm số test chạy so với nhánh gốc.
-   Tệp trùng tên gói bên thứ ba (`yaml.py`) cũng che được gói đó trong CI và tự qua: cổng không biết repo dùng gói nào, và lớp lỗi này không
+   Tệp trùng tên gói bên thứ ba (`yaml.py`) cũng che được gói đó trong CI mà vẫn là mức thường: cổng không biết repo dùng gói nào, và lớp lỗi này không
    nặng hơn `os._exit(0)` ở trên. Job cổng không bị ảnh hưởng, vì chỉ dùng thư viện chuẩn và chỉ lấy thư mục `cong/`.
 10. **Agent lỡ dùng email của người duyệt để commit** thì người đó thành «tự duyệt». Cổng đóng và ghi lý do, không mở sai.
 11. **Xoá hoặc đổi tên `cong-nhanh.yml` không qua được:** cổng không có lượt CI để đọc, nên mọi PR kẹt. Đường thoát: chủ repo tạm gỡ bảo vệ nhánh.
 12. **Cổng báo chờ, không qua, khi không có lượt tính được:** PR xung đột với nhánh gốc, PR mở lại sau khi đẩy commit lúc đóng, nhánh đầu từng có PR khác (kể cả đã
     đóng, nên PR lành dùng lại nhánh cũ vẫn kẹt), hoặc PR từng đổi base, kể cả stacked PR do GitHub tự đổi. Hai trường hợp đầu thì đẩy một commit mới, kể cả khi
     xung đột tự hết vì PR khác đã merge. Hai trường hợp sau thì đóng PR đó, đẩy sang nhánh tên mới rồi mở PR mới: PR cũ còn mở cùng SHA sẽ làm PR mới kẹt, xem giới hạn 14.
-13. **Yêu cầu sửa gắn theo PR.** Mở PR mới cùng nội dung thì yêu cầu sửa cũ không theo; nếu là rủi ro thấp thì tự qua.
+13. **Yêu cầu sửa gắn theo PR.** Mở PR mới cùng nội dung thì yêu cầu sửa cũ không theo; nếu là mức thường thì qua khi có phiếu không bác trên SHA mới.
 14. **Hai PR trong repo cùng SHA vào `main` làm cả hai kẹt.** PR thứ hai mở có chủ ý thì giữ được SHA đó không qua được, đến khi đóng.
 15. **PR quá 3000 tệp bị chặn:** API không trả đủ, cổng đóng. Commit có author không gắn tài khoản, và commit merge, không tính vào «người có commit».
 16. **`workflow_run` trễ sau khi PR đã merge** có thể ghi `failure` lên commit đã vào `main`. Chỉ là hiển thị, không ảnh hưởng PR khác có SHA khác.
@@ -111,7 +111,7 @@ Cũng trên repo thử, bằng token giả:
 20. **Lỗi đọc quyền làm cổng đóng.** API quyền hỏng thì lượt đó ra `failure`, tự lành ở sự kiện sau.
 21. **Merge kiểu rebase phải tắt.** Cổng đọc diff so với điểm rẽ nhánh; rebase phát lại từng commit nên có thể đảo thay đổi đã vào `main` mà diff không
     cho thấy. Chưa tái hiện được trên GitHub: đây là biện pháp phòng, vì điều kiện GitHub từ chối chỉ thấy ghi ở tài liệu Enterprise Server. `bat_cong.py` tắt và đọc lại.
-22. **Hai PR xanh riêng có thể ghép lại gãy `main`.** `strict: False` nên PR không phải chạy lại khi `main` tiến. Hai PR rủi ro thấp, mỗi PR xanh trên `main` lúc nó chạy,
+22. **Hai PR xanh riêng có thể ghép lại gãy `main`.** `strict: False` nên PR không phải chạy lại khi `main` tiến. Hai PR mức thường, mỗi PR xanh trên `main` lúc nó chạy,
     có thể cùng vào và làm `main` đỏ. Không PR nào vượt cổng, và PR kế tiếp sẽ đỏ nên hỏng lộ ra ngay. Đổi lấy: `strict: True` buộc chạy lại và duyệt lại mỗi lần `main` tiến;
     hàng đợi merge chỉ có ở repo tổ chức.
 23. **Đổi tên nhánh đầu vòng qua được luật một nhánh một PR.** PR đã đóng vẫn mang tên cũ, nên tìm `head=` theo tên mới chỉ thấy PR mới. Đo trên repo đối chứng, 1 mẫu:
