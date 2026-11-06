@@ -62,13 +62,26 @@ Giới hạn đã biết: cổng chỉ thấy đường dẫn, nên mã tiền �
 | L9 | Làn song song: một làn một worktree (bản làm việc song song cùng một repo) một PR; số làn theo tải máy; merge xong máy tự dọn | làn giẫm nhau, đầy đĩa | xung đột / tuần, GB tồn | xung đột ≤ 1 / tuần · trên mức đó thì giảm làn | 14 ngày |
 | L10 | Bằng chứng duy nhất là lượt CI trên đúng head SHA mà cổng đọc; thân PR không có mục tự khai «đã chạy» | khai xanh mà chưa chạy | cổng đã đọc lượt | luật nền | 30 ngày |
 | L11 | Mỗi module có tệp **điều kiện bán được** trong repo, thuộc vùng cần người duyệt; mỗi PR ghi điều kiện nó đẩy, PR không đẩy điều kiện nào thì xếp sau | làm nhiều mà không ra bản bán được | số điều kiện đạt / tuần, máy đếm từ tệp | tăng mỗi tuần · 2 tuần liền không tăng thì chủ dự án xem lại danh sách | 14 ngày |
+| L12 | Chọn model theo bảng ở mục 4: việc đọc, tìm kiếm dùng model rẻ; mức Cao và phản bác dùng model mạnh; đổi bảng mỗi lần một dòng | chi sai model: model đắt cho việc dễ (tốn tiền), model rẻ cho việc khó (lỗi, vòng sửa) | USD quy đổi / PR merge theo model, máy ghi (mục 8.3); tỉ lệ thay đổi gây hỏng; L3; thời gian ra | trung vị USD / PR giảm ≥ 20% so với mốc, tỉ lệ thay đổi gây hỏng không tăng, lỗi L3 bắt / lượt không giảm, thời gian ra không chậm hơn · USD giảm dưới 20%, hoặc một trong ba số kia xấu đi; cần ≥ 30 PR | 30 ngày |
 
 Trích dẫn cho bảng: lượt phản bác có bắt lỗi thật trước merge (độ tin trung bình), **chưa chứng minh giảm lỗi lọt** `[ĐÃ KIỂM: nội bộ · 04/11]`. L7: ca L8 của cổng vibe8 qua hết vòng thử cục bộ, chỉ lọt khi thử trên GitHub thật `[ĐÃ KIỂM: nghiem-thu/ket-qua.md:18 · 05/11]`.
 
 ## 4. Token — chi theo việc, không chi theo thói quen
 
 - Một lượt phản bác mỗi PR, không chạy lượt review thường song song: phản bác đã có lỗi thật kèm tái hiện, còn review thường chưa có số tách riêng `[ĐÃ KIỂM: nội bộ · 04/11]`. PR chỉ sửa tài liệu thì lượt phản bác ngắn: đọc diff, xác nhận không chạm mã.
-- Đọc nhiều tệp, tìm kiếm: agent con model rẻ; quyết định, viết mã khó: model mạnh.
+- **Chọn model theo việc (L12).** Mức do máy xếp (mục 2); trước khi code, agent đoán mức theo tệp sẽ sửa, cổng xếp sai thì theo cổng.
+
+  | Việc | Model mặc định | Lên một bậc khi |
+  |---|---|---|
+  | Agent con: đọc nhiều tệp, tìm kiếm, kéo số, tóm tắt | Haiku 5.5 | cần phán đoán nội dung → Sonnet 5.5 |
+  | Viết mã, tài liệu mức Thường | Sonnet 5.5 | cùng một lỗi CI đỏ 2 lần, hoặc phiếu bác lần đầu → Opus 5.5 |
+  | Mức Cao, điều phối nhiều bước, phiếu phản bác mọi mức | Opus 5.5 | lỗi đã thử 2 hướng không ra → Fable 5.1 |
+  | Kiến trúc, quyết định khó đảo ngược | Fable 5.1 | — |
+
+  Giá $/1 triệu token vào · ra (kiểm 06/11): Haiku 5.5 0,10 · 0,50; Sonnet 5.5 2 · 10; Opus 5.5 4 · 20; Fable 5.1 10 · 50. Máy ghi giữ bảng giá đầy đủ (`GIA` trong `nghiem-thu/ghi_token.py`).
+  Mặt bằng 30 ngày trước khi áp: lượt gọi Opus 5.5 gấp gần 2 lần Sonnet 5.5, Haiku 5.5 dưới 1% `[ĐÃ KIỂM: bản ghi phiên trên máy · nội bộ · 06/11]`. Máy ghi chưa tách lượt agent con với agent chính.
+  Phiếu phản bác không hạ xuống model rẻ: đó là khâu bắt lỗi, L3 đo nó `[SUY LUẬN từ mục 0: lỗi lọt thắng token]`.
+  **Đổi bảng là đổi luật:** mỗi lần một dòng, qua PR sửa file này, ghi ngày và số đo làm căn cứ ngay dưới bảng. Mốc của L12: trước ngày áp, chạy `ghi_token.py --pr <số>` (không `--kho`, để comment lên PR) cho mọi PR merge trong 30 ngày trước, trên mọi máy có bản ghi phiên; rồi `do_vong.py --ngay 30` tính trung vị. Ghi số mốc kèm ngày dưới bảng.
 - File nạp sẵn mỗi phiên (`CLAUDE.md`, `AGENTS.md`) càng ngắn càng tốt; trần đặt theo số đo «token nạp sẵn mỗi phiên» `[CHƯA KIỂM: chưa có số]`.
 - Một phiên một việc; xong thì đóng. Phiên dài chiếm phần lớn chi phí `[SUY LUẬN từ số đo theo bước · nội bộ · 04/11]`.
 - Token ghi theo PR, máy ghi từ bản ghi phiên (mục 8.3); không dùng số agent tự báo.
