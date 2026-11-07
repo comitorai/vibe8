@@ -50,7 +50,8 @@ Mục này nói **cái gì phải đúng**; cách làm cụ thể trên từng c
 
 **Hai lớp, vì lớp lồng không bền.** Lớp lồng: phiên làn là con của phiên Điều phối đã mở nó. Nó cho thấy ai mở ai, nhưng gắn chặt
 với một phiên; Điều phối đổi thì lớp này không tự đổi theo. Lớp vỏ: một nhóm mang mã luồng việc (vd `📂 COM-24 · Tasks`), chứa
-Điều phối hiện hành và mọi làn còn sống. Vỏ không gắn với phiên nào, nên sống qua mọi lần bàn giao. **Vỏ là nguồn sự thật để nhìn;
+Điều phối (có thể nhiều) và mọi làn còn sống, làn nào cũng là phiên con của Điều phối đã mở nó; **không ghim** Điều phối
+(Alex 07/11: có thể có nhiều Điều phối). Vỏ không gắn với phiên nào, nên sống qua mọi lần bàn giao. **Vỏ là nguồn sự thật để nhìn;
 sổ giữ chỗ là nguồn sự thật để quyết** — mỗi dòng sổ ghi id phiên của làn (cột `Phiên`, `mau/phase.md`).
 
 | Thao tác | Khi nào | Làm gì | Sổ ghi |
@@ -69,7 +70,7 @@ sổ giữ chỗ là nguồn sự thật để quyết** — mỗi dòng sổ gh
 2. Mở Điều phối mới; lời giao chỉ trỏ tới sổ và tệp bàn giao, không chép lại.
 3. Tách Điều phối mới và mọi làn còn sống ra khỏi cây của Điều phối cũ. **Bước này phải đi trước khi Điều phối cũ đóng:** công cụ có
    thể đóng, lưu trữ luôn phiên con khi đóng phiên cha `[ĐÃ KIỂM: Điều phối COM-24 cũ lưu trữ và kéo theo Điều phối mới · 07/11]`.
-4. Đưa tất cả vào vỏ, Điều phối mới đặt đầu.
+4. Đưa tất cả vào vỏ (không ghim).
 5. Nhắn từng làn: «Điều phối mới là <id>; báo về đó từ giờ».
 6. Điều phối mới đối chiếu sổ với danh sách phiên đang sống, xác nhận với từng làn.
 7. Điều phối cũ kiểm lại không còn phiên con nào cần sống, rồi đóng phiên.
@@ -93,7 +94,7 @@ phối mới lưu trữ nó và mở lại từ phiên mình (lồng đúng, m�
 | Cần | Công cụ |
 |---|---|
 | Mở làn lồng dưới Điều phối | `start_session` gọi từ phiên Điều phối, `use_worktree: true` (dùng chung bản làm việc thì làn bị lưu trữ cùng cha) |
-| Vỏ | nhóm thanh bên: `create_group`, `move_sessions`; Điều phối hiện hành ghim lên đầu |
+| Vỏ | nhóm thanh bên: `create_group`, `move_sessions`; không ghim (phiên không ghim có PR riêng thì app có thể tự lưu trữ khi PR đóng, nên Điều phối không mở PR từ chính phiên mình hoặc kiểm `list_sessions` sau mỗi PR đóng) |
 | Tách khỏi cây cha | `detach_session` — một chiều: **app không có công cụ gắn phiên vào cha khác** |
 | Nhắn làn | `SendMessage` tới id `local_…` |
 | Kiểm phiên con trước khi đóng | `list_sessions {"linked": true}` |
