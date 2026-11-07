@@ -29,6 +29,10 @@ Chủ dự án chốt 06/11: **một Điều phối cho mỗi module** (1a); Đi
 - ssh thường không đăng nhập được tác tử: trên macOS, phiên ssh không mở được Keychain nên CLI báo chưa đăng nhập `[ĐÃ KIỂM: chạy CLI qua ssh trên máy phụ · 06/11]`.
 - Chạy được khi làn khởi động trong miền GUI của người dùng (launchd `gui/<uid>`), gọi qua ssh `[ĐÃ KIỂM: job launchd chạy một lần, CLI trả lời được · 06/11]`.
 - Công cụ mở làn cụ thể nằm ở repo riêng của chủ dự án, không ở vibe8.
+- Làn chạy bằng launchd là **ngoại lệ duy nhất của «không chạy ngầm»** (§5 Mở): nó không có phiên trong app, không có id phiên,
+  không nhận tin nhắn. Nên ở §5: **Mở** — «nhìn thấy được» là một dòng sổ ghi máy, nhãn job launchd và nhánh, thay cho thanh bên;
+  **Gom** — không áp; **báo về** — chỉ qua nhánh và PR (§4), không qua tin nhắn; **Chuyển** bước 3–6 và chốt «làn kế đã xác nhận»
+  của **Thay làn** — thay bằng việc Điều phối mới đọc dòng sổ, nhánh và PR của làn.
 
 ## 4. Chống trùng việc, chồng chéo
 
@@ -39,7 +43,7 @@ Chủ dự án chốt 06/11: **một Điều phối cho mỗi module** (1a); Đi
 - Làn trên máy phụ chỉ báo về qua PR trên GitHub. Chỉ máy chính ghi tệp bàn giao, ghi sổ giữ chỗ và merge.
 - Hai làn chạm nhau ngoài dự kiến (xung đột merge): dừng làn sau, ghi vào bảng, cắt lại task; không để làn tự giải xung đột của làn khác.
 
-## 5. Cây làn: mở, tách, gộp, gom, chuyển
+## 5. Cây làn: bảy thao tác của làn
 
 Chủ dự án chốt 07/11: làn của một module nằm dưới Điều phối của module đó, và khi Điều phối bàn giao thì làn đi theo Điều phối mới.
 Mục này nói **cái gì phải đúng**; cách làm cụ thể trên từng công cụ nằm ở bảng cuối mục.
@@ -51,13 +55,13 @@ sổ giữ chỗ là nguồn sự thật để quyết** — mỗi dòng sổ gh
 
 | Thao tác | Khi nào | Làm gì | Sổ ghi |
 |---|---|---|---|
-| **Mở** | task chờ, tệp giữ không giao, máy nổi (§2.4) | mở làn từ chính phiên Điều phối, trong bản làm việc riêng (worktree), ở nơi chủ dự án nhìn thấy được (thanh bên app), không chạy ngầm; đặt tên theo mẫu tên phiên; đưa vào vỏ | task · phiên · nhánh · máy · `đang làm` |
+| **Mở** | task chờ, tệp giữ không giao, máy nổi (§2.4) | mở làn từ chính phiên Điều phối, trong bản làm việc riêng (worktree), ở nơi chủ dự án nhìn thấy được (thanh bên app), không chạy ngầm (ngoại lệ: làn launchd, §3); tên phiên mang mã luồng việc (vd `COM-24`) — mẫu tên đầy đủ là luật của repo chủ dự án (`luat/`, `mau/` không có mẫu tên phiên — [ĐÃ KIỂM: grep · 07/11/2026]); đưa vào vỏ | task · phiên · nhánh · máy · `đang làm` |
 | **Tách** | task phình quá một ngày, hoặc tệp giữ rộng hơn dự kiến | làn dừng, đẩy nhánh, báo Điều phối; Điều phối cắt task con trong sổ; phần còn lại mở làn mới từ `main` — phần nào cần phần kia thì chờ phần kia merge, không PR chồng PR | task gốc `tách → Tx.a, Tx.b` |
 | **Gộp** | hai task giao tệp giữ, hoặc một task quá nhỏ đứng riêng | giữ làn tiến xa hơn; làn kia đẩy nhánh, làn giữ nhặt commit sang (cherry-pick) hoặc làm lại; đóng PR và lưu trữ làn bị gộp | task bị gộp `gộp vào Ty` |
-| **Gom** | luôn luôn | mọi làn của một module nằm trong đúng một vỏ; làn của module khác không vào vỏ này | — |
+| **Gom** | luôn luôn (trừ làn launchd, §3) | mọi làn của một module nằm trong đúng một vỏ; làn của module khác không vào vỏ này | — |
 | **Chuyển** | Điều phối bàn giao (ngữ cảnh > 80 %, đổi máy) | theo bảy bước dưới | cột Phiên giữ nguyên, đầu sổ đổi `Điều phối` |
-| **Thay làn** | làn vượt 150 nghìn token ngữ cảnh | làn **không tự mở phiên kế** (phiên đó sẽ lồng dưới làn, ra khỏi tầm Điều phối): làn ghi bàn giao vào nhánh, đẩy, báo; Điều phối mở làn kế từ nhánh đó rồi lưu trữ làn cũ | phiên mới thay phiên cũ |
-| **Xong** | PR của làn qua kiểm (review APPROVE trên đúng đỉnh, CI xanh) | Điều phối merge ngay theo mức (Thường: tự merge; Cao: chờ người duyệt), không để PR xanh nằm chờ; dừng dịch vụ làn đã bật (dev server), lưu trữ làn, sổ `xong` | PR · `xong` |
+| **Thay làn** | làn vượt 150 nghìn token ngữ cảnh | làn **không tự mở phiên kế** (phiên đó sẽ lồng dưới làn, ra khỏi tầm Điều phối): làn ghi bàn giao vào nhánh, đẩy, báo; Điều phối mở làn kế từ nhánh đó; chỉ lưu trữ làn cũ khi nhánh đã đẩy và làn kế đã xác nhận nhận bàn giao | phiên mới thay phiên cũ |
+| **Xong** | PR của làn qua cổng (`kien-truc.md` mục 8 điểm 4: phiếu phản bác đúng SHA, check `cong-cuoi` xanh) | Điều phối merge ngay theo mức (Thường: tự merge; Cao: chờ người duyệt), không để PR xanh nằm chờ; PR Cao còn chờ duyệt thì làn sống tới khi merge; sau merge mới dừng dịch vụ làn đã bật (dev server), lưu trữ làn, sổ `xong` | PR · `xong` |
 
 **Chuyển làn khi Điều phối bàn giao — bảy bước, đúng thứ tự:**
 
@@ -78,7 +82,7 @@ sổ giữ chỗ là nguồn sự thật để quyết** — mỗi dòng sổ gh
 - **Làn > 150 nghìn token thì Thay làn** (hàng trên), không tự mở phiên kế.
 - **Làn báo mọi phát sinh về Điều phối** bằng tin nhắn tới id phiên Điều phối: đổi phạm vi, chạm tệp ngoài phần giữ, bị chặn,
   cần quyết định. Làn không hỏi chủ dự án qua hộp cuối lượt; Điều phối gom lại, tự quyết trong ngân sách, chỉ đưa lên chủ dự án
-  ba ngoại lệ của `kien-truc.md` mục 7 (PR mức Cao — gồm tiền, bảo mật —, việc khó đảo ngược mới, lệch đặc tả).
+  ba ngoại lệ của `kien-truc.md` mục 7 (PR mức Cao, việc khó đảo ngược mới phát sinh, lệch đặc tả).
 - **Điều phối tự chạy tới hết phase** trong ba ngoại lệ đó; không dừng giữa chừng để hỏi «làm tiếp thế nào».
 
 Làn cũ sau chuyển nằm ở cấp cao nhất, không lồng dưới Điều phối mới: vỏ thay chỗ cho lớp lồng. Làn chưa bắt đầu viết mã thì Điều
