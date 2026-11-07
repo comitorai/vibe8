@@ -50,8 +50,9 @@ Mục này nói **cái gì phải đúng**; cách làm cụ thể trên từng c
 
 **Hai lớp, vì lớp lồng không bền.** Lớp lồng: phiên làn là con của phiên Điều phối đã mở nó. Nó cho thấy ai mở ai, nhưng gắn chặt
 với một phiên; Điều phối đổi thì lớp này không tự đổi theo. Lớp vỏ: một nhóm mang mã luồng việc (vd `📂 COM-24 · Tasks`), chứa
-Điều phối (có thể nhiều) và mọi làn còn sống, làn nào cũng là phiên con của Điều phối đã mở nó; **không ghim** Điều phối
-(Alex 07/11: có thể có nhiều Điều phối). Vỏ không gắn với phiên nào, nên sống qua mọi lần bàn giao. **Vỏ là nguồn sự thật để nhìn;
+mọi phiên Điều phối và mọi làn còn sống; **không ghim** Điều phối. Vai vẫn là một cho mỗi module (đầu tệp), nhưng số phiên giữ
+vai có thể nhiều cùng lúc, vd lúc bàn giao (Alex 07/11); sổ phase ghi một phiên ở đầu sổ (`mau/phase.md`). Làn là phiên con của
+Điều phối đã mở nó, trừ làn đã tách lúc bàn giao (bước 3 dưới). Vỏ không gắn với phiên nào, nên sống qua mọi lần bàn giao. **Vỏ là nguồn sự thật để nhìn;
 sổ giữ chỗ là nguồn sự thật để quyết** — mỗi dòng sổ ghi id phiên của làn (cột `Phiên`, `mau/phase.md`).
 
 | Thao tác | Khi nào | Làm gì | Sổ ghi |
