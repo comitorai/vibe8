@@ -51,13 +51,13 @@ sổ giữ chỗ là nguồn sự thật để quyết** — mỗi dòng sổ gh
 
 | Thao tác | Khi nào | Làm gì | Sổ ghi |
 |---|---|---|---|
-| **Mở** | task chờ, tệp giữ không giao, máy nổi (§2.4) | mở làn từ chính phiên Điều phối, trong bản làm việc riêng (worktree); đặt tên theo mẫu tên phiên; đưa vào vỏ | task · phiên · nhánh · máy · `đang làm` |
+| **Mở** | task chờ, tệp giữ không giao, máy nổi (§2.4) | mở làn từ chính phiên Điều phối, trong bản làm việc riêng (worktree), ở nơi chủ dự án nhìn thấy được (thanh bên app), không chạy ngầm; đặt tên theo mẫu tên phiên; đưa vào vỏ | task · phiên · nhánh · máy · `đang làm` |
 | **Tách** | task phình quá một ngày, hoặc tệp giữ rộng hơn dự kiến | làn dừng, đẩy nhánh, báo Điều phối; Điều phối cắt task con trong sổ; phần còn lại mở làn mới từ `main` — phần nào cần phần kia thì chờ phần kia merge, không PR chồng PR | task gốc `tách → Tx.a, Tx.b` |
 | **Gộp** | hai task giao tệp giữ, hoặc một task quá nhỏ đứng riêng | giữ làn tiến xa hơn; làn kia đẩy nhánh, làn giữ nhặt commit sang (cherry-pick) hoặc làm lại; đóng PR và lưu trữ làn bị gộp | task bị gộp `gộp vào Ty` |
 | **Gom** | luôn luôn | mọi làn của một module nằm trong đúng một vỏ; làn của module khác không vào vỏ này | — |
-| **Chuyển** | Điều phối bàn giao (ngữ cảnh đầy, đổi máy) | theo bảy bước dưới | cột Phiên giữ nguyên, đầu sổ đổi `Điều phối` |
-| **Thay làn** | làn đầy ngữ cảnh | làn **không tự mở phiên kế** (phiên đó sẽ lồng dưới làn, ra khỏi tầm Điều phối): làn ghi bàn giao vào nhánh, đẩy, báo; Điều phối mở làn kế từ nhánh đó rồi lưu trữ làn cũ | phiên mới thay phiên cũ |
-| **Xong** | PR merge | dừng dịch vụ làn đã bật (dev server), lưu trữ làn, sổ `xong` | PR · `xong` |
+| **Chuyển** | Điều phối bàn giao (ngữ cảnh > 80 %, đổi máy) | theo bảy bước dưới | cột Phiên giữ nguyên, đầu sổ đổi `Điều phối` |
+| **Thay làn** | làn vượt 150 nghìn token ngữ cảnh | làn **không tự mở phiên kế** (phiên đó sẽ lồng dưới làn, ra khỏi tầm Điều phối): làn ghi bàn giao vào nhánh, đẩy, báo; Điều phối mở làn kế từ nhánh đó rồi lưu trữ làn cũ | phiên mới thay phiên cũ |
+| **Xong** | PR của làn qua kiểm (review APPROVE trên đúng đỉnh, CI xanh) | Điều phối merge ngay theo mức (Thường: tự merge; Cao: chờ người duyệt), không để PR xanh nằm chờ; dừng dịch vụ làn đã bật (dev server), lưu trữ làn, sổ `xong` | PR · `xong` |
 
 **Chuyển làn khi Điều phối bàn giao — bảy bước, đúng thứ tự:**
 
@@ -69,6 +69,17 @@ sổ giữ chỗ là nguồn sự thật để quyết** — mỗi dòng sổ gh
 5. Nhắn từng làn: «Điều phối mới là <id>; báo về đó từ giờ».
 6. Điều phối mới đối chiếu sổ với danh sách phiên đang sống, xác nhận với từng làn.
 7. Điều phối cũ kiểm lại không còn phiên con nào cần sống, rồi đóng phiên.
+
+**Ngưỡng ngữ cảnh và đường báo** (chủ dự án chốt 07/11):
+
+- **Điều phối > 80 % cửa sổ ngữ cảnh thì bàn giao** theo bảy bước trên, không chờ hết phase. Lý do: phiên điều phối bị nén
+  nhiều lần sẽ quên quyết định cũ, và sai thêm còn đắt hơn mở phiên mới `[ĐÃ KIỂM: Điều phối COM-24-1 nén hơn 20 lần, quên
+  quyết định đã chốt · 07/11]`.
+- **Làn > 150 nghìn token thì Thay làn** (hàng trên), không tự mở phiên kế.
+- **Làn báo mọi phát sinh về Điều phối** bằng tin nhắn tới id phiên Điều phối: đổi phạm vi, chạm tệp ngoài phần giữ, bị chặn,
+  cần quyết định. Làn không hỏi chủ dự án qua hộp cuối lượt; Điều phối gom lại, tự quyết trong ngân sách, chỉ đưa lên chủ dự án
+  ba ngoại lệ của `kien-truc.md` mục 7 (PR mức Cao — gồm tiền, bảo mật —, việc khó đảo ngược mới, lệch đặc tả).
+- **Điều phối tự chạy tới hết phase** trong ba ngoại lệ đó; không dừng giữa chừng để hỏi «làm tiếp thế nào».
 
 Làn cũ sau chuyển nằm ở cấp cao nhất, không lồng dưới Điều phối mới: vỏ thay chỗ cho lớp lồng. Làn chưa bắt đầu viết mã thì Điều
 phối mới lưu trữ nó và mở lại từ phiên mình (lồng đúng, mất ít); làn đang dở thì giữ, vì mất ngữ cảnh đắt hơn mất lớp lồng.
