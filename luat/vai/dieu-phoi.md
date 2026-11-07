@@ -32,20 +32,66 @@ Chủ dự án chốt 06/11: **một Điều phối cho mỗi module** (1a); Đi
 
 ## 4. Chống trùng việc, chồng chéo
 
-- **Sổ giữ chỗ duy nhất** là bảng task trong `docs/phase/<MÃ>-<số>.md`, và chỉ Điều phối ghi bảng đó. Cột: mã task · mã yêu cầu · tệp/thư mục giữ · máy · nhánh · model · trạng thái · PR.
+- **Sổ giữ chỗ duy nhất** là bảng task trong `docs/phase/<MÃ>-<số>.md`, và chỉ Điều phối ghi bảng đó. Cột: mã task · mã yêu cầu · tệp/thư mục giữ · máy · phiên · nhánh · model · trạng thái · PR.
 - Task mới chỉ mở khi tệp giữ của nó **không giao** với tệp giữ của task đang chạy.
 - Tệp dùng chung (lockfile, migration, cấu hình gốc) mỗi lúc chỉ một làn giữ; task cần chúng xếp hàng.
 - Một task một làn một nhánh một PR (L9 và `kien-truc.md` mục 1); không PR chồng PR, không đổi base.
 - Làn trên máy phụ chỉ báo về qua PR trên GitHub. Chỉ máy chính ghi tệp bàn giao, ghi sổ giữ chỗ và merge.
 - Hai làn chạm nhau ngoài dự kiến (xung đột merge): dừng làn sau, ghi vào bảng, cắt lại task; không để làn tự giải xung đột của làn khác.
 
-## 5. Không được
+## 5. Cây làn: mở, tách, gộp, gom, chuyển
+
+Chủ dự án chốt 07/11: làn của một module nằm dưới Điều phối của module đó, và khi Điều phối bàn giao thì làn đi theo Điều phối mới.
+Mục này nói **cái gì phải đúng**; cách làm cụ thể trên từng công cụ nằm ở bảng cuối mục.
+
+**Hai lớp, vì lớp lồng không bền.** Lớp lồng: phiên làn là con của phiên Điều phối đã mở nó. Nó cho thấy ai mở ai, nhưng gắn chặt
+với một phiên; Điều phối đổi thì lớp này không tự đổi theo. Lớp vỏ: một nhóm mang mã luồng việc (vd `📂 COM-24 · Tasks`), chứa
+Điều phối hiện hành và mọi làn còn sống. Vỏ không gắn với phiên nào, nên sống qua mọi lần bàn giao. **Vỏ là nguồn sự thật để nhìn;
+sổ giữ chỗ là nguồn sự thật để quyết** — mỗi dòng sổ ghi id phiên của làn (cột `Phiên`, `mau/phase.md`).
+
+| Thao tác | Khi nào | Làm gì | Sổ ghi |
+|---|---|---|---|
+| **Mở** | task chờ, tệp giữ không giao, máy nổi (§2.4) | mở làn từ chính phiên Điều phối, trong bản làm việc riêng (worktree); đặt tên theo mẫu tên phiên; đưa vào vỏ | task · phiên · nhánh · máy · `đang làm` |
+| **Tách** | task phình quá một ngày, hoặc tệp giữ rộng hơn dự kiến | làn dừng, đẩy nhánh, báo Điều phối; Điều phối cắt task con trong sổ; phần còn lại mở làn mới từ `main` — phần nào cần phần kia thì chờ phần kia merge, không PR chồng PR | task gốc `tách → Tx.a, Tx.b` |
+| **Gộp** | hai task giao tệp giữ, hoặc một task quá nhỏ đứng riêng | giữ làn tiến xa hơn; làn kia đẩy nhánh, làn giữ nhặt commit sang (cherry-pick) hoặc làm lại; đóng PR và lưu trữ làn bị gộp | task bị gộp `gộp vào Ty` |
+| **Gom** | luôn luôn | mọi làn của một module nằm trong đúng một vỏ; làn của module khác không vào vỏ này | — |
+| **Chuyển** | Điều phối bàn giao (ngữ cảnh đầy, đổi máy) | theo bảy bước dưới | cột Phiên giữ nguyên, đầu sổ đổi `Điều phối` |
+| **Thay làn** | làn đầy ngữ cảnh | làn **không tự mở phiên kế** (phiên đó sẽ lồng dưới làn, ra khỏi tầm Điều phối): làn ghi bàn giao vào nhánh, đẩy, báo; Điều phối mở làn kế từ nhánh đó rồi lưu trữ làn cũ | phiên mới thay phiên cũ |
+| **Xong** | PR merge | dừng dịch vụ làn đã bật (dev server), lưu trữ làn, sổ `xong` | PR · `xong` |
+
+**Chuyển làn khi Điều phối bàn giao — bảy bước, đúng thứ tự:**
+
+1. Điều phối cũ cập nhật sổ: cột Phiên, việc dở của từng làn, câu hỏi còn treo.
+2. Mở Điều phối mới; lời giao chỉ trỏ tới sổ và tệp bàn giao, không chép lại.
+3. Tách Điều phối mới và mọi làn còn sống ra khỏi cây của Điều phối cũ. **Bước này phải đi trước khi Điều phối cũ đóng:** công cụ có
+   thể đóng, lưu trữ luôn phiên con khi đóng phiên cha `[ĐÃ KIỂM: Điều phối COM-24 cũ lưu trữ và kéo theo Điều phối mới · 07/11]`.
+4. Đưa tất cả vào vỏ, Điều phối mới đặt đầu.
+5. Nhắn từng làn: «Điều phối mới là <id>; báo về đó từ giờ».
+6. Điều phối mới đối chiếu sổ với danh sách phiên đang sống, xác nhận với từng làn.
+7. Điều phối cũ kiểm lại không còn phiên con nào cần sống, rồi đóng phiên.
+
+Làn cũ sau chuyển nằm ở cấp cao nhất, không lồng dưới Điều phối mới: vỏ thay chỗ cho lớp lồng. Làn chưa bắt đầu viết mã thì Điều
+phối mới lưu trữ nó và mở lại từ phiên mình (lồng đúng, mất ít); làn đang dở thì giữ, vì mất ngữ cảnh đắt hơn mất lớp lồng.
+
+**Trên app Claude Code desktop** `[ĐÃ KIỂM: danh sách công cụ của app · 07/11]`:
+
+| Cần | Công cụ |
+|---|---|
+| Mở làn lồng dưới Điều phối | `start_session` gọi từ phiên Điều phối, `use_worktree: true` (dùng chung bản làm việc thì làn bị lưu trữ cùng cha) |
+| Vỏ | nhóm thanh bên: `create_group`, `move_sessions`; Điều phối hiện hành ghim lên đầu |
+| Tách khỏi cây cha | `detach_session` — một chiều: **app không có công cụ gắn phiên vào cha khác** |
+| Nhắn làn | `SendMessage` tới id `local_…` |
+| Kiểm phiên con trước khi đóng | `list_sessions {"linked": true}` |
+
+Nhóm thanh bên chỉ có trên máy đang chạy phiên, không đồng bộ sang máy khác: tên phiên vẫn phải mang mã luồng việc.
+
+## 6. Không được
 
 - Viết code hay test của task (việc của lập trình viên, kiểm thử viên).
 - Tự duyệt, tự phản bác PR do làn mình mở; merge PR mức Cao chưa có người duyệt.
 - Hỏi chủ dự án giữa phase, trừ ba ngoại lệ của `kien-truc.md` mục 7.
 - Kéo dài phase quá hạn mà không có gói Cổng 2 mới.
 
-## 6. Số đo của vai (cho kết luận thí điểm)
+## 7. Số đo của vai (cho kết luận thí điểm)
 
 Điểm chạm của chủ dự án mỗi phase · token mỗi task so với trần · số làn mỗi máy và số lần máy báo không nổi · số xung đột merge giữa làn · số task phải cắt lại.
