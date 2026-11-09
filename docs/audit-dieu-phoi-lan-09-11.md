@@ -6,7 +6,7 @@
 
 | Luồng | Điều phối | Làn | Tình trạng lúc audit |
 |---|---|---|---|
-| COM-24 · Tasks | `995a1093` «Chuẩn hiển thị» (tên không ghi Điều phối, không có vỏ 📂) | `a64f68b3` Hiển thị làn → PR #56 OPEN · `9b08a96c` Sửa phiếu 56 → PR #57 OPEN, phiếu **bác** | **Kẹt.** Lúc 00:18 Điều phối tin rằng «làn chưa sửa gì». Thực tế 00:26 làn đã mở #57 và bị bác. Không ai báo lại Điều phối. |
+| COM-24 · Tasks | `995a1093` «Chuẩn hiển thị» (tên không ghi Điều phối, không có vỏ 📂) | `a64f68b3` Hiển thị làn → PR #56 OPEN · `9b08a96c` Sửa phiếu 56 → PR #57 OPEN, phiếu **bác** (trạng thái lúc audit; ngày 09/11 cả #56 và #57 đã merge) | **Kẹt.** Lúc 00:18 Điều phối tin rằng «làn chưa sửa gì». Thực tế 00:26 làn đã mở #57 và bị bác. Không ai báo lại Điều phối. |
 | COM-8 · Hành chính (lần 1) | `4ccaf04c` Google Play (phiên thường, không phải Điều phối) | `d130037b` Xác minh Google Play | Làn hỏi thẳng Alex chọn tệp; khi đóng bảo Alex «tự mở phiên mới, gõ làm tiếp» |
 | COM-8 · Hành chính (lần 2) | `9b7b9279` Điều phối COM-8 (mở từ `de795232`, đã tách cây, có vỏ) | T1 `e5d52ce6`, T2 `d35d4fb8`, T3 `e51daf61`, T6 `c8640d73` | **Chạy tốt.** T1 tự nhắn Điều phối, Điều phối merge, nhắn lại T2/T3. Vướng duy nhất: T6 phải chờ Alex bấm thẻ. |
 
