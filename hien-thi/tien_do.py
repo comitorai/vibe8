@@ -35,7 +35,7 @@ def doc_so(text):
            "ten": (re.match(r"# Phase [^:]+:\s*(.*)", text) or [0, ""])[1], "canh_bao": []}
     cot, rows = None, {}
     for ln in text.splitlines():
-        if not ln.startswith("|"): continue
+        if not ln.startswith("|"): cot = None; continue  # hết bảng task: bảng sau (mốc, ghi chú) không phải task
         c = [x.strip().replace("\\|", "|") for x in re.split(r"(?<!\\)\|", ln.strip().strip("|"))]
         c[0] = c[0].strip("*_ ")
         if "Task" in c and "Trạng thái" in c: cot = c; continue

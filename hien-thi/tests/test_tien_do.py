@@ -94,6 +94,8 @@ class TestVa(unittest.TestCase):
         self.assertNotIn("<script", h); self.assertNotIn("<i>", h); self.assertNotIn("<u>", h)
         self.assertIn("&lt;script&gt;", td.hang_lan({"ten": "<script>"}))
         self.assertTrue(any("không đúng dạng" in x for x in td.doc_so(t)[0]["canh_bao"]))  # phiếu vòng 2, điểm 1
+        moc = so("T1 | a | xong | — | — | ") + "\n| Mốc | Ngày |\n|---|---|\n| T0 ra mắt | 1/1 |\n"
+        self.assertEqual(td.doc_so(moc)[0]["canh_bao"], [])  # phản bác PR #63: bảng khác sau bảng task không bị báo
 
     def test_so_tran_khong_lam_hong_trang(self):  # phiếu vòng 2, điểm 2
         self.assertIsNone(td.so_nguyen(float("inf")))
