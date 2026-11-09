@@ -236,6 +236,10 @@ class TestTheDuyet(unittest.TestCase):
         the = self.the(ds_tep=[tep("cong/x.py", 401, 0)])
         self.assertIn("quá 400 dòng", the)
 
+    def test_tep_test_moi_bi_cat_o_20_ghi_con_lai(self):
+        the = self.the(ds_tep=[tep("cong/x.py")] + [tep("cong/tests/t%d.py" % i, status="added") for i in range(25)])
+        self.assertIn("và 5 tệp nữa", the)
+
     def test_hien_so_dong_test(self):
         q = {"rui_ro": "cao", "so_dong": 5, "so_dong_test": 77, "qua_co": False, "theo_tep": [["vùng"]], "nguoi_duyet": []}
         self.assertIn("gồm 77 dòng test, mức Cao tính đủ", the_duyet.lap_the(pr(ds_tep=[tep("cong/x.py")]), q, [], ("xanh", "")))

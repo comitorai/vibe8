@@ -725,3 +725,16 @@ class TestVungNhayCam(unittest.TestCase):
             gate_app.main(["--kho", str(MAU), "--sha", SHA])
         self.assertEqual(gia.call_args.args[2], ten.TEP_VUNG)
         self.assertTrue(ten.TEP_VUNG.startswith("cong/"))  # workflow chỉ lấy /cong/ của nhánh gốc
+
+
+class TestTomTatDongTest(unittest.TestCase):
+    Q = {"ket_luan": "cho_qua", "rui_ro": "thuong", "so_dong": 10, "chi_tiet": [], "ly_do": []}
+
+    def test_thuong_ghi_chua_tinh(self):
+        self.assertIn("**Số dòng đổi:** 10 (chưa tính 77 dòng test)", gate_app.tom_tat(dict(self.Q, so_dong_test=77)))
+
+    def test_cao_ghi_gom(self):
+        self.assertIn("(gồm 77 dòng test)", gate_app.tom_tat(dict(self.Q, rui_ro="cao", so_dong_test=77)))
+
+    def test_khong_test_khong_ghi_them(self):
+        self.assertIn("**Số dòng đổi:** 10\n", gate_app.tom_tat(dict(self.Q, so_dong_test=0)))

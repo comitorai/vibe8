@@ -174,9 +174,16 @@ def thu_thap(gh, so_pr, sha):
     return du_lieu if gh.goi("GET", "/pulls/%s" % so_pr)["head"]["sha"] == sha else None
 
 
+def _dong_test(q):
+    n = q.get("so_dong_test") or 0
+    if not n:
+        return ""
+    return (" (gồm %d dòng test)" if q.get("rui_ro") == "cao" else " (chưa tính %d dòng test)") % n
+
+
 def tom_tat(q):
     dong = ["**Kết luận:** %s" % q["ket_luan"], "**Rủi ro từ diff:** %s" % q["rui_ro"],
-            "**Số dòng đổi:** %d" % q["so_dong"], "**Vùng nhạy cảm đã khai:** %d mẫu" % q.get("so_mau_vung", 0), "", "**Lý do:**"]
+            "**Số dòng đổi:** %d%s" % (q["so_dong"], _dong_test(q)), "**Vùng nhạy cảm đã khai:** %d mẫu" % q.get("so_mau_vung", 0), "", "**Lý do:**"]
     dong += ["- " + x for x in q["ly_do"][:50]]
     if q["chi_tiet"]:
         dong += ["", "**Chi tiết:**"] + ["- " + x for x in q["chi_tiet"][:50]]

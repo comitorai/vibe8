@@ -55,7 +55,7 @@ Căn cứ L2: con số 400 đến từ nghiên cứu SmartBear/Cisco về ngư�
 | # | Luật | Chặn lỗi gì | Đo bằng | Giữ nếu · Bỏ nếu | Xét |
 |---|---|---|---|---|---|
 | L1 | Mọi thay đổi vào `main` qua PR và qua cổng `cong-cuoi` | đẩy thẳng, CI giả xanh, tự duyệt | sổ chặn của cổng | luật nền | 30 ngày |
-| L2 | PR ≤ 400 dòng mã, không tính test và lockfile. Quá cỡ: mức Cao bị chặn trừ khi người duyệt ghi `ngoai-le-co:`; mức Thường chỉ cảnh báo (Alex 1a, 09/11) | PR lớn không ai đọc nổi | số vòng sửa và lỗi bắt trước merge theo cỡ PR | PR nhỏ ít vòng sửa hơn · không khác; cần ≥ 60 PR | 60 ngày |
+| L2 | PR ≤ 400 dòng, không tính lockfile; mức Thường còn trừ dòng test, mức Cao tính đủ. Quá cỡ: mức Cao bị chặn trừ khi người duyệt ghi `ngoai-le-co:`; mức Thường chỉ cảnh báo (Alex 1a, 09/11) | PR lớn không ai đọc nổi | số vòng sửa và lỗi bắt trước merge theo cỡ PR | PR nhỏ ít vòng sửa hơn · không khác; cần ≥ 60 PR | 60 ngày |
 | L3 | Một lượt **phản bác** cho mọi PR: agent khác tìm cách làm hỏng, phải kèm cách tái hiện. Bỏ rút thăm đối chứng (Alex 1a, 06/11) | lỗi hành vi, lỗi quyền mà test xanh | lỗi thật bắt được / lượt; sửa gấp trong 7 ngày sau merge | ≥ 1 lỗi thật / 10 lượt, cần ≥ 30 lượt · dưới mức đó | 60 ngày |
 | L4 | Trần 2 vòng phản bác mỗi PR; lượt sau khi sửa chỉ xét phần vừa sửa | vòng sửa không dứt, token đọc lại | token mới / PR và số vòng, máy ghi | trung vị token không tăng, L3 không giảm · ngược lại | 30 ngày |
 | L5 | Test có sẵn là điều kiện nghiệm thu; sửa, đổi tên, xoá cần người duyệt | agent sửa test cho xanh | cổng đã chặn | luật nền | 30 ngày |
