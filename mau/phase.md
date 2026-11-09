@@ -12,7 +12,7 @@ Sức khoẻ, tuổi, %, phạm vi, dự báo không ghi tay vào sổ: máy tí
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | YC-1 | `src/a/` | chính | <id làn> | `t1-…` | <theo L12> | Thường | <Chưa bắt đầu \| Đang làm \| Hoàn thành \| Đã huỷ> | <mã task phải merge trước, hay trống> | — | |
 
-Trạng thái lấy từ GitHub và CI, không từ lời tự báo của làn; sổ lệch GitHub thì tin GitHub. Một trạng thái một tên (`luat/hien-thi-tien-do.md` mục 2): PR chờ người duyệt vẫn là Đang làm, cờ Chờ duyệt và Chờ CI do máy tính từ PR, không ghi vào sổ. Đã huỷ phải có bằng chứng ở Ghi chú: task gốc đã tách ghi `tách → Tx.a, Tx.b`, task bị gộp ghi `gộp vào Ty`, task huỷ vì phiếu đổi yêu cầu ghi `doi-yc <đường dẫn phiếu>`; task thêm vì phiếu đổi yêu cầu cũng ghi như vậy, để máy đếm «phạm vi ±n». Cột Phiên: id phiên làn đang giữ task (`luat/vai/dieu-phoi.md` §5); thay làn thì ghi id mới.
+Trạng thái lấy từ GitHub và CI, không từ lời tự báo của làn; sổ lệch GitHub thì tin GitHub. Một trạng thái một tên (`luat/hien-thi-tien-do.md` mục 2): PR chờ phiếu hay người duyệt vẫn là Đang làm; cờ Chờ CI, Chờ phiếu, Chờ duyệt do máy tính từ PR, không ghi vào sổ. Đã huỷ phải có bằng chứng ở Ghi chú: task gốc đã tách ghi `tách → Tx.a, Tx.b`, task bị gộp ghi `gộp vào Ty`, task huỷ vì phiếu đổi yêu cầu ghi `doi-yc <tệp phiếu đổi yêu cầu>`; task thêm vì phiếu đổi yêu cầu cũng ghi như vậy, để máy đếm «phạm vi ±n». Cột Phiên: id phiên làn đang giữ task (`luat/vai/dieu-phoi.md` §5); thay làn thì ghi id mới.
 Tệp dùng chung (lockfile, migration, cấu hình gốc) mỗi lúc chỉ một dòng được giữ.
 
 ## Tiêu chí từng task
