@@ -35,7 +35,7 @@ def doc_so(text):
            "ten": (re.match(r"# Phase [^:]+:\s*(.*)", text) or [0, ""])[1], "canh_bao": []}
     cot, rows = None, {}
     for ln in text.splitlines():
-        if not ln.startswith("|"): continue
+        if not ln.startswith("|"): cot = None; continue  # hết bảng task: bảng sau (mốc, ghi chú) không phải task
         c = [x.strip().replace("\\|", "|") for x in re.split(r"(?<!\\)\|", ln.strip().strip("|"))]
         c[0] = c[0].strip("*_ ")
         if "Task" in c and "Trạng thái" in c: cot = c; continue
@@ -48,6 +48,8 @@ def doc_so(text):
             pr = re.search(r"#(\d+)", r.get("PR", ""))
             r["pr"] = int(pr[1]) if pr else None
             rows[c[0]] = r
+        elif cot and re.match(r"T\d", c[0]):  # mã dạng task mà sai khuôn: báo, không bỏ im lặng
+            dau["canh_bao"].append(f"{c[0][:40]}: mã task không đúng dạng T<số>; bỏ qua")
     return dau, rows
 
 
@@ -178,7 +180,7 @@ def thanh(d, mau):
 
 def so_nguyen(x):
     try: return int(x)
-    except (TypeError, ValueError): return None
+    except (TypeError, ValueError, OverflowError): return None
 
 
 def hang_lan(l, may_cha=None):

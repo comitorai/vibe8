@@ -93,6 +93,13 @@ class TestVa(unittest.TestCase):
                          "buoc": "<c>", "da_chay_phut": "<2>", "ngu_canh_nghin": "<script>", "pr": "<3>"})
         self.assertNotIn("<script", h); self.assertNotIn("<i>", h); self.assertNotIn("<u>", h)
         self.assertIn("&lt;script&gt;", td.hang_lan({"ten": "<script>"}))
+        self.assertTrue(any("không đúng dạng" in x for x in td.doc_so(t)[0]["canh_bao"]))  # phiếu vòng 2, điểm 1
+        moc = so("T1 | a | xong | — | — | ") + "\n| Mốc | Ngày |\n|---|---|\n| T0 ra mắt | 1/1 |\n"
+        self.assertEqual(td.doc_so(moc)[0]["canh_bao"], [])  # phản bác PR #63: bảng khác sau bảng task không bị báo
+
+    def test_so_tran_khong_lam_hong_trang(self):  # phiếu vòng 2, điểm 2
+        self.assertIsNone(td.so_nguyen(float("inf")))
+        self.assertIn("x", td.hang_lan({"ten": "x", "pr": 1e999, "ngu_canh_nghin": float("inf")}))
 
     def test_phan_tram_tinh_ca_giai_doan_da_xong(self):  # chặn 3, HT-05
         mk = lambda *tt: so(*(f"T{i} | a | {x} | — | — | " for i, x in enumerate(tt, 1)))

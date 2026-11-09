@@ -178,7 +178,7 @@ def _dong_test(q):
     n = q.get("so_dong_test") or 0
     if not n:
         return ""
-    return (" (gồm %d dòng test)" if q.get("rui_ro") == "cao" else " (chưa tính %d dòng test)") % n
+    return (" (gồm %d dòng test)" if q.get("rui_ro") == rui_ro.CAO else " (chưa tính %d dòng test)") % n
 
 
 def tom_tat(q):
