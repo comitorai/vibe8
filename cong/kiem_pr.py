@@ -170,7 +170,10 @@ def quyet_dinh(du_lieu):
         chan.append(ly_do_phieu)
     else:
         bo += chi_tiet_phieu
-    if rr["qua_co"]:
+    if rr["qua_co"] and rr["muc"] != rui_ro.CAO:
+        # Mức Thường quá cỡ chỉ cảnh báo (Alex 1a, 09/11): phiếu phản bác đã soát, không cần người ghi ngoại lệ.
+        bo.append("cảnh báo: quá %d dòng mã (%d, không tính test): nên tách PR" % (rui_ro.NGUONG_CO_DONG, rr["so_dong"]))
+    elif rr["qua_co"]:
         ly_do_le = [m.group(1) for m in (_NGOAI_LE.search(str(r.get("body") or "")) for r in hop_le) if m]
         if not ly_do_le:
             chan.append("quá %d dòng (%d): cần người duyệt ghi `ngoai-le-co: <lý do>`" % (rui_ro.NGUONG_CO_DONG, rr["so_dong"]))
@@ -186,12 +189,12 @@ def quyet_dinh(du_lieu):
         ket_luan, ly_do = CHO_QUA, ["cong-nhanh xanh trên đúng SHA, không vướng điều kiện nào"]
     q = {
         "ket_luan": ket_luan, "ly_do": ly_do, "chi_tiet": rr["ly_do"] + bo, "sha": sha,
-        "rui_ro": rr["muc"], "so_dong": rr["so_dong"], "so_mau_vung": len(vung),
+        "rui_ro": rr["muc"], "so_dong": rr["so_dong"], "so_dong_test": rr["so_dong_test"], "so_mau_vung": len(vung),
         "nguoi_duyet": [rui_ro.hien_thi(r.get("user")) for r in hop_le],
         "qua_co": rr["qua_co"], "theo_tep": rr["theo_tep"], "the_duyet": None,
         "tran_l4": bool(ly_do_phieu) and _so_bac(du_lieu) >= TRAN_PHIEU_BAC,
     }
     # Thẻ chỉ dựng khi PR cần người admin: mức Cao, quá cỡ, hoặc chạm trần L4 (admin quyết thay phiếu, kể cả PR Thường).
-    if rr["muc"] == rui_ro.CAO or rr["qua_co"] or q["tran_l4"]:
+    if rr["muc"] == rui_ro.CAO or q["tran_l4"]:
         q["the_duyet"] = the_duyet.lap_the(du_lieu, q, _doc_phieu(du_lieu), (nhanh, ly_do_nhanh))
     return q

@@ -39,6 +39,11 @@ def pr(ds_tep=None, checks=None, ds_duyet=None, co_phieu=True, **khac):
 
 
 CAO = [tep(".github/workflows/x.yml")]
+# Mức Cao: PR Thường quá cỡ chỉ cảnh báo (Alex 1a, 09/11), nên các test chặn theo cỡ phải ở mức Cao.
+
+
+def lon(them):
+    return CAO + [tep(them=them)]
 
 
 class TestCongNhanh(unittest.TestCase):
@@ -126,7 +131,7 @@ class TestDuyet(unittest.TestCase):
 
     def test_ngoai_danh_sach_khong_mo_duoc_ngoai_le_co(self):
         ds = [duyet(user="agent-khac", body="ngoai-le-co: máy sinh, tôi đã đọc rồi")]
-        self.assertEqual(quyet_dinh(pr([tep(them=900)], ds_duyet=ds))["ket_luan"], CHAN)
+        self.assertEqual(quyet_dinh(pr(lon(900), ds_duyet=ds))["ket_luan"], CHAN)
 
     def test_khong_ai_co_quyen_thi_rui_ro_cao_chan_rui_ro_thap_qua(self):
         for rong in ([], None):
@@ -194,7 +199,7 @@ class TestChenLenh(unittest.TestCase):
         self.assertEqual(q["ket_luan"], CHAN)
 
     def test_qua_co_van_chan(self):
-        ds = [tep(them=500)]
+        ds = lon(500)
         q = quyet_dinh(dict(pr(ds), **self.CHEN))
         self.assertEqual(q, quyet_dinh(pr(ds)))
         self.assertEqual(q["ket_luan"], CHAN)
@@ -206,18 +211,37 @@ class TestChenLenh(unittest.TestCase):
 
 
 class TestCo(unittest.TestCase):
+    def test_thuong_350_ma_200_test_cho_qua(self):
+        q = quyet_dinh(pr([tep(them=350), tep("tests/test_a.py", them=200, status="added")]))
+        self.assertEqual(q["ket_luan"], CHO_QUA)
+        self.assertEqual((q["so_dong"], q["so_dong_test"]), (350, 200))
+
+    def test_thuong_500_ma_cho_qua_co_canh_bao(self):
+        q = quyet_dinh(pr([tep(them=500)]))
+        self.assertEqual(q["ket_luan"], CHO_QUA)
+        self.assertTrue(any("cảnh báo" in x for x in q["chi_tiet"]))
+
+    def test_cao_500_ma_khong_ngoai_le_chan(self):
+        q = quyet_dinh(pr(lon(500), ds_duyet=[duyet()]))
+        self.assertEqual(q["ket_luan"], CHAN)
+        self.assertIn("ngoai-le-co", " ".join(q["ly_do"]))
+
+    def test_cao_co_ngoai_le_cho_qua(self):
+        ds = [duyet(body="ngoai-le-co: chuyển mã máy sinh, đã đọc lướt")]
+        self.assertEqual(quyet_dinh(pr(lon(500), ds_duyet=ds))["ket_luan"], CHO_QUA)
+
     def test_qua_co_thi_chan(self):
-        self.assertEqual(quyet_dinh(pr([tep(them=401)]))["ket_luan"], CHAN)
+        self.assertEqual(quyet_dinh(pr(lon(401)))["ket_luan"], CHAN)
 
     def test_dung_nguong_thi_qua(self):
         self.assertEqual(quyet_dinh(pr([tep(them=400)]))["ket_luan"], CHO_QUA)
 
     def test_ngoai_le_trong_lan_duyet_hop_le(self):
         ds = [duyet(body="ok\nngoai-le-co: chuyển mã máy sinh, đã đọc lướt")]
-        self.assertEqual(quyet_dinh(pr([tep(them=900)], ds_duyet=ds))["ket_luan"], CHO_QUA)
+        self.assertEqual(quyet_dinh(pr(lon(900), ds_duyet=ds))["ket_luan"], CHO_QUA)
 
     def test_ly_do_ngoai_le_duoc_in_de_con_truy_lai(self):
-        q = quyet_dinh(pr([tep(them=500)], ds_duyet=[duyet(body="ngoai-le-co: chuyển mã máy sinh, đã đọc lướt")]))
+        q = quyet_dinh(pr(lon(500), ds_duyet=[duyet(body="ngoai-le-co: chuyển mã máy sinh, đã đọc lướt")]))
         self.assertTrue(any("chuyển mã máy sinh" in x for x in q["chi_tiet"]))
 
     def test_ngoai_le_khong_ly_do_khong_tinh(self):
@@ -225,11 +249,11 @@ class TestCo(unittest.TestCase):
                      "ngoai-le-co: x" + " " * 12):
             with self.subTest(body):
                 ds = [duyet(body=body)]
-                self.assertEqual(quyet_dinh(pr([tep(them=900)], ds_duyet=ds))["ket_luan"], CHAN)
+                self.assertEqual(quyet_dinh(pr(lon(900), ds_duyet=ds))["ket_luan"], CHAN)
 
     def test_ngoai_le_tu_nguoi_khong_hop_le_khong_tinh(self):
         ds = [duyet(user="tac-gia", body="ngoai-le-co: tôi tự cho mình qua cổng")]
-        self.assertEqual(quyet_dinh(pr([tep(them=900)], ds_duyet=ds))["ket_luan"], CHAN)
+        self.assertEqual(quyet_dinh(pr(lon(900), ds_duyet=ds))["ket_luan"], CHAN)
 
 
 def phieu(ket="khong-bac", user="phan-bac", commit=SHA, gio=SAU, tai_hien="tai-hien: gọi API với id âm, trả 400 đúng", **khac):

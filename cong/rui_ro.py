@@ -93,6 +93,13 @@ def _la_test(duong, goc):
     return bool(_THU_MUC_TEST.intersection(doan[:-1])) or bool(_TEN_TEST.search(doan[-1])) or bool(_TEN_TEST_HOA.search(goc))
 
 
+def _la_tep_test(tep):
+    ten_moi, ten_cu = tep.get("filename"), tep.get("previous_filename")
+    if not isinstance(ten_moi, str) or _la_ten_la(ten_moi) or (ten_cu is not None and _la_ten_la(ten_cu)):
+        return False
+    return _la_test(_chuan_hoa(ten_moi), ten_moi) or (ten_cu is not None and _la_test(_chuan_hoa(ten_cu), ten_cu))
+
+
 def _so_dong(tep):
     them, xoa = tep.get("additions"), tep.get("deletions")
     return (them, xoa) if all(type(so) is int and so >= 0 for so in (them, xoa)) else None
@@ -212,10 +219,11 @@ def _xet_muc_moi(tep, vung):
 
 
 def phan_loai(ds_tep, vung=()):
-    """Trả {muc, ly_do, so_dong, qua_co, theo_tep}. theo_tep[i]: lý do Cao của ds_tep[i]. vung: mẫu đường dẫn nhạy cảm đọc từ nhánh gốc (doc_vung)."""
+    """Trả {muc, ly_do, so_dong, so_dong_test, qua_co, theo_tep}. so_dong không tính lockfile và tệp test (Alex 1a, 09/11);
+    so_dong_test là số dòng test, để thẻ duyệt hiện. theo_tep[i]: lý do Cao của ds_tep[i]. vung: mẫu đường dẫn nhạy cảm đọc từ nhánh gốc (doc_vung)."""
     if not isinstance(ds_tep, list):
-        return {"muc": CAO, "ly_do": ["không có danh sách tệp"], "so_dong": 0, "qua_co": False, "theo_tep": []}
-    muc, ly_do, tong, ma_chay, theo_tep = THUONG, [], 0, [], []
+        return {"muc": CAO, "ly_do": ["không có danh sách tệp"], "so_dong": 0, "so_dong_test": 0, "qua_co": False, "theo_tep": []}
+    muc, ly_do, tong, tong_test, ma_chay, theo_tep = THUONG, [], 0, 0, [], []
     for tep in ds_tep:
         la_ma, cao = _xet_muc_moi(tep, vung)
         if la_ma:
@@ -228,8 +236,12 @@ def phan_loai(ds_tep, vung=()):
             if _THU_TU[muc_tep] > _THU_TU[muc]:
                 muc = muc_tep
         so = _so_dong(tep) if isinstance(tep, dict) else None
-        # Lockfile do máy sinh, không tính vào cỡ: đã là rủi ro cao, không cần thêm `ngoai-le-co`.
-        tong += sum(so) if so and not _la_lockfile(tep) else 0
+        # Lockfile do máy sinh và tệp test không tính vào cỡ (test tách riêng: người đọc diff là AI phản bác, không phải người).
+        if so and not _la_lockfile(tep):
+            if _la_tep_test(tep):
+                tong_test += sum(so)
+            else:
+                tong += sum(so)
     if ma_chay:
         ly_do.append("%d tệp mã hoặc cấu hình chạy được, vd %s" % (len(ma_chay), hien_thi(ma_chay[0])))
-    return {"muc": muc, "ly_do": ly_do, "so_dong": tong, "qua_co": tong > NGUONG_CO_DONG, "theo_tep": theo_tep}
+    return {"muc": muc, "ly_do": ly_do, "so_dong": tong, "so_dong_test": tong_test, "qua_co": tong > NGUONG_CO_DONG, "theo_tep": theo_tep}
