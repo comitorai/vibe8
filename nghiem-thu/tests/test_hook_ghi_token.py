@@ -1,6 +1,7 @@
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import unittest
 from pathlib import Path
@@ -139,6 +140,48 @@ class CauHinh(unittest.TestCase):
                 (muc,) = d["hooks"][su_kien]
                 self.assertEqual(muc["matcher"], "Bash")
                 self.assertIn("nghiem-thu/hook_ghi_token.py", muc["hooks"][0]["command"])
+
+
+class TimGocRepo(unittest.TestCase):
+    """S6 (audit 09/11): sau khi phiên đổi thư mục, `$CLAUDE_PROJECT_DIR` vẫn trỏ thư mục cũ. Lệnh hook phải tự tìm gốc
+    repo từ thư mục đang đứng, và không thấy script thì thoát 0 chứ không chặn mọi lệnh Bash."""
+
+    def setUp(self):
+        import shutil, tempfile
+        self.tam = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tam, True)
+        self.repo, self.ngoai = self.tam / "repo", self.tam / "ngoai"
+        (self.repo / "nghiem-thu").mkdir(parents=True)
+        (self.repo / "a" / "b").mkdir(parents=True)
+        self.ngoai.mkdir()
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+        self.dau = self.tam / "da-chay"
+        (self.repo / "nghiem-thu/hook_ghi_token.py").write_text(
+            "import sys, pathlib\npathlib.Path(%r).write_text(sys.stdin.read())\n" % str(self.dau), encoding="utf-8")
+        d = json.loads((GOC_REPO / ".claude/settings.json").read_text(encoding="utf-8"))
+        self.lenh = {k: d["hooks"][k][0]["hooks"][0]["command"] for k in ("PreToolUse", "PostToolUse")}
+
+    def chay(self, lenh, cwd, project_dir):
+        env = {**os.environ, "CLAUDE_PROJECT_DIR": str(project_dir), "GIT_CEILING_DIRECTORIES": str(self.tam)}
+        return subprocess.run(lenh, shell=True, cwd=cwd, env=env, input='{"x":1}', capture_output=True, text=True)
+
+    def test_tu_thu_muc_con_bo_qua_project_dir_sai(self):
+        for su_kien, lenh in self.lenh.items():
+            with self.subTest(su_kien):
+                self.dau.unlink(missing_ok=True)
+                kq = self.chay(lenh, self.repo / "a" / "b", self.ngoai)
+                self.assertEqual(kq.returncode, 0, kq.stderr)
+                self.assertEqual(self.dau.read_text(), '{"x":1}')  # script chạy và nhận đủ stdin
+
+    def test_ngoai_repo_thi_dung_project_dir(self):
+        kq = self.chay(self.lenh["PreToolUse"], self.ngoai, self.repo)
+        self.assertEqual(kq.returncode, 0, kq.stderr)
+        self.assertTrue(self.dau.exists())
+
+    def test_khong_thay_script_thi_thoat_0(self):
+        kq = self.chay(self.lenh["PreToolUse"], self.ngoai, self.ngoai)
+        self.assertEqual((kq.returncode, kq.stderr), (0, ""))
+        self.assertFalse(self.dau.exists())
 
 
 if __name__ == "__main__":

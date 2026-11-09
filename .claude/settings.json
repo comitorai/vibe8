@@ -4,7 +4,11 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/nghiem-thu/hook_ghi_token.py\"", "timeout": 60 }
+          {
+            "type": "command",
+            "command": "sh -c 'for g in \"$(git rev-parse --show-toplevel 2>/dev/null)\" \"$CLAUDE_PROJECT_DIR\"; do f=\"$g/nghiem-thu/hook_ghi_token.py\"; [ -n \"$g\" ] && [ -f \"$f\" ] && exec python3 \"$f\"; done; exit 0'",
+            "timeout": 60
+          }
         ]
       }
     ],
@@ -12,7 +16,11 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/nghiem-thu/hook_ghi_token.py\"", "timeout": 60 }
+          {
+            "type": "command",
+            "command": "sh -c 'for g in \"$(git rev-parse --show-toplevel 2>/dev/null)\" \"$CLAUDE_PROJECT_DIR\"; do f=\"$g/nghiem-thu/hook_ghi_token.py\"; [ -n \"$g\" ] && [ -f \"$f\" ] && exec python3 \"$f\"; done; exit 0'",
+            "timeout": 60
+          }
         ]
       }
     ]
