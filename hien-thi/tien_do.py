@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Xuất trang tiến độ từ sổ phase (luat/hien-thi-tien-do.md: HT-01…HT-05, HT-11…HT-13). Chỉ đọc; không ghi vào repo.
 
+Sổ: docs/phase/<MÃ>-<n>-<m>.md (vd COM-24-4.md khớp FILE_PHASE).
 Dùng: tien_do.py --repo-dir <repo git> --ra <trang.html> [--github chu/repo] [--lan lan.json] [--ten Tên]
 Nguồn: docs/phase/<MÃ>-<n>.md · lịch sử git của sổ · PR và comment `cap-nhat:` trên GitHub (có --github).
 Hàng làn (HT-13) đọc từ tệp JSON do bên ngoài đưa vào: {"lan":[{"phase","task","ten","may","nhip","cho":[],"co":[],
@@ -14,6 +15,7 @@ HUY, XONG, DANG, CHUA = "Đã huỷ", "Hoàn thành", "Đang làm", "Chưa bắt
 MOC = [(8, 30), (11, 30), (17, 30)]  # HT-11, theo múi giờ của chủ dự án
 SK = {"dung-huong": "Đúng hướng", "co-rui-ro": "Có rủi ro", "cham": "Chậm"}
 FILE_PHASE = re.compile(r"^[A-Z]+-\d+-\d+\.md$")
+MA_TASK = re.compile(r"^T\d+[a-z0-9.]*$")
 
 
 def chuan(tt, ghi_chu=""):
@@ -30,13 +32,17 @@ def doc_so(text):
     issue = re.search(r"Cập nhật:\*\*\s*issue #(\d+)", text)
     dau = {"han": dt.date(int(han[3]), int(han[2]), int(han[1])) if han else None,
            "issue": int(issue[1]) if issue else None,
-           "ten": (re.match(r"# Phase [^:]+:\s*(.*)", text) or [0, ""])[1]}
+           "ten": (re.match(r"# Phase [^:]+:\s*(.*)", text) or [0, ""])[1], "canh_bao": []}
     cot, rows = None, {}
     for ln in text.splitlines():
         if not ln.startswith("|"): continue
-        c = [x.strip() for x in re.split(r"(?<!\\)\|", ln.strip().strip("|"))]
+        c = [x.strip().replace("\\|", "|") for x in re.split(r"(?<!\\)\|", ln.strip().strip("|"))]
+        c[0] = c[0].strip("*_ ")
         if "Task" in c and "Trạng thái" in c: cot = c; continue
-        if cot and re.match(r"T\d", c[0]) and len(c) == len(cot):
+        if cot and MA_TASK.match(c[0]):
+            if len(c) != len(cot):
+                dau["canh_bao"].append(f"{c[0]}: dòng có {len(c)} cột, bảng có {len(cot)}; bỏ qua")
+                continue
             r = dict(zip(cot, c))
             r["tt"] = chuan(r["Trạng thái"])
             pr = re.search(r"#(\d+)", r.get("PR", ""))
@@ -149,7 +155,7 @@ def tinh_phase(ten, text, ls, now, pr_of, comments_of):
     if tt == DANG and (mo is None or mo >= 2): co.append("Thiếu cập nhật")
     if tt == DANG and yen is not None and yen >= 2: co.append(f"đứng yên {yen} ngày")
     return {"ten": ten, "tieu_de": dau["ten"], "han": dau["han"], "tt": tt, "d": d, "mau": mau, "pm": pm, "rows": rows,
-            "cn": cn, "mo": mo, "co": co, "lech": lech}
+            "cn": cn, "mo": mo, "co": co, "lech": lech, "canh_bao": dau["canh_bao"]}
 
 
 def pct(d, mau): return round(100 * d[XONG] / mau) if mau else None
@@ -170,17 +176,24 @@ def thanh(d, mau):
             f'<i class="d" style="width:{w(d[DANG])}"></i></span> {d[XONG]}/{mau} · {pct(d, mau)}%')
 
 
+def so_nguyen(x):
+    try: return int(x)
+    except (TypeError, ValueError): return None
+
+
 def hang_lan(l, may_cha=None):
-    cho = "".join(chip(c) for c in l.get("cho", [])) + "".join(chip(c, "do") for c in l.get("co", []))
-    may = f" · {html.escape(l['may'])}" if l.get("may") and l["may"] != may_cha else ""  # HT-04
-    cau = (f'{html.escape(l["cau"])} <span class="muted">({tuoi(l["cau_tuoi_phut"])})</span>' if l.get("cau")
-           else '<span class="muted">Chưa có câu cập nhật</span>')
-    buoc = f' · bước {html.escape(l["buoc"])} <span class="muted">tự khai</span>' if l.get("buoc") else ""
-    cuoi = " · ".join(x for x in [f'chạy {tuoi(l["da_chay_phut"])}' if "da_chay_phut" in l else "",
-                                   f'ngữ cảnh {l["ngu_canh_nghin"]} nghìn' if "ngu_canh_nghin" in l else "",
-                                   f'PR #{l["pr"]}' if l.get("pr") else ""] if x)
-    return (f'<div class="h lan"><div class="l1">{vong(DANG)}<b>{html.escape(l.get("ten", ""))}</b>{may}{cho}'
-            f'<span class="sk">{html.escape(l.get("nhip", ""))}</span></div>'
+    e = lambda k: html.escape(str(l.get(k) or ""))  # mọi trường từ JSON ngoài đều qua escape
+    cho = "".join(chip(str(c)) for c in l.get("cho") or []) + "".join(chip(str(c), "do") for c in l.get("co") or [])
+    may = f" · {e('may')}" if l.get("may") and l["may"] != may_cha else ""  # HT-04
+    tc, dc, nc, pr = (so_nguyen(l.get(k)) for k in ("cau_tuoi_phut", "da_chay_phut", "ngu_canh_nghin", "pr"))
+    cau = (f'{e("cau")} <span class="muted">({tuoi(tc)})</span>' if l.get("cau") and tc is not None
+           else e("cau") if l.get("cau") else '<span class="muted">Chưa có câu cập nhật</span>')
+    buoc = f' · bước {e("buoc")} <span class="muted">tự khai</span>' if l.get("buoc") else ""
+    cuoi = " · ".join(x for x in [f"chạy {tuoi(dc)}" if dc is not None else "",
+                                   f"ngữ cảnh {nc} nghìn" if nc is not None else "",
+                                   f"PR #{pr}" if pr else ""] if x)
+    return (f'<div class="h lan"><div class="l1">{vong(DANG)}<b>{e("ten")}</b>{may}{cho}'
+            f'<span class="sk">{e("nhip")}</span></div>'
             f'<div class="l2">{cau}{buoc}</div><div class="l2 muted">{cuoi}</div></div>')
 
 
@@ -196,8 +209,8 @@ def hang_phase(p, lan):
     xong = [k for k, r in p["rows"].items() if r["tt"] == XONG]
     viec = "".join(hang_viec(k, r) for k, r in p["rows"].items() if r["tt"] != XONG)
     gap = f'<details><summary>{len(xong)} việc đã xong</summary>{"".join(hang_viec(k, p["rows"][k]) for k in xong)}</details>' if xong else ""
-    lech = "".join(f'<div class="l2 muted">⚠ {html.escape(x)}</div>' for x in p["lech"])
-    return (f'<div class="h"><div class="l1">{vong(p["tt"], pct(d, p["mau"]) or 0)}<b>{p["ten"]}</b> {html.escape(p["tieu_de"])}{chips}{sk}</div>'
+    lech = "".join(f'<div class="l2 muted">⚠ {html.escape(x)}</div>' for x in p["lech"] + p["canh_bao"])
+    return (f'<div class="h"><div class="l1">{vong(p["tt"], pct(d, p["mau"]) or 0)}<b>{html.escape(p["ten"])}</b> {html.escape(p["tieu_de"])}{chips}{sk}</div>'
             f'<div class="l2">{cau}</div><div class="l2">{thanh(d, p["mau"])}{pv}{han} · <span class="muted">chưa có dự báo</span></div>{lech}'
             f'<div class="con">{"".join(hang_lan(l) for l in lan)}{viec}{gap}</div></div>')
 
@@ -205,7 +218,7 @@ def hang_phase(p, lan):
 def hang_viec(k, r):
     pr = chip(f"PR #{r['pr']}") if r["pr"] else ""
     cc = "".join(chip(c) for c in r["co"])
-    return (f'<div class="h viec"><div class="l1">{vong(r["tt"])}<b>{k}</b> {html.escape(r.get("Yêu cầu", ""))[:110]}{pr}{cc}</div></div>')
+    return (f'<div class="h viec"><div class="l1">{vong(r["tt"])}<b>{html.escape(k)}</b> {html.escape(r.get("Yêu cầu", "")[:110])}{pr}{cc}</div></div>')
 
 
 def dem_ngoai_le(phases):
@@ -232,21 +245,22 @@ details summary{margin-left:26px;cursor:pointer;color:#666;font-size:13px}.tong{
 @media(prefers-color-scheme:dark){body{background:#17181c;color:#e8e8ea}.h{border-color:#333}.muted{color:#aaa}.tb{background:#333}.v{border-color:#6ea0f5}}"""
 
 
-def xuat(ten, phases, lan, now):
+def xuat(ten, phases, lan, now, canh_bao=()):
+    canh = "".join(f'<div class="l2 muted">⚠ {html.escape(x)}</div>' for x in canh_bao)
     nhom = {}
     for p in phases: nhom.setdefault(p["ten"].rsplit("-", 1)[0], []).append(p)
     mo = [p for p in phases if p["tt"] != XONG]
-    d = {k: sum(p["d"][k] for p in mo) for k in (XONG, DANG, CHUA, HUY)}
+    d = {k: sum(p["d"][k] for p in phases) for k in (XONG, DANG, CHUA, HUY)}
     mau = d[XONG] + d[DANG] + d[CHUA]
     nl = dem_ngoai_le(phases)
     ngoai = " · ".join(f"{v} {k}" for k, v in nl.items() if v) or "không có ngoại lệ"
     body = [f'<div class="h"><div class="l1">{vong(DANG if mo else XONG, pct(d, mau) or 0)}<b>{html.escape(ten)}</b></div>'
-            f'<div class="l2">{thanh(d, mau)} · {len(mo)} giai đoạn đang mở</div><div class="l2 tong">{ngoai}</div></div>']
+            f'<div class="l2">{thanh(d, mau)} · {len(mo)} giai đoạn đang mở</div>{canh}<div class="l2 tong">{ngoai}</div></div>']
     for m, ps in nhom.items():
-        dm = {k: sum(p["d"][k] for p in ps if p["tt"] != XONG) for k in (XONG, DANG, CHUA, HUY)}
+        dm = {k: sum(p["d"][k] for p in ps) for k in (XONG, DANG, CHUA, HUY)}
         mm = dm[XONG] + dm[DANG] + dm[CHUA]
         con = "".join(hang_phase(p, [l for l in lan if l.get("phase") == p["ten"]]) for p in ps)
-        body.append(f'<div class="h"><div class="l1">{vong(DANG, pct(dm, mm) or 0)}<b>Module {m}</b></div>'
+        body.append(f'<div class="h"><div class="l1">{vong(DANG, pct(dm, mm) or 0)}<b>Module {html.escape(m)}</b></div>'
                     f'<div class="l2">{thanh(dm, mm)}</div><div class="con">{con}</div></div>')
     return (f'<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             f'<title>Tiến độ — {html.escape(ten)}</title><style>{CSS}</style><body>{"".join(body)}'
@@ -264,11 +278,13 @@ def main(argv=None):
     pr_of = (lambda n: lay_pr(o.github, n)) if o.github else None
     cm_of = (lambda n: lay_comment(o.github, n)) if o.github else None
     lan = json.loads(Path(o.lan).read_text())["lan"] if o.lan else []
-    phases = []
-    for f in sorted((repo / "docs" / "phase").iterdir()):
+    phases, cb = [], []
+    thu = repo / "docs" / "phase"
+    if not thu.is_dir(): cb.append("Không có docs/phase/ trong repo")
+    for f in sorted(thu.iterdir() if thu.is_dir() else []):
         if FILE_PHASE.match(f.name):
             phases.append(tinh_phase(f.stem, f.read_text(), lich_su(repo, f"docs/phase/{f.name}", tz), now, pr_of, cm_of))
-    Path(o.ra).write_text(xuat(o.ten or repo.resolve().name, phases, lan, now))
+    Path(o.ra).write_text(xuat(o.ten or repo.resolve().name, phases, lan, now, cb))
     return 0
 
 

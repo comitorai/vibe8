@@ -85,5 +85,32 @@ class TestTrang(unittest.TestCase):
         self.assertNotIn("may-a", h.split("Làn T2")[0])
 
 
+class TestVa(unittest.TestCase):
+    def test_xss_ma_task_va_lan_json(self):  # chặn 1, 2
+        t = so("T1 | a | xong | — | — | ", "T2<img src=x onerror=1> | b | chờ | — | — | ")
+        self.assertEqual(list(td.doc_so(t)[1]), ["T1"])
+        h = td.hang_lan({"ten": "<b>x", "may": "<i>", "nhip": "<s>", "cho": ["<u>"], "co": ["<u>"], "cau": "<a>", "cau_tuoi_phut": "<1>",
+                         "buoc": "<c>", "da_chay_phut": "<2>", "ngu_canh_nghin": "<script>", "pr": "<3>"})
+        self.assertNotIn("<script", h); self.assertNotIn("<i>", h); self.assertNotIn("<u>", h)
+        self.assertIn("&lt;script&gt;", td.hang_lan({"ten": "<script>"}))
+
+    def test_phan_tram_tinh_ca_giai_doan_da_xong(self):  # chặn 3, HT-05
+        mk = lambda *tt: so(*(f"T{i} | a | {x} | — | — | " for i, x in enumerate(tt, 1)))
+        now = dt.datetime(2026, 11, 9, tzinfo=TZ)
+        ps = [td.tinh_phase("X-1-1", mk("xong", "xong"), [], now, None, None),
+              td.tinh_phase("X-1-2", mk("xong", "chờ", "chờ", "chờ"), [], now, None, None)]
+        self.assertIn("3/6 · 50%", td.xuat("t", ps, [], now))
+        ps = [td.tinh_phase("X-1-1", mk("xong"), [], now, None, None)]
+        self.assertIn("1/1 · 100%", td.xuat("t", ps, [], now))
+
+    def test_dong_hong_va_thieu_thu_muc(self):  # 4, 5, 7
+        _, rows = td.doc_so(so("**T5** | a | xong | — | — | ", "T6 | a | xong | — | — | x | thừa", "T7 | a \\| b | xong | — | — | "))
+        self.assertEqual(list(rows), ["T5", "T7"]); self.assertEqual(rows["T7"]["Yêu cầu"], "a | b")
+        self.assertTrue(td.doc_so(so("T6 | a | xong | — | — | x | thừa"))[0]["canh_bao"])
+        d = Path(tempfile.mkdtemp()); out = d / "o.html"
+        self.assertEqual(td.main(["--repo-dir", str(d), "--ra", str(out)]), 0)
+        self.assertIn("Không có docs/phase/", out.read_text())
+
+
 if __name__ == "__main__":
     unittest.main()
