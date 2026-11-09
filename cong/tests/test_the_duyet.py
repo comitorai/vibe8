@@ -238,7 +238,7 @@ class TestTheDuyet(unittest.TestCase):
 
     def test_hien_so_dong_test(self):
         q = {"rui_ro": "cao", "so_dong": 5, "so_dong_test": 77, "qua_co": False, "theo_tep": [["vùng"]], "nguoi_duyet": []}
-        self.assertIn("chưa tính 77 dòng test", the_duyet.lap_the(pr(ds_tep=[tep("cong/x.py")]), q, [], ("xanh", "")))
+        self.assertIn("gồm 77 dòng test, mức Cao tính đủ", the_duyet.lap_the(pr(ds_tep=[tep("cong/x.py")]), q, [], ("xanh", "")))
 
     def test_the_vao_output_text_cua_check(self):
         gh = gate_app.GiaLap({})

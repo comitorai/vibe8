@@ -48,7 +48,7 @@ Giới hạn đã biết: cổng chỉ thấy đường dẫn, nên mã tiền �
 
 **Làn sửa gấp** (lỗi đang hại người dùng): mức nào vẫn giữ mức đó. Cổng không biết PR nào là sửa gấp và chặn mọi PR chưa có phiếu `khong-bac` trên đúng SHA (Alex 1a, 06/11), nên trước merge chỉ cần một lượt phản bác hẹp trên chỗ sửa; lượt đầy đủ chạy sau merge, trong 24 giờ. Người duyệt của mức Cao vẫn bắt buộc trước merge.
 
-Căn cứ L2: con số 400 đến từ nghiên cứu SmartBear/Cisco về người đọc mã, nên áp cho mã người phải đọc. Ở đây phần lớn diff do AI phản bác đọc, nên dòng test (kỳ vọng nghiệm thu, đổi test có sẵn đã bị chặn riêng theo L5) tách ra không tính; thẻ duyệt vẫn hiện số dòng test. Mức Thường đã có phiếu phản bác soát nên quá cỡ chỉ cảnh báo; mức Cao có người đọc thật nên vẫn chặn.
+Căn cứ L2: con số 400 đến từ nghiên cứu SmartBear/Cisco về người đọc mã, nên áp cho mã người phải đọc. Ở đây phần lớn diff do AI phản bác đọc, nên dòng test (kỳ vọng nghiệm thu, đổi test có sẵn đã bị chặn riêng theo L5) tách ra không tính; thẻ duyệt vẫn hiện số dòng test. Chỉ mức Thường được trừ dòng test, và quá cỡ chỉ cảnh báo vì đã có phiếu phản bác soát. Mức Cao tính đủ cả dòng test (cổng chỉ thấy đường dẫn, nên tệp tên test có thể chứa mã thật hay nằm trong vùng nhạy cảm) và vẫn chặn khi chưa có `ngoai-le-co`.
 
 ## 3. Các luật
 

@@ -162,7 +162,8 @@ def lap_the(du_lieu, q, phieu, nhanh):
     phan = ["## Thẻ duyệt", "SHA `%s` · %d tệp · %d dòng. Duyệt là duyệt đúng SHA này; có commit mới thì duyệt lại."
             % (sha[:12], len(ds_tep), q.get("so_dong", 0))]
     if q.get("so_dong_test"):
-        phan[-1] += " (chưa tính %d dòng test)" % q["so_dong_test"]
+        phan[-1] += (" (gồm %d dòng test, mức Cao tính đủ)" if q.get("rui_ro") == rui_ro.CAO
+                     else " (chưa tính %d dòng test)") % q["so_dong_test"]
 
     phan.append("### 1. Vì sao cần anh duyệt")
     vi_sao = []
@@ -209,7 +210,7 @@ def lap_the(du_lieu, q, phieu, nhanh):
                 ("" if trang_thai == "xanh" else " (%s)" % ly_do))
     moi = [(i, t) for i, t in enumerate(ds_tep, 1) if isinstance(t, dict) and t.get("status") == "added"
            and rui_ro._la_test(rui_ro._chuan_hoa(str(t.get("filename") or "")), str(t.get("filename") or ""))]
-    phan.append("- Tệp test mới: %s" % (", ".join(_ten(t, i) for i, t in moi[:20]) if moi else "không có"))
+    phan.append("- Tệp test mới: %s" % (", ".join("%s %s" % (_ten(t, i), _so(t)) for i, t in moi[:20]) if moi else "không có"))
     phan.append("- Đỏ trước, xanh sau: cổng chưa đo (cần chạy test mới trên nhánh gốc).")
     if q.get("nguoi_duyet"):
         phan.append("_Đã có lượt duyệt hợp lệ của %s._" % ", ".join(q["nguoi_duyet"]))

@@ -226,6 +226,19 @@ class TestCo(unittest.TestCase):
         self.assertEqual(q["ket_luan"], CHAN)
         self.assertIn("ngoai-le-co", " ".join(q["ly_do"]))
 
+    def test_cao_ma_that_trong_tests_van_tinh_du(self):
+        ds = CAO + [tep("tests/payments_core.py", them=5000, status="added")]
+        q = quyet_dinh(pr(ds, ds_duyet=[duyet()]))
+        self.assertEqual((q["ket_luan"], q["so_dong"]), (CHAN, 5001))
+
+    def test_cao_tep_con_vung_nhay_cam_van_tinh_du(self):
+        q = quyet_dinh(pr([tep("app/payments/tests/x.py", them=500, status="added")], ds_duyet=[duyet()], vung_nhay_cam=["app/payments/"]))
+        self.assertEqual((q["ket_luan"], q["so_dong"]), (CHAN, 500))
+
+    def test_cao_the_liet_ke_tep_test_moi_kem_so_dong(self):
+        q = quyet_dinh(pr(CAO + [tep("tests/payments_core.py", them=5000, status="added")]))
+        self.assertIn("tests/payments_core.py` +5000", q["the_duyet"])
+
     def test_cao_co_ngoai_le_cho_qua(self):
         ds = [duyet(body="ngoai-le-co: chuyển mã máy sinh, đã đọc lướt")]
         self.assertEqual(quyet_dinh(pr(lon(500), ds_duyet=ds))["ket_luan"], CHO_QUA)

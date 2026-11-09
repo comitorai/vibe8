@@ -219,7 +219,7 @@ def _xet_muc_moi(tep, vung):
 
 
 def phan_loai(ds_tep, vung=()):
-    """Trả {muc, ly_do, so_dong, so_dong_test, qua_co, theo_tep}. so_dong không tính lockfile và tệp test (Alex 1a, 09/11);
+    """Trả {muc, ly_do, so_dong, so_dong_test, qua_co, theo_tep}. so_dong không tính lockfile; mức Thường còn trừ tệp test, mức Cao tính đủ (Alex 1a, 09/11);
     so_dong_test là số dòng test, để thẻ duyệt hiện. theo_tep[i]: lý do Cao của ds_tep[i]. vung: mẫu đường dẫn nhạy cảm đọc từ nhánh gốc (doc_vung)."""
     if not isinstance(ds_tep, list):
         return {"muc": CAO, "ly_do": ["không có danh sách tệp"], "so_dong": 0, "so_dong_test": 0, "qua_co": False, "theo_tep": []}
@@ -244,4 +244,8 @@ def phan_loai(ds_tep, vung=()):
                 tong += sum(so)
     if ma_chay:
         ly_do.append("%d tệp mã hoặc cấu hình chạy được, vd %s" % (len(ma_chay), hien_thi(ma_chay[0])))
+    # Chỉ mức Thường được trừ dòng test: mức Cao tính đủ, vì tệp tên test có thể chứa mã thật (tests/payments_core.py)
+    # hay nằm trong vùng nhạy cảm, mà cổng chỉ thấy đường dẫn.
+    if muc == CAO:
+        tong += tong_test
     return {"muc": muc, "ly_do": ly_do, "so_dong": tong, "so_dong_test": tong_test, "qua_co": tong > NGUONG_CO_DONG, "theo_tep": theo_tep}
