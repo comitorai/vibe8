@@ -41,7 +41,7 @@ Giữa các cổng, các vai AI tự đi; vai viết không bao giờ tự duy�
 | Luồng việc (mã, vd `ABC-7`) | mục tiêu dài hơi của một module, qua nhiều phase; mã giữ suốt luồng | trả lời được «xong luồng thì module có gì mới» | chủ dự án mở, AI đề xuất đóng |
 | Phase | một mốc kiểm được bằng máy hay demo, ≤ 2 tuần lịch; không cấp mã mới | có một câu «xong khi…» và một buổi nghiệm thu | Cổng 2 mở, Cổng 3 đóng |
 | Task | một làn, một nhánh, một PR (L9), ≤ 1 ngày; việc cần nhiều PR thì tách task con | có 3–5 dòng tiêu chí nghiệm thu | Điều phối mở trong phase đã duyệt |
-| PR | đơn vị cổng kiểm, ≤ 400 dòng (L2) | `cong-cuoi` đọc được | AI mở; máy hay người cho merge theo mức |
+| PR | đơn vị cổng kiểm, ≤ 400 dòng mã (L2; mức Thường không tính dòng test, mức Cao tính đủ) | `cong-cuoi` đọc được | AI mở; máy hay người cho merge theo mức |
 | Phiên | một lần AI chạy, **không** phải đơn vị việc; một phiên làm một task | — | — |
 
 ## 2. Chặng 0 — Cuộc trò chuyện để lại dấu

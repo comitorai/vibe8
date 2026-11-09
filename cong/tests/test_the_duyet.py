@@ -232,10 +232,17 @@ class TestTheDuyet(unittest.TestCase):
         the = self.the(ds_tep=[tep("cong/x.py"), tep("cong/tests/test_moi.py", status="added")])
         self.assertIn("Tệp test mới: [2] `cong/tests/test_moi.py`", the)
 
-    def test_qua_co_thuong_van_co_the(self):
-        the = self.the(ds_tep=[tep("app/a.py", 401, 0)])
+    def test_qua_co_cao_ghi_ngoai_le(self):
+        the = self.the(ds_tep=[tep("cong/x.py", 401, 0)])
         self.assertIn("quá 400 dòng", the)
-        self.assertIn("Không tệp nào ở mức Cao", the)
+
+    def test_tep_test_moi_bi_cat_o_20_ghi_con_lai(self):
+        the = self.the(ds_tep=[tep("cong/x.py")] + [tep("cong/tests/t%d.py" % i, status="added") for i in range(25)])
+        self.assertIn("và 5 tệp nữa", the)
+
+    def test_hien_so_dong_test(self):
+        q = {"rui_ro": "cao", "so_dong": 5, "so_dong_test": 77, "qua_co": False, "theo_tep": [["vùng"]], "nguoi_duyet": []}
+        self.assertIn("gồm 77 dòng test, mức Cao tính đủ", the_duyet.lap_the(pr(ds_tep=[tep("cong/x.py")]), q, [], ("xanh", "")))
 
     def test_the_vao_output_text_cua_check(self):
         gh = gate_app.GiaLap({})
