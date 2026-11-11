@@ -84,16 +84,19 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
 **Hai kiểu đóng Điều phối** (chủ dự án 1a 11/11): *đóng cuối phase*: mọi làn xong (merge, lưu trữ), Điều phối đóng sau cùng;
 *bàn giao*: bảy bước trên. Không bắt Điều phối cũ chờ mọi làn xong khi bàn giao, vì nó bàn giao chính vì đã gần đầy ngữ cảnh.
 
-**Hàng rào của bảy bước** (`~/ai/os/bin/hook-dieu-phoi.py`, chủ dự án 1a 11/11; ngày đó bước 3, 6, 7 đều bị quên hoặc làm muộn
-`[ĐÃ KIỂM: Điều phối COM-24 bị chặn mở làn vì còn là phiên con; hai làn nằm ngoài vỏ tới khi chủ dự án chụp thanh bên · 11/11]`):
+**Hàng rào của bảy bước** (`~/ai/os/bin/hook-dieu-phoi.py`, chủ dự án 1a 11/11) — vì ngày đó bước 3 làm muộn và bước 6 bị bỏ
+`[ĐÃ KIỂM: Điều phối COM-24 mới bị hook chặn mở làn vì còn là phiên con; hai làn nằm ngoài vỏ tới khi chủ dự án chụp thanh bên · 11/11]`.
+Hành vi dưới đây `[ĐÃ KIỂM: bin/test-hook-dieu-phoi.py 43/43 trên bản ghi giả · 11/11]`, chưa chặn lần bàn giao thật nào:
 
-| Bước | Máy làm gì |
-|---|---|
-| 3 | Điều phối vừa `start_session` một phiên tên có «Điều phối» → nhắc `detach_session` ngay; `wrap_up` của Điều phối cũ bị chặn khi Điều phối mới còn là phiên con |
-| 6 | Điều phối gọi `start_session` mà còn phiên sống cùng mã nằm ngoài vỏ, hoặc chưa từng nhận tin của nó → chặn tới khi gom xong (đưa vào vỏ, nhắn «báo về tôi», hoặc lưu trữ làn đã xong) |
-| 7 | Điều phối `archive_session self` khi còn phiên con chưa tách, chưa lưu trữ → chặn |
+| Bước | Máy làm gì | Không làm |
+|---|---|---|
+| 3 | Sau `start_session` một phiên tên có «Điều phối»: nhắc `detach_session` phiên đó. `wrap_up` của Điều phối bị từ chối khi còn phiên con là Điều phối chưa tách | Không canh làn thường còn là con; không áp cho `hand_off_to_session` |
+| 6 | Khi một Điều phối gọi `start_session`: từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ, hoặc chưa từng nhận một tin `SendMessage` nào từ Điều phối này | Không đọc sổ; không kiểm nội dung tin |
+| 7 | `archive_session self` của Điều phối bị từ chối khi còn phiên con chưa tách, chưa lưu trữ | `wrap_up` không xét làn con thường |
 
-Bước 5 (đổi `Điều phối:` đầu sổ) chưa có hàng rào: sổ nằm trong repo, hook chưa có cách định vị chung.
+Mỗi lý do chỉ từ chối tối đa 2 lần mỗi phiên rồi cho qua (tool app hỏng không được khoá phiên). Hook cũng cho qua khi lỗi, khi phiên chạy
+từ máy khác, và khi không đọc được transcript. Đây là gờ giảm tốc, không phải khoá. Bước 5 (đổi `Điều phối:` đầu sổ) chưa có hàng rào:
+sổ nằm trong repo, hook chưa có cách định vị chung.
 
 **Ngưỡng ngữ cảnh và đường báo** (chủ dự án chốt 07/11):
 
