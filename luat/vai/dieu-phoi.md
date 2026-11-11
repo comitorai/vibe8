@@ -75,7 +75,8 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
 2. Mở Điều phối mới; lời giao chỉ trỏ tới sổ và tệp bàn giao, không chép lại.
 3. Tách Điều phối mới và mọi làn còn sống ra khỏi cây của Điều phối cũ. **Bước này phải đi trước khi Điều phối cũ đóng:** công cụ có
    thể đóng, lưu trữ luôn phiên con khi đóng phiên cha `[ĐÃ KIỂM: Điều phối COM-24 cũ lưu trữ và kéo theo Điều phối mới · 07/11]`.
-4. Đưa tất cả vào vỏ (không ghim).
+4. Đưa tất cả vào vỏ (không ghim). Điều phối mới làm bước này ngay lượt đầu nhận ca, kể cả khi chưa định mở làn nào
+   `[ĐÃ KIỂM: Điều phối COM-24 nhận ca 11/11 chỉ gom chính nó; sáu làn nằm ngoài vỏ tới khi chủ dự án chỉ ra]`.
 5. Điều phối cũ đổi `Điều phối:` đầu sổ sang id phiên mới. Quyền chuyển lúc thay đổi này lên `main`; từ đó Điều phối cũ chỉ đọc.
    **Không nhắn từng làn** (chủ dự án 1a 13/11): làn tự tra người nhận ở đầu sổ mỗi lần báo (đường báo dưới), nên đổi đầu
    sổ là đủ; mỗi tin gửi đi đánh thức một làn chạy cả lượt trên toàn ngữ cảnh của nó, tốn token mà không thêm gì
@@ -96,7 +97,7 @@ Hành vi dưới đây `[ĐÃ KIỂM: bin/test-hook-dieu-phoi.py 49/49 trên b�
 |---|---|---|
 | 3 | Khi một Điều phối (tên đúng mẫu) gọi `start_session` mở phiên có chữ «Điều phối» trong tên: nhắc `detach_session` phiên đó. `wrap_up` của Điều phối bị từ chối khi còn phiên con là Điều phối chưa tách | Không canh làn thường còn là con; không áp cho `hand_off_to_session` |
 | 5 | Sổ = `docs/phase/<MÃ>-<số lớn nhất>.md` gần nhất khi đi ngược từ thư mục làm việc của phiên, số lớn nhất tính trên cả bản làm việc lẫn `origin/main`; đọc dòng `Điều phối:` ở cả hai. Điều phối gọi `start_session` mà không nguồn nào ghi id của nó: từ chối. Điều phối gọi `wrap_up` hay `archive_session self` mà mọi nguồn còn ghi id của nó trong khi đã có Điều phối kế (tạo sau nó) cùng MÃ và Sản phẩm: từ chối | Không `git fetch` (main ở máy có thể cũ); không thấy sổ thì cho qua; không kiểm phần còn lại của sổ |
-| 6 | Khi một Điều phối gọi `start_session`: từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ (điều kiện «chưa từng nhận tin `SendMessage` từ Điều phối này» đã bỏ, chủ dự án 1a 13/11, CN-64: hook báo về của làn tự đọc đầu sổ để chỉ ra id người nhận) | Chỉ xét phiên có tên đúng mẫu; kiểm «ngoài vỏ» chỉ khi Điều phối đã ở trong vỏ; không đọc sổ; không kiểm nội dung tin |
+| 6 | Khi một Điều phối gọi `start_session`, và ở mỗi `wrap_up` của nó (chủ dự án 2a 11/11: Điều phối nhận ca rồi chỉ theo dõi PR, không mở làn, nên kiểm lúc mở làn không chạy): từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ (điều kiện «chưa từng nhận tin `SendMessage` từ Điều phối này» đã bỏ, chủ dự án 1a 13/11, CN-64: hook báo về của làn tự đọc đầu sổ để chỉ ra id người nhận) | Chỉ xét phiên có tên đúng mẫu; kiểm «ngoài vỏ» chỉ khi Điều phối đã ở trong vỏ; không đọc sổ; không kiểm nội dung tin |
 | 7 | `archive_session self` của Điều phối bị từ chối khi còn phiên con chưa tách, chưa lưu trữ | `wrap_up` không xét làn con thường |
 
 Mỗi lý do chỉ từ chối tối đa 2 lần trong 6 giờ rồi cho qua (tool app hỏng không được khoá phiên). Hook cũng cho qua khi lỗi, khi phiên chạy
@@ -164,6 +165,9 @@ phiên khi PR đóng» của app đang bật, danh sách công cụ có unarchiv
 cả Điều phối, vì PR sửa sổ do chính phiên Điều phối ở đầu sổ mở (chỉ nó ghi sổ, §4). Nên:
 
 - làn dừng dịch vụ đã bật trước khi merge (hàng **Xong**);
+- Điều phối mở PR (sổ, bàn giao) thì gỡ PR khỏi phiên mình ngay (`unbind_pr`); hook từ chối `wrap_up` khi Điều phối còn gắn PR
+  đang mở. Công cụ gỡ bị chặn quyền thì báo chủ dự án gỡ tay (nút × trên thanh PR của phiên)
+  `[ĐÃ KIỂM: PR sổ #369 của comitor-tasks gắn vào Điều phối, unbind_pr bị chế độ auto từ chối · 11/11]`;
 - Điều phối ở đầu sổ kiểm `list_sessions` ngay sau mỗi lần merge, trước khi hết lượt; thấy chính nó hay một làn còn việc đã bị
   lưu trữ thì mở lại bằng `unarchive_session` rồi làm tiếp từ sổ. Bị lưu trữ lúc đã nghỉ thì phiên không tự thấy được: chủ dự án
   thấy nó mất khỏi vỏ thì mở lại `[CHƯA KIỂM: phiên mở lại có chạy tiếp được không]`.
