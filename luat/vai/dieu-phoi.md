@@ -85,7 +85,8 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
 *bàn giao*: bảy bước trên. Không bắt Điều phối cũ chờ mọi làn xong khi bàn giao, vì nó bàn giao chính vì đã gần đầy ngữ cảnh.
 
 **Hàng rào của bảy bước** (`~/ai/os/bin/hook-dieu-phoi.py`, chủ dự án 1a 11/11) — vì ngày đó bước 3 làm muộn và bước 6 bị bỏ
-`[ĐÃ KIỂM: ~/.cache/ai-os/hook-dieu-phoi.log — Điều phối COM-24 mới bị chặn mở làn mã «auto,khung» (chưa vào vỏ) lúc 10:05; hai làn nằm ngoài vỏ tới khi chủ dự án chụp thanh bên · 11/11]`.
+`[ĐÃ KIỂM: ~/.cache/ai-os/hook-dieu-phoi.log — hook chặn một lần mở làn mã «auto,khung» lúc 10:05 · 11/11]`
+`[SUY LUẬN từ ảnh chụp thanh bên của chủ dự án và bản tóm tắt phiên Điều phối cũ: phiên bị chặn là Điều phối COM-24 mới, hai làn nằm ngoài vỏ tới khi được chỉ ra]`.
 Hành vi dưới đây `[ĐÃ KIỂM: bin/test-hook-dieu-phoi.py 43/43 trên bản ghi giả · 11/11]`, chưa chặn lần bàn giao thật nào:
 
 | Bước | Máy làm gì | Không làm |
@@ -95,7 +96,7 @@ Hành vi dưới đây `[ĐÃ KIỂM: bin/test-hook-dieu-phoi.py 43/43 trên b�
 | 7 | `archive_session self` của Điều phối bị từ chối khi còn phiên con chưa tách, chưa lưu trữ | `wrap_up` không xét làn con thường |
 
 Mỗi lý do chỉ từ chối tối đa 2 lần trong 6 giờ rồi cho qua (tool app hỏng không được khoá phiên). Hook cũng cho qua khi lỗi, khi phiên chạy
-từ máy khác, và khi không đọc được transcript. Đây là gờ giảm tốc, không phải khoá. Bước 5 (đổi `Điều phối:` đầu sổ) chưa có hàng rào:
+từ máy khác, và bỏ qua điều kiện «chưa nhắn» khi không đọc được transcript. Đây là gờ giảm tốc, không phải khoá. Bước 5 (đổi `Điều phối:` đầu sổ) chưa có hàng rào:
 sổ nằm trong repo, hook chưa có cách định vị chung.
 
 **Ngưỡng ngữ cảnh và đường báo** (chủ dự án chốt 07/11):
