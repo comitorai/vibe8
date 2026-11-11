@@ -81,6 +81,20 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
 6. Điều phối mới đối chiếu sổ với danh sách phiên đang sống, xác nhận với từng làn.
 7. Điều phối cũ kiểm lại không còn phiên con nào cần sống, rồi đóng phiên.
 
+**Hai kiểu đóng Điều phối** (chủ dự án 1a 11/11): *đóng cuối phase*: mọi làn xong (merge, lưu trữ), Điều phối đóng sau cùng;
+*bàn giao*: bảy bước trên. Không bắt Điều phối cũ chờ mọi làn xong khi bàn giao, vì nó bàn giao chính vì đã gần đầy ngữ cảnh.
+
+**Hàng rào của bảy bước** (`~/ai/os/bin/hook-dieu-phoi.py`, chủ dự án 1a 11/11; ngày đó bước 3, 6, 7 đều bị quên hoặc làm muộn
+`[ĐÃ KIỂM: Điều phối COM-24 bị chặn mở làn vì còn là phiên con; hai làn nằm ngoài vỏ tới khi chủ dự án chụp thanh bên · 11/11]`):
+
+| Bước | Máy làm gì |
+|---|---|
+| 3 | Điều phối vừa `start_session` một phiên tên có «Điều phối» → nhắc `detach_session` ngay; `wrap_up` của Điều phối cũ bị chặn khi Điều phối mới còn là phiên con |
+| 6 | Điều phối gọi `start_session` mà còn phiên sống cùng mã nằm ngoài vỏ, hoặc chưa từng nhận tin của nó → chặn tới khi gom xong (đưa vào vỏ, nhắn «báo về tôi», hoặc lưu trữ làn đã xong) |
+| 7 | Điều phối `archive_session self` khi còn phiên con chưa tách, chưa lưu trữ → chặn |
+
+Bước 5 (đổi `Điều phối:` đầu sổ) chưa có hàng rào: sổ nằm trong repo, hook chưa có cách định vị chung.
+
 **Ngưỡng ngữ cảnh và đường báo** (chủ dự án chốt 07/11):
 
 - **Điều phối > 80 % cửa sổ ngữ cảnh thì bàn giao** theo bảy bước trên, không chờ hết phase. Lý do: phiên điều phối bị nén
