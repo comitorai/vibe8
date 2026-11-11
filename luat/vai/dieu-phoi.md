@@ -85,16 +85,16 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
 *bàn giao*: bảy bước trên. Không bắt Điều phối cũ chờ mọi làn xong khi bàn giao, vì nó bàn giao chính vì đã gần đầy ngữ cảnh.
 
 **Hàng rào của bảy bước** (`~/ai/os/bin/hook-dieu-phoi.py`, chủ dự án 1a 11/11) — vì ngày đó bước 3 làm muộn và bước 6 bị bỏ
-`[ĐÃ KIỂM: Điều phối COM-24 mới bị hook chặn mở làn vì còn là phiên con; hai làn nằm ngoài vỏ tới khi chủ dự án chụp thanh bên · 11/11]`.
+`[ĐÃ KIỂM: ~/.cache/ai-os/hook-dieu-phoi.log — Điều phối COM-24 mới bị chặn mở làn mã «auto,khung» (chưa vào vỏ) lúc 10:05; hai làn nằm ngoài vỏ tới khi chủ dự án chụp thanh bên · 11/11]`.
 Hành vi dưới đây `[ĐÃ KIỂM: bin/test-hook-dieu-phoi.py 43/43 trên bản ghi giả · 11/11]`, chưa chặn lần bàn giao thật nào:
 
 | Bước | Máy làm gì | Không làm |
 |---|---|---|
-| 3 | Sau `start_session` một phiên tên có «Điều phối»: nhắc `detach_session` phiên đó. `wrap_up` của Điều phối bị từ chối khi còn phiên con là Điều phối chưa tách | Không canh làn thường còn là con; không áp cho `hand_off_to_session` |
-| 6 | Khi một Điều phối gọi `start_session`: từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ, hoặc chưa từng nhận một tin `SendMessage` nào từ Điều phối này | Không đọc sổ; không kiểm nội dung tin |
+| 3 | Khi một Điều phối (tên đúng mẫu) gọi `start_session` mở phiên có chữ «Điều phối» trong tên: nhắc `detach_session` phiên đó. `wrap_up` của Điều phối bị từ chối khi còn phiên con là Điều phối chưa tách | Không canh làn thường còn là con; không áp cho `hand_off_to_session` |
+| 6 | Khi một Điều phối gọi `start_session`: từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ, hoặc chưa từng nhận một tin `SendMessage` nào từ Điều phối này | Chỉ xét phiên có tên đúng mẫu; kiểm «ngoài vỏ» chỉ khi Điều phối đã ở trong vỏ; không đọc sổ; không kiểm nội dung tin |
 | 7 | `archive_session self` của Điều phối bị từ chối khi còn phiên con chưa tách, chưa lưu trữ | `wrap_up` không xét làn con thường |
 
-Mỗi lý do chỉ từ chối tối đa 2 lần mỗi phiên rồi cho qua (tool app hỏng không được khoá phiên). Hook cũng cho qua khi lỗi, khi phiên chạy
+Mỗi lý do chỉ từ chối tối đa 2 lần trong 6 giờ rồi cho qua (tool app hỏng không được khoá phiên). Hook cũng cho qua khi lỗi, khi phiên chạy
 từ máy khác, và khi không đọc được transcript. Đây là gờ giảm tốc, không phải khoá. Bước 5 (đổi `Điều phối:` đầu sổ) chưa có hàng rào:
 sổ nằm trong repo, hook chưa có cách định vị chung.
 
