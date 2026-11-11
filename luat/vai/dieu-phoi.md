@@ -81,6 +81,24 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
 6. Điều phối mới đối chiếu sổ với danh sách phiên đang sống, xác nhận với từng làn.
 7. Điều phối cũ kiểm lại không còn phiên con nào cần sống, rồi đóng phiên.
 
+**Hai kiểu đóng Điều phối** (chủ dự án 1a 11/11): *đóng cuối phase*: mọi làn xong (merge, lưu trữ), Điều phối đóng sau cùng;
+*bàn giao*: bảy bước trên. Không bắt Điều phối cũ chờ mọi làn xong khi bàn giao, vì nó bàn giao chính vì đã gần đầy ngữ cảnh.
+
+**Hàng rào của bảy bước** (`~/ai/os/bin/hook-dieu-phoi.py`, chủ dự án 1a 11/11) — vì ngày đó bước 3 làm muộn và bước 6 bị bỏ
+`[ĐÃ KIỂM: ~/.cache/ai-os/hook-dieu-phoi.log — hook chặn một lần mở làn mã «auto,khung» lúc 10:05 · 11/11]`
+`[SUY LUẬN từ ảnh chụp thanh bên của chủ dự án và bản tóm tắt phiên Điều phối cũ: phiên bị chặn là Điều phối COM-24 mới, hai làn nằm ngoài vỏ tới khi được chỉ ra]`.
+Hành vi dưới đây `[ĐÃ KIỂM: bin/test-hook-dieu-phoi.py 43/43 trên bản ghi giả · 11/11]`, chưa chặn lần bàn giao thật nào:
+
+| Bước | Máy làm gì | Không làm |
+|---|---|---|
+| 3 | Khi một Điều phối (tên đúng mẫu) gọi `start_session` mở phiên có chữ «Điều phối» trong tên: nhắc `detach_session` phiên đó. `wrap_up` của Điều phối bị từ chối khi còn phiên con là Điều phối chưa tách | Không canh làn thường còn là con; không áp cho `hand_off_to_session` |
+| 6 | Khi một Điều phối gọi `start_session`: từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ, hoặc chưa từng nhận một tin `SendMessage` nào từ Điều phối này | Chỉ xét phiên có tên đúng mẫu; kiểm «ngoài vỏ» chỉ khi Điều phối đã ở trong vỏ; không đọc sổ; không kiểm nội dung tin |
+| 7 | `archive_session self` của Điều phối bị từ chối khi còn phiên con chưa tách, chưa lưu trữ | `wrap_up` không xét làn con thường |
+
+Mỗi lý do chỉ từ chối tối đa 2 lần trong 6 giờ rồi cho qua (tool app hỏng không được khoá phiên). Hook cũng cho qua khi lỗi, khi phiên chạy
+từ máy khác, và bỏ qua điều kiện «chưa nhắn» khi không đọc được transcript. Đây là gờ giảm tốc, không phải khoá. Bước 5 (đổi `Điều phối:` đầu sổ) chưa có hàng rào:
+sổ nằm trong repo, hook chưa có cách định vị chung.
+
 **Ngưỡng ngữ cảnh và đường báo** (chủ dự án chốt 07/11):
 
 - **Điều phối > 80 % cửa sổ ngữ cảnh thì bàn giao** theo bảy bước trên, không chờ hết phase. Lý do: phiên điều phối bị nén
