@@ -10,7 +10,7 @@ Sức khoẻ, tuổi, %, phạm vi, dự báo không ghi tay vào sổ: máy tí
 
 | Task | Mã | Cha | Yêu cầu | Tệp/thư mục giữ | Máy | Phiên | Nhánh | Model | Mức | Trạng thái | Chờ task | PR | Ghi chú |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | <KHOÁ>-<số> | <MÃ>-<số> | YC-1 | `src/a/` | chính | <id làn> | `t1-…` | <theo L12> | Thường | <Chưa bắt đầu \| Đang làm \| Hoàn thành \| Đã huỷ> | <mã task phải merge trước, hay trống> | — | |
+| T1 | <KHOÁ>-<số> | <KHOÁ>-<số> | YC-1 | `src/a/` | chính | <id làn> | `t1-…` | <theo L12> | Thường | <Chưa bắt đầu \| Đang làm \| Hoàn thành \| Đã huỷ> | <mã task phải merge trước, hay trống> | — | |
 
 Trạng thái lấy từ GitHub và CI, không từ lời tự báo của làn; sổ lệch GitHub thì tin GitHub. Một trạng thái một tên (`luat/hien-thi-tien-do.md` mục 2): PR chờ phiếu hay người duyệt vẫn là Đang làm; cờ Chờ CI, Chờ phiếu, Chờ duyệt do máy tính từ PR, không ghi vào sổ. Đã huỷ phải có bằng chứng ở Ghi chú: task gốc đã tách ghi `tách → Tx.a, Tx.b`, task bị gộp ghi `gộp vào Ty`, task huỷ vì phiếu đổi yêu cầu ghi `doi-yc <tệp phiếu đổi yêu cầu>`; task thêm vì phiếu đổi yêu cầu cũng ghi như vậy, để máy đếm «phạm vi ±n». Cột Phiên: id phiên làn đang giữ task (`luat/vai/dieu-phoi.md` §5); thay làn thì ghi id mới.
 Cột Task là số thứ tự trong phase (`T1`, `T2`…), dùng để nối với mục tiêu chí bên dưới. Cột Mã là mã việc dùng chung toàn dự án, cấp khi task bắt đầu làm:
