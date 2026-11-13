@@ -77,8 +77,10 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
    thể đóng, lưu trữ luôn phiên con khi đóng phiên cha `[ĐÃ KIỂM: Điều phối COM-24 cũ lưu trữ và kéo theo Điều phối mới · 07/11]`.
 4. Đưa tất cả vào vỏ (không ghim).
 5. Điều phối cũ đổi `Điều phối:` đầu sổ sang id phiên mới. Quyền chuyển lúc thay đổi này lên `main`; từ đó Điều phối cũ chỉ đọc.
-   Rồi mới nhắn từng làn: «Điều phối mới là <id>; báo về đó từ giờ».
-6. Điều phối mới đối chiếu sổ với danh sách phiên đang sống, xác nhận với từng làn.
+   **Không nhắn từng làn** (chủ dự án 1a 13/11): làn tự tra người nhận ở đầu sổ mỗi lần báo (đường báo dưới), nên đổi đầu
+   sổ là đủ; mỗi tin gửi đi đánh thức một làn chạy cả lượt trên toàn ngữ cảnh của nó, tốn token mà không thêm gì.
+6. Điều phối mới đối chiếu sổ với danh sách phiên đang sống (cột Phiên, vỏ). Chỉ nhắn làn nào sổ ghi lệch thực tế; không xác nhận
+   từng làn.
 7. Điều phối cũ kiểm lại không còn phiên con nào cần sống, rồi đóng phiên. Không để Điều phối cũ sống sau khi đầu sổ đã đổi: Điều phối mới thấy nó còn sống thì nhắc nó đóng (hàng rào đề xuất `dp-cu` dưới).
 
 **Hai kiểu đóng Điều phối** (chủ dự án 1a 11/11): *đóng cuối phase*: mọi làn xong (merge, lưu trữ), Điều phối đóng sau cùng;
@@ -93,7 +95,7 @@ Hành vi dưới đây `[ĐÃ KIỂM: bin/test-hook-dieu-phoi.py 49/49 trên b�
 |---|---|---|
 | 3 | Khi một Điều phối (tên đúng mẫu) gọi `start_session` mở phiên có chữ «Điều phối» trong tên: nhắc `detach_session` phiên đó. `wrap_up` của Điều phối bị từ chối khi còn phiên con là Điều phối chưa tách | Không canh làn thường còn là con; không áp cho `hand_off_to_session` |
 | 5 | Sổ = `docs/phase/<MÃ>-<số lớn nhất>.md` gần nhất khi đi ngược từ thư mục làm việc của phiên, số lớn nhất tính trên cả bản làm việc lẫn `origin/main`; đọc dòng `Điều phối:` ở cả hai. Điều phối gọi `start_session` mà không nguồn nào ghi id của nó: từ chối. Điều phối gọi `wrap_up` hay `archive_session self` mà mọi nguồn còn ghi id của nó trong khi đã có Điều phối kế (tạo sau nó) cùng MÃ và Sản phẩm: từ chối | Không `git fetch` (main ở máy có thể cũ); không thấy sổ thì cho qua; không kiểm phần còn lại của sổ |
-| 6 | Khi một Điều phối gọi `start_session`: từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ, hoặc chưa từng nhận một tin `SendMessage` nào từ Điều phối này | Chỉ xét phiên có tên đúng mẫu; kiểm «ngoài vỏ» chỉ khi Điều phối đã ở trong vỏ; không đọc sổ; không kiểm nội dung tin |
+| 6 | Khi một Điều phối gọi `start_session`: từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ, hoặc chưa từng nhận một tin `SendMessage` nào từ Điều phối này. **Đề xuất sửa (1a 13/11):** bỏ điều kiện «chưa nhận tin»; thay bằng hook báo-về của làn (S2) tự đọc đầu sổ để chỉ ra id người nhận | Chỉ xét phiên có tên đúng mẫu; kiểm «ngoài vỏ» chỉ khi Điều phối đã ở trong vỏ; không đọc sổ; không kiểm nội dung tin |
 | 7 | `archive_session self` của Điều phối bị từ chối khi còn phiên con chưa tách, chưa lưu trữ | `wrap_up` không xét làn con thường |
 
 Mỗi lý do chỉ từ chối tối đa 2 lần trong 6 giờ rồi cho qua (tool app hỏng không được khoá phiên). Hook cũng cho qua khi lỗi, khi phiên chạy
@@ -105,7 +107,8 @@ từ máy khác, và bỏ qua điều kiện «chưa nhắn» khi không đọc 
   nhiều lần sẽ quên quyết định cũ, và sai thêm còn đắt hơn mở phiên mới `[ĐÃ KIỂM: Điều phối COM-24-1 nén hơn 20 lần, quên
   quyết định đã chốt · 07/11]`.
 - **Làn > 150 nghìn token thì Thay làn** (hàng trên), không tự mở phiên kế.
-- **Làn báo mọi phát sinh về Điều phối** bằng tin nhắn tới id phiên Điều phối ở đầu sổ: đổi phạm vi, chạm tệp ngoài phần giữ, bị chặn,
+- **Làn báo mọi phát sinh về Điều phối** bằng tin nhắn tới id phiên Điều phối ở đầu sổ, **đọc lại mỗi lần báo** từ `origin/main`
+  (sau `git fetch`), không nhớ id từ lời giao — nhờ vậy làn đang dở tự về dưới quyền Điều phối mới khi bàn giao (chủ dự án 1a 13/11): đổi phạm vi, chạm tệp ngoài phần giữ, bị chặn,
   cần quyết định. Làn không hỏi chủ dự án qua hộp cuối lượt; Điều phối gom lại, tự quyết trong ngân sách, chỉ đưa lên chủ dự án
   ba ngoại lệ của `kien-truc.md` mục 7 (PR mức Cao, việc khó đảo ngược mới phát sinh, lệch đặc tả).
 - **Điều phối tự chạy tới hết phase** trong ba ngoại lệ đó; không dừng giữa chừng để hỏi «làm tiếp thế nào».
