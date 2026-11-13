@@ -40,7 +40,7 @@ Chủ dự án chốt 06/11: **một vai Điều phối cho mỗi module** (1a);
 - Task mới chỉ mở khi tệp giữ của nó **không giao** với tệp giữ của task đang chạy.
 - Tệp dùng chung (lockfile, migration, cấu hình gốc) mỗi lúc chỉ một làn giữ; task cần chúng xếp hàng.
 - Một task một làn một nhánh một PR (L9 và `kien-truc.md` mục 1); không PR chồng PR, không đổi base.
-- Làn trên máy phụ chỉ báo về qua PR trên GitHub. Chỉ máy chính ghi tệp bàn giao, ghi sổ giữ chỗ và merge.
+- Làn trên máy phụ báo về qua hộp báo và PR trên GitHub (§5). Chỉ máy chính ghi tệp bàn giao, ghi sổ giữ chỗ và merge.
 - Hai làn chạm nhau ngoài dự kiến (xung đột merge): dừng làn sau, ghi vào bảng, cắt lại task; không để làn tự giải xung đột của làn khác.
 
 ## 5. Cây làn: bảy thao tác của làn
@@ -75,8 +75,10 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
 2. Mở Điều phối mới; lời giao chỉ trỏ tới sổ và tệp bàn giao, không chép lại.
 3. Tách Điều phối mới và mọi làn còn sống ra khỏi cây của Điều phối cũ. **Bước này phải đi trước khi Điều phối cũ đóng:** công cụ có
    thể đóng, lưu trữ luôn phiên con khi đóng phiên cha `[ĐÃ KIỂM: Điều phối COM-24 cũ lưu trữ và kéo theo Điều phối mới · 07/11]`.
-4. Đưa tất cả vào vỏ (không ghim).
+4. Đưa tất cả vào vỏ (không ghim). Điều phối mới làm bước này ngay lượt đầu nhận ca, kể cả khi chưa định mở làn nào
+   `[ĐÃ KIỂM: Điều phối COM-24 nhận ca 11/11 chỉ gom chính nó; sáu làn nằm ngoài vỏ tới khi chủ dự án chỉ ra]`.
 5. Điều phối cũ đổi `Điều phối:` đầu sổ sang id phiên mới. Quyền chuyển lúc thay đổi này lên `main`; từ đó Điều phối cũ chỉ đọc.
+   Rồi viết một bình luận vào hộp báo «Điều phối mới là <id>» (dưới; chủ dự án 1c 11/11).
    **Không nhắn từng làn** (chủ dự án 1a 13/11): làn tự tra người nhận ở đầu sổ mỗi lần báo (đường báo dưới), nên đổi đầu
    sổ là đủ; mỗi tin gửi đi đánh thức một làn chạy cả lượt trên toàn ngữ cảnh của nó, tốn token mà không thêm gì
    `[SUY LUẬN từ cách app chạy tin đến: tin mở một lượt mới của làn; chưa đo số token]`.
@@ -96,7 +98,7 @@ Hành vi dưới đây `[ĐÃ KIỂM: bin/test-hook-dieu-phoi.py 49/49 trên b�
 |---|---|---|
 | 3 | Khi một Điều phối (tên đúng mẫu) gọi `start_session` mở phiên có chữ «Điều phối» trong tên: nhắc `detach_session` phiên đó. `wrap_up` của Điều phối bị từ chối khi còn phiên con là Điều phối chưa tách | Không canh làn thường còn là con; không áp cho `hand_off_to_session` |
 | 5 | Sổ = `docs/phase/<MÃ>-<số lớn nhất>.md` gần nhất khi đi ngược từ thư mục làm việc của phiên, số lớn nhất tính trên cả bản làm việc lẫn `origin/main`; đọc dòng `Điều phối:` ở cả hai. Điều phối gọi `start_session` mà không nguồn nào ghi id của nó: từ chối. Điều phối gọi `wrap_up` hay `archive_session self` mà mọi nguồn còn ghi id của nó trong khi đã có Điều phối kế (tạo sau nó) cùng MÃ và Sản phẩm: từ chối | Không `git fetch` (main ở máy có thể cũ); không thấy sổ thì cho qua; không kiểm phần còn lại của sổ |
-| 6 | Khi một Điều phối gọi `start_session`: từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ (điều kiện «chưa từng nhận tin `SendMessage` từ Điều phối này» đã bỏ, chủ dự án 1a 13/11, CN-64: hook báo về của làn tự đọc đầu sổ để chỉ ra id người nhận) | Chỉ xét phiên có tên đúng mẫu; kiểm «ngoài vỏ» chỉ khi Điều phối đã ở trong vỏ; không đọc sổ; không kiểm nội dung tin |
+| 6 | Khi một Điều phối gọi `start_session`, và ở mỗi `wrap_up` của nó (chủ dự án 2a 11/11: Điều phối nhận ca rồi chỉ theo dõi PR, không mở làn, nên kiểm lúc mở làn không chạy): từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ (điều kiện «chưa từng nhận tin `SendMessage` từ Điều phối này» đã bỏ, chủ dự án 1a 13/11, CN-64: hook báo về của làn tự đọc đầu sổ để chỉ ra id người nhận) | Chỉ xét phiên có tên đúng mẫu; kiểm «ngoài vỏ» chỉ khi Điều phối đã ở trong vỏ; không đọc sổ; không kiểm nội dung tin |
 | 7 | `archive_session self` của Điều phối bị từ chối khi còn phiên con chưa tách, chưa lưu trữ | `wrap_up` không xét làn con thường |
 
 Mỗi lý do chỉ từ chối tối đa 2 lần trong 6 giờ rồi cho qua (tool app hỏng không được khoá phiên). Hook cũng cho qua khi lỗi, khi phiên chạy
@@ -108,15 +110,36 @@ từ máy khác. Đây là gờ giảm tốc, không phải khoá.
   nhiều lần sẽ quên quyết định cũ, và sai thêm còn đắt hơn mở phiên mới `[ĐÃ KIỂM: Điều phối COM-24-1 nén hơn 20 lần, quên
   quyết định đã chốt · 07/11]`.
 - **Làn > 150 nghìn token thì Thay làn** (hàng trên), không tự mở phiên kế.
-- **Làn báo mọi phát sinh về Điều phối** bằng tin nhắn tới id phiên Điều phối ở đầu sổ, **đọc lại mỗi lần báo** từ `origin/main`
+- **Làn báo mọi phát sinh về Điều phối** qua **hộp báo** của luồng việc (dưới; đây là bản tính), và nhắn thêm tới id phiên
+  Điều phối ở đầu sổ, **đọc lại mỗi lần báo** từ `origin/main`
   (sau `git fetch`), không nhớ id từ lời giao — nhờ vậy làn đang dở tự về dưới quyền Điều phối mới khi bàn giao (chủ dự án 1a 13/11).
   Hook báo về của làn (S2) nêu id lấy từ đầu sổ phase mới nhất khi làn có id ở cột Phiên `[ĐÃ KIỂM: đọc lan_theo_so(), la_lan()
   và chan_bao_ve() ở ~/ai/os origin/main · 13/11]`. Hook vẫn có thể chỉ về id cũ khi: máy chưa `git fetch` sau lúc đổi đầu sổ
   (hook không fetch); làn không có dòng ở cột Phiên (hook dự phòng theo phiên cha, tức Điều phối cũ, hoặc theo Điều phối đầu
   tiên trong vỏ, mà vỏ có thể còn cả Điều phối cũ); làn chạy ở máy khác. Báo khi: đổi phạm vi, chạm tệp ngoài phần giữ, bị chặn,
-  cần quyết định. Làn không hỏi chủ dự án qua hộp cuối lượt; Điều phối gom lại, tự quyết trong ngân sách, chỉ đưa lên chủ dự án
+  cần quyết định, xong lượt. Làn không hỏi chủ dự án qua hộp cuối lượt; Điều phối gom lại, tự quyết trong ngân sách, chỉ đưa lên chủ dự án
   ba ngoại lệ của `kien-truc.md` mục 7 (PR mức Cao, việc khó đảo ngược mới phát sinh, lệch đặc tả).
 - **Điều phối tự chạy tới hết phase** trong ba ngoại lệ đó; không dừng giữa chừng để hỏi «làm tiếp thế nào».
+
+**Hộp báo — kênh báo không dựa vào quan hệ cha–con** (chủ dự án 1c 11/11). Vì sao: tin «làn xong lượt» của app chỉ đi tới **phiên cha**,
+và app không có công cụ đổi cha. Bàn giao Điều phối vì thế cắt mọi làn đang chạy khỏi kênh báo tự động: Điều phối mới không được đánh thức,
+làn chờ một câu trả lời không tới `[ĐÃ KIỂM: cả 7 làn COM-24 còn sống có cha là Điều phối đã lưu trữ; làn T10b chặn hơn 20 phút không ai thấy;
+tin nhắn từ làn chạy qua ssh trên máy phụ về Điều phối báo «không tìm thấy phiên» · 11/11]`.
+
+- **Hộp báo** là một issue GitHub trên repo sản phẩm, mỗi luồng việc một cái, tên `Hộp báo <MÃ>`; dòng `Hộp báo:` ở đầu sổ ghi số issue.
+  Chọn issue chứ không chọn tệp: làn trên máy phụ không ghi được tệp của máy chính, còn tệp trên nhánh làn sẽ theo PR vào `main`.
+- **Làn viết vào hộp báo**: `gh issue comment <số> --body "[<id phiên 8 ký tự> · <task>] <loại>: <nội dung>"`, loại là một trong
+  `xong-luot` · `chan` · `hoi` · `pr` · `doi-pham-vi`. Mỗi lần báo một bình luận; có PR thì vẫn báo vào hộp, PR chỉ là chỗ chứa phiếu.
+  `SendMessage` về Điều phối vẫn được gửi thêm cho nhanh, nhưng hộp báo là bản tính.
+- **Điều phối trả lời trong hộp báo** (trích `[<id> · <task>]` ở đầu) và nhắn thêm cho làn; làn bị chặn thì đọc hộp báo
+  (`gh issue view <số> --comments`) trước mỗi lần chờ.
+- **Điều phối canh hộp báo** bằng một vòng đọc bình luận mới (cùng chỗ canh CI), từ lượt đầu nhận ca. Điều phối mới chỉ cần số issue ở
+  đầu sổ: không cần là cha của làn nào.
+- Bước 5 của bảy bước: đổi `Điều phối:` đầu sổ, rồi viết một bình luận vào hộp báo «Điều phối mới là <id>»; không nhắn từng làn (1a 13/11).
+
+**Gần đầy thì chờ làn sắp xong** (chủ dự án 1c 11/11): Điều phối quá 80 % cửa sổ ngữ cảnh thì **ngừng mở làn mới**; làn đã mở PR
+(chờ phiếu, chờ CI) thì Điều phối cũ merge xong rồi mới bàn giao; làn còn đang viết mã thì chuyển cho Điều phối mới qua hộp báo,
+không chờ.
 
 **Làn sau chuyển — lệch chốt 07/11, chờ chủ dự án duyệt** (CN-64, 13/11). Chốt 07/11 là «làn đi theo Điều phối mới». App không
 gắn được phiên vào cha khác (bảng công cụ dưới), nên mục này hạ chốt đó thành «vỏ thay chỗ lớp lồng» cho làn **đang dở**. Đây là
@@ -164,6 +187,9 @@ phiên khi PR đóng» của app đang bật, danh sách công cụ có unarchiv
 cả Điều phối, vì PR sửa sổ do chính phiên Điều phối ở đầu sổ mở (chỉ nó ghi sổ, §4). Nên:
 
 - làn dừng dịch vụ đã bật trước khi merge (hàng **Xong**);
+- Điều phối mở PR (sổ, bàn giao) thì gỡ PR khỏi phiên mình ngay (`unbind_pr`); hook từ chối `wrap_up` khi Điều phối còn gắn PR
+  đang mở. Công cụ gỡ bị chặn quyền thì báo chủ dự án gỡ tay (nút × trên thanh PR của phiên)
+  `[ĐÃ KIỂM: PR sổ #369 của comitor-tasks gắn vào Điều phối, unbind_pr bị chế độ auto từ chối · 11/11]`;
 - Điều phối ở đầu sổ kiểm `list_sessions` ngay sau mỗi lần merge, trước khi hết lượt; thấy chính nó hay một làn còn việc đã bị
   lưu trữ thì mở lại bằng `unarchive_session` rồi làm tiếp từ sổ. Bị lưu trữ lúc đã nghỉ thì phiên không tự thấy được: chủ dự án
   thấy nó mất khỏi vỏ thì mở lại `[CHƯA KIỂM: phiên mở lại có chạy tiếp được không]`.
