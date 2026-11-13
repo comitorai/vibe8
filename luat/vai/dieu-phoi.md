@@ -36,7 +36,7 @@ Chủ dự án chốt 06/11: **một vai Điều phối cho mỗi module** (1a);
 
 ## 4. Chống trùng việc, chồng chéo
 
-- **Sổ giữ chỗ duy nhất** là bảng task trong `docs/phase/<MÃ>-<số>.md`, và chỉ phiên Điều phối ở đầu sổ (§5) ghi bảng đó. Cột: mã task · mã yêu cầu · tệp/thư mục giữ · máy · phiên · nhánh · model · trạng thái · PR.
+- **Sổ giữ chỗ duy nhất** là bảng task trong `docs/phase/<MÃ>-<số>.md`, và chỉ phiên Điều phối ở đầu sổ (§5) ghi bảng đó. Cột: mã task trong phase · mã việc (dãy số chung của dự án) · cha · mã yêu cầu · tệp/thư mục giữ · máy · phiên · nhánh · model · trạng thái · PR.
 - Task mới chỉ mở khi tệp giữ của nó **không giao** với tệp giữ của task đang chạy.
 - Tệp dùng chung (lockfile, migration, cấu hình gốc) mỗi lúc chỉ một làn giữ; task cần chúng xếp hàng.
 - Một task một làn một nhánh một PR (L9 và `kien-truc.md` mục 1); không PR chồng PR, không đổi base.
@@ -61,7 +61,7 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
 
 | Thao tác | Khi nào | Làm gì | Sổ ghi |
 |---|---|---|---|
-| **Mở** | task chờ, tệp giữ không giao, máy nổi (§2.4) | mở làn từ chính phiên Điều phối ở đầu sổ, trong bản làm việc riêng (worktree), ở nơi chủ dự án nhìn thấy được (thanh bên app), không chạy ngầm (ngoại lệ: làn launchd, §3); tên phiên mang mã luồng việc (vd `COM-24`) — mẫu tên đầy đủ là luật của repo chủ dự án (`luat/`, `mau/` không có mẫu tên phiên — [ĐÃ KIỂM: grep · 07/11/2026]); đưa vào vỏ | task · phiên · nhánh · máy · `đang làm` |
+| **Mở** | task chờ, tệp giữ không giao, máy nổi (§2.4) | mở làn từ chính phiên Điều phối ở đầu sổ, trong bản làm việc riêng (worktree), ở nơi chủ dự án nhìn thấy được (thanh bên app), không chạy ngầm (ngoại lệ: làn launchd, §3); tên phiên mang mã việc ở cột Mã của sổ, task chưa có mã thì mang mã luồng — mẫu tên đầy đủ là luật của repo chủ dự án (`luat/`, `mau/` không có mẫu tên phiên — [ĐÃ KIỂM: grep · 07/11/2026]); đưa vào vỏ | task · phiên · nhánh · máy · `đang làm` |
 | **Tách** | task phình quá một ngày, hoặc tệp giữ rộng hơn dự kiến | làn dừng, đẩy nhánh, báo Điều phối; Điều phối cắt task con trong sổ; phần còn lại mở làn mới từ `main` — phần nào cần phần kia thì chờ phần kia merge, không PR chồng PR | task gốc `tách → Tx.a, Tx.b` |
 | **Gộp** | hai task giao tệp giữ, hoặc một task quá nhỏ đứng riêng | giữ làn tiến xa hơn; làn kia đẩy nhánh, làn giữ nhặt commit sang (cherry-pick) hoặc làm lại; đóng PR và lưu trữ làn bị gộp | task bị gộp `gộp vào Ty` |
 | **Gom** | luôn luôn (trừ làn launchd, §3) | mọi làn của một module nằm trong đúng một vỏ; làn của module khác không vào vỏ này | — |
@@ -132,7 +132,7 @@ cả Điều phối, vì PR sửa sổ do chính phiên Điều phối ở đầ
   lưu trữ thì mở lại bằng `unarchive_session` rồi làm tiếp từ sổ. Bị lưu trữ lúc đã nghỉ thì phiên không tự thấy được: chủ dự án
   thấy nó mất khỏi vỏ thì mở lại `[CHƯA KIỂM: phiên mở lại có chạy tiếp được không]`.
 
-Nhóm thanh bên chỉ có trên máy đang chạy phiên, không đồng bộ sang máy khác: tên phiên vẫn phải mang mã luồng việc.
+Nhóm thanh bên chỉ có trên máy đang chạy phiên, không đồng bộ sang máy khác: tên phiên vẫn phải mang mã (cột Mã của sổ, chưa có thì mã luồng).
 
 ## 6. Không được
 

@@ -118,7 +118,7 @@ Ngưỡng số khoá 08/11; mức của K5 cho Điều phối sửa 09/11 cho kh
 
 ## 6. Áp vào một repo
 
-1. Sổ phase theo `mau/phase.md`: từ vựng của mục 2, cột «Chờ task», số issue cập nhật ở đầu sổ. Sổ đang chạy đổi từ ở lần sửa sổ kế tiếp; tới ngày xét 06/12/2026, máy đọc cả từ cũ theo cột «Từ cũ» của mục 2. Bảng thao tác ở `vai/dieu-phoi.md` §5 còn ghi `đang làm`, `xong`, `gộp vào Ty`: đọc theo cột đó, sửa chữ ở một PR riêng.
+1. Sổ phase theo `mau/phase.md`: từ vựng của mục 2, cột «Chờ task», «Mã», «Cha», số issue cập nhật ở đầu sổ. Sổ đang chạy đổi từ ở lần sửa sổ kế tiếp; tới ngày xét 06/12/2026, máy đọc cả từ cũ theo cột «Từ cũ» của mục 2. Bảng thao tác ở `vai/dieu-phoi.md` §5 còn ghi `đang làm`, `xong`, `gộp vào Ty`: đọc theo cột đó, sửa chữ ở một PR riêng.
 2. Thêm dòng `Hiển thị tiến độ: luat/hien-thi-tien-do.md, bản 08/11/2026` vào `CLAUDE.md` và `AGENTS.md`, cạnh dòng trỏ của `kien-truc.md` mục 15, để máy biết repo áp bản nào.
 3. Repo có sản phẩm giao diện riêng thì áp tệp này vào sản phẩm; cập nhật lưu trong sản phẩm, miễn giữ ba điều: giờ do máy ghi, người xác nhận được, máy đọc được.
 4. Thanh bên phiên của app không sửa được giao diện: áp qua tên phiên (luật của repo chủ dự án) và trang do `hien-thi/` xuất.
