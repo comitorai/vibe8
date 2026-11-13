@@ -81,7 +81,7 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
    sổ là đủ; mỗi tin gửi đi đánh thức một làn chạy cả lượt trên toàn ngữ cảnh của nó, tốn token mà không thêm gì.
 6. Điều phối mới đối chiếu sổ với danh sách phiên đang sống (cột Phiên, vỏ). Chỉ nhắn làn nào sổ ghi lệch thực tế; không xác nhận
    từng làn.
-7. Điều phối cũ kiểm lại không còn phiên con nào cần sống, rồi đóng phiên. Không để Điều phối cũ sống sau khi đầu sổ đã đổi: Điều phối mới thấy nó còn sống thì nhắc nó đóng (hàng rào đề xuất `dp-cu` dưới).
+7. Điều phối cũ kiểm lại không còn phiên con nào cần sống, rồi đóng phiên. Không để Điều phối cũ sống sau khi đầu sổ đã đổi: Điều phối mới thấy nó còn sống thì nhắc nó đóng (hàng rào `dp-cu` dưới).
 
 **Hai kiểu đóng Điều phối** (chủ dự án 1a 11/11): *đóng cuối phase*: mọi làn xong (merge, lưu trữ), Điều phối đóng sau cùng;
 *bàn giao*: bảy bước trên. Không bắt Điều phối cũ chờ mọi làn xong khi bàn giao, vì nó bàn giao chính vì đã gần đầy ngữ cảnh.
@@ -126,21 +126,21 @@ lệch luật, không phải cách hiểu; tới khi chủ dự án duyệt, áp
   làn khác: hai phiên một bản làm việc thì đóng phiên này lưu trữ luôn phiên kia, và cùng sửa đè tệp
   `[ĐÃ KIỂM: COM-24-6 13/11 — hai làn chạy chung bản làm việc giữ sổ của Điều phối]`.
 
-**Hàng rào đề xuất cho cây làn** (CN-64; chưa có mã — sửa `~/ai/os/bin`, nhánh và PR riêng ở repo đó). Vì ở COM-24-6 cả bốn điều trên
-và bước 7 chỉ là lời dặn, không máy nào bắt. Cùng kiểu gờ giảm tốc như bảng trên (tối đa 2 lần mỗi lý do trong 6 giờ):
+**Hàng rào cho cây làn** (CN-64, chủ dự án 2a 13/11 «cả 5 hàng rào»; mã ở `~/ai/os/bin/hook-dieu-phoi.py` và `doi-ten-lan.py`,
+nhánh `cn64-hang-rao-cay-lan` của repo đó). Vì ở COM-24-6 cả bốn điều trên và bước 7 chỉ là lời dặn, không máy nào bắt. Cùng kiểu
+gờ giảm tốc như bảng trên (tối đa 2 lần mỗi lý do trong 6 giờ; đọc hỏng hay đo không được thì cho qua):
 
 | Mã | Lúc | Máy làm gì |
 |---|---|---|
-| `wt` | Điều phối gọi `start_session` | từ chối khi `use_worktree` không phải `true` và không có `cwd`/`host` riêng (G3) |
-| `dp-cu` | Điều phối gọi `start_session` hay `wrap_up` | từ chối khi còn Điều phối cũ cùng MÃ và Sản phẩm chưa lưu trữ mà đầu sổ (cả bản làm việc lẫn `origin/main`) đã không ghi id nó: nhắn nó đóng (bước 7) hay `archive_session` nó (G2) |
-| `lan-trang` | Điều phối mới gọi `start_session` | từ chối khi còn làn tạo trước nó, cùng MÃ, chưa lưu trữ, nhánh không có commit ngoài `main`: lưu trữ rồi mở lại (G1) |
-| `luu-tru` | Điều phối gọi `wrap_up` | từ chối khi sổ ghi `xong`/merged mà phiên ở cột Phiên chưa lưu trữ (G4) |
-| `ten` | Điều phối gọi `wrap_up` | chạy `doi-ten-lan.py`; còn dòng đề xuất thì từ chối, kèm danh sách `set_session_title` (G4) |
+| `wt` | Điều phối gọi `start_session` | từ chối khi `use_worktree` không phải `true`; miễn khi chạy ở `cloud`/`ssh`/`host` khác, hoặc phiên mới tên «Điều phối» (bàn giao) (G3) |
+| `lan-trang` | Điều phối gọi `start_session` | từ chối khi còn làn tạo trước nó, cùng MÃ, chưa lưu trữ, nhánh không có commit ngoài `origin/main` (hoặc chưa ghi nhánh): lưu trữ rồi mở lại (G1) |
+| `dp-cu` | Điều phối mà đầu sổ ghi id nó gọi `wrap_up` | từ chối khi còn Điều phối cũ hơn cùng MÃ chưa lưu trữ, không có trong sổ: nhắn nó đóng (bước 7), không đáp thì `archive_session` (G2). Chỉ kiểm ở `wrap_up` của Điều phối mới, không ở `start_session`, để không vướng thứ tự bàn giao |
+| `luu-tru` | như trên | từ chối khi mọi dòng sổ của một phiên ở cột Phiên đều xong (✅, `xong`, merged) mà phiên chưa lưu trữ (G4) |
+| `ten` | như trên | `doi-ten-lan.py` `canh_bao()`: làn **lạc sổ** (mang mã luồng hay mã task của sổ mà không có dòng ở cột Phiên) hoặc tên **sai mẫu** → từ chối, kèm lệnh chạy `doi-ten-lan.py` rồi `set_session_title` (G4). Phần nấc PR cần GitHub, quá 5 giây của hook, nên vẫn là script Điều phối chạy |
 
-`doi-ten-lan.py` hiện bỏ qua im lặng mọi phiên không có id ở cột Phiên của sổ, nên làn mở ngoài sổ (vd làn chủ dự án mở tay thay
-làn cũ) không bao giờ được đổi tên `[SUY LUẬN từ đọc mã de_xuat() và sổ COM-24-6 · 13/11: dòng Mermaid ghi id làn đã cất, làn
-«⬛️ Phiếu delta Mermaid COM-24» không có dòng]`. Đề xuất: in thêm mục `lac_so` cho phiên trong vỏ cùng MÃ mà không có dòng sổ,
-và mục `sai_mau` cho tên không qua `ten_phien.dung_mau` hay còn mang mã luồng khi sổ có mã task — không bỏ qua im lặng.
+`doi-ten-lan.py` trước đây bỏ qua im lặng mọi phiên không có id ở cột Phiên, nên làn mở ngoài sổ không bao giờ được đổi tên
+`[ĐÃ KIỂM: đọc mã de_xuat() và sổ COM-24-6 · 13/11 — làn «⬛️ Phiếu delta Mermaid COM-24» không có dòng]`. Nay `--day-du` in
+`{doi, lac_so, sai_mau}`; chạy thường thì cảnh báo ra stderr, đầu ra cũ giữ nguyên.
 
 **Trên app Claude Code desktop** `[ĐÃ KIỂM: danh sách công cụ của app · 07/11]`:
 
