@@ -96,7 +96,7 @@ Hành vi dưới đây `[ĐÃ KIỂM: bin/test-hook-dieu-phoi.py 49/49 trên b�
 |---|---|---|
 | 3 | Khi một Điều phối (tên đúng mẫu) gọi `start_session` mở phiên có chữ «Điều phối» trong tên: nhắc `detach_session` phiên đó. `wrap_up` của Điều phối bị từ chối khi còn phiên con là Điều phối chưa tách | Không canh làn thường còn là con; không áp cho `hand_off_to_session` |
 | 5 | Sổ = `docs/phase/<MÃ>-<số lớn nhất>.md` gần nhất khi đi ngược từ thư mục làm việc của phiên, số lớn nhất tính trên cả bản làm việc lẫn `origin/main`; đọc dòng `Điều phối:` ở cả hai. Điều phối gọi `start_session` mà không nguồn nào ghi id của nó: từ chối. Điều phối gọi `wrap_up` hay `archive_session self` mà mọi nguồn còn ghi id của nó trong khi đã có Điều phối kế (tạo sau nó) cùng MÃ và Sản phẩm: từ chối | Không `git fetch` (main ở máy có thể cũ); không thấy sổ thì cho qua; không kiểm phần còn lại của sổ |
-| 6 | Khi một Điều phối gọi `start_session`: từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ, (điều kiện «chưa từng nhận tin `SendMessage` từ Điều phối này» đã bỏ, chủ dự án 1a 13/11, CN-64: hook báo về của làn tự đọc đầu sổ để chỉ ra id người nhận) | Chỉ xét phiên có tên đúng mẫu; kiểm «ngoài vỏ» chỉ khi Điều phối đã ở trong vỏ; không đọc sổ; không kiểm nội dung tin |
+| 6 | Khi một Điều phối gọi `start_session`: từ chối nếu còn phiên chưa lưu trữ cùng MÃ và Sản phẩm (không phải Điều phối, không phải con trực tiếp chưa tách) mà nằm ngoài vỏ (điều kiện «chưa từng nhận tin `SendMessage` từ Điều phối này» đã bỏ, chủ dự án 1a 13/11, CN-64: hook báo về của làn tự đọc đầu sổ để chỉ ra id người nhận) | Chỉ xét phiên có tên đúng mẫu; kiểm «ngoài vỏ» chỉ khi Điều phối đã ở trong vỏ; không đọc sổ; không kiểm nội dung tin |
 | 7 | `archive_session self` của Điều phối bị từ chối khi còn phiên con chưa tách, chưa lưu trữ | `wrap_up` không xét làn con thường |
 
 Mỗi lý do chỉ từ chối tối đa 2 lần trong 6 giờ rồi cho qua (tool app hỏng không được khoá phiên). Hook cũng cho qua khi lỗi, khi phiên chạy
@@ -110,8 +110,10 @@ từ máy khác. Đây là gờ giảm tốc, không phải khoá.
 - **Làn > 150 nghìn token thì Thay làn** (hàng trên), không tự mở phiên kế.
 - **Làn báo mọi phát sinh về Điều phối** bằng tin nhắn tới id phiên Điều phối ở đầu sổ, **đọc lại mỗi lần báo** từ `origin/main`
   (sau `git fetch`), không nhớ id từ lời giao — nhờ vậy làn đang dở tự về dưới quyền Điều phối mới khi bàn giao (chủ dự án 1a 13/11).
-  Hook báo về của làn (S2) cũng nêu id lấy từ đầu sổ phase mới nhất, không từ lời giao `[ĐÃ KIỂM: đọc dieu_phoi_cua() và
-  chan_bao_ve() ở ~/ai/os origin/main · 13/11]`; làn chạy ngoài hook đó (máy khác) vẫn có thể báo nhầm về id cũ. Báo khi: đổi phạm vi, chạm tệp ngoài phần giữ, bị chặn,
+  Hook báo về của làn (S2) nêu id lấy từ đầu sổ phase mới nhất khi làn có id ở cột Phiên `[ĐÃ KIỂM: đọc lan_theo_so(), la_lan()
+  và chan_bao_ve() ở ~/ai/os origin/main · 13/11]`. Hook vẫn có thể chỉ về id cũ khi: máy chưa `git fetch` sau lúc đổi đầu sổ
+  (hook không fetch); làn không có dòng ở cột Phiên (hook dự phòng theo phiên cha, tức Điều phối cũ, hoặc theo Điều phối đầu
+  tiên trong vỏ, mà vỏ có thể còn cả Điều phối cũ); làn chạy ở máy khác. Báo khi: đổi phạm vi, chạm tệp ngoài phần giữ, bị chặn,
   cần quyết định. Làn không hỏi chủ dự án qua hộp cuối lượt; Điều phối gom lại, tự quyết trong ngân sách, chỉ đưa lên chủ dự án
   ba ngoại lệ của `kien-truc.md` mục 7 (PR mức Cao, việc khó đảo ngược mới phát sinh, lệch đặc tả).
 - **Điều phối tự chạy tới hết phase** trong ba ngoại lệ đó; không dừng giữa chừng để hỏi «làm tiếp thế nào».
