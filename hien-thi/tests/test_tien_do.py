@@ -119,5 +119,49 @@ class TestVa(unittest.TestCase):
         self.assertIn("Không có docs/phase/", out.read_text())
 
 
+class TestNacPr(unittest.TestCase):  # HT-13: vòng làn tô theo nấc PR
+    SHA = "a" * 40
+    XANH = [{"workflowName": "cong-nhanh", "name": "cong-nhanh", "status": "COMPLETED", "conclusion": "SUCCESS"}]
+
+    def pr(self, state="OPEN", ci=None, reviews=()):
+        return {"state": state, "headRefOid": self.SHA, "statusCheckRollup": self.XANH if ci is None else ci, "reviews": list(reviews)}
+
+    def phieu(self, ket, sha=None, ai="COLLABORATOR"):
+        return {"authorAssociation": ai, "body": f"phieu-phan-bac: {ket}\ntai-hien: chạy lại test", "commit": {"oid": sha or self.SHA}}
+
+    def test_cac_nac(self):
+        n = td.nac_pr
+        self.assertEqual(n(self.pr("MERGED")), 5)
+        self.assertIsNone(n(self.pr("CLOSED")))
+        self.assertEqual(n(self.pr(ci=[])), 2)  # chưa có cong-nhanh
+        self.assertEqual(n(self.pr(ci=[dict(self.XANH[0], status="IN_PROGRESS", conclusion=None)])), 2)
+        self.assertEqual(n(self.pr(ci=[dict(self.XANH[0], conclusion="FAILURE")])), 2)
+        self.assertEqual(n(self.pr()), 3)
+        self.assertEqual(n(self.pr(reviews=[self.phieu("khong-bac")])), 4)
+
+    def test_phieu_khong_tinh(self):
+        n = td.nac_pr
+        self.assertEqual(n(self.pr(reviews=[self.phieu("khong-bac", sha="b" * 40)])), 3)  # SHA cũ
+        self.assertEqual(n(self.pr(reviews=[self.phieu("khong-bac", ai="NONE")])), 3)  # người lạ
+        self.assertEqual(n(self.pr(reviews=[self.phieu("khong-bac"), self.phieu("bac")])), 3)  # còn bác trên head
+
+    def test_hang_lan_to_vong_va_co_cho_phieu(self):
+        l = {"ten": "Làn A", "pr": 7}
+        h3 = td.hang_lan(l, nac=3)
+        self.assertIn("--p:60", h3); self.assertIn("nấc PR 3/5", h3); self.assertIn("Chờ phiếu", h3)
+        h4 = td.hang_lan(l, nac=4)
+        self.assertIn("--p:80", h4); self.assertNotIn("Chờ phiếu", h4)
+        self.assertIn("✓", td.hang_lan(l, nac=5))
+        h0 = td.hang_lan(l)  # không có GitHub: như cũ
+        self.assertIn("--p:0", h0); self.assertNotIn("nấc PR", h0)
+        self.assertEqual(td.hang_lan(dict(l, cho=["Chờ phiếu"]), nac=3).count("Chờ phiếu"), 1)
+
+    def test_lam_nac_va_nhanh_la(self):
+        self.assertEqual(td.lam_nac({"pr": 7}, {7: {"nac": 4}}.get, None), 4)
+        self.assertEqual(td.lam_nac({"nhanh": "--output=x"}, None, Path(".")), 0)
+        self.assertEqual(td.lam_nac({"nhanh": "a..b"}, None, Path(".")), 0)
+        self.assertEqual(td.lam_nac({}, None, Path(".")), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

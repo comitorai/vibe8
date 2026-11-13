@@ -5,7 +5,10 @@ Sổ: docs/phase/<MÃ>-<n>-<m>.md (vd COM-24-4.md khớp FILE_PHASE).
 Dùng: tien_do.py --repo-dir <repo git> --ra <trang.html> [--github chu/repo] [--lan lan.json] [--ten Tên]
 Nguồn: docs/phase/<MÃ>-<n>.md · lịch sử git của sổ · PR và comment `cap-nhat:` trên GitHub (có --github).
 Hàng làn (HT-13) đọc từ tệp JSON do bên ngoài đưa vào: {"lan":[{"phase","task","ten","may","nhip","cho":[],"co":[],
-"cau","cau_tuoi_phut","buoc","da_chay_phut","ngu_canh_nghin","pr"}]}. Chưa làm: dự báo HT-06, cờ Chờ phiếu/Chờ duyệt/Chờ bạn.
+"cau","cau_tuoi_phut","buoc","da_chay_phut","ngu_canh_nghin","pr","nhanh"}]}. Vòng làn tô theo nấc PR (HT-13) đọc từ GitHub
+khi có --github: 1 nhánh có commit chưa vào nhánh gốc · 2 PR mở · 3 `cong-nhanh` xanh · 4 phiếu không bác trên head SHA · 5 merge.
+Nấc 4 ở đây chỉ để xem: phiếu của người có quyền ghi, không bác nào trên head; cổng mới là nơi quyết.
+Chưa làm: dự báo HT-06, cờ Chờ duyệt/Chờ bạn.
 """
 import argparse, datetime as dt, html, json, re, subprocess, sys
 from pathlib import Path
@@ -14,6 +17,8 @@ from zoneinfo import ZoneInfo
 HUY, XONG, DANG, CHUA = "Đã huỷ", "Hoàn thành", "Đang làm", "Chưa bắt đầu"
 MOC = [(8, 30), (11, 30), (17, 30)]  # HT-11, theo múi giờ của chủ dự án
 SK = {"dung-huong": "Đúng hướng", "co-rui-ro": "Có rủi ro", "cham": "Chậm"}
+PHIEU = re.compile(r"^phieu-phan-bac:[ \t]*(bac|khong-bac)[ \t\r]*$", re.M)  # cùng khuôn cong/kiem_pr.py
+GHI = ("OWNER", "MEMBER", "COLLABORATOR")
 FILE_PHASE = re.compile(r"^[A-Z]+-\d+-\d+\.md$")
 MA_TASK = re.compile(r"^T\d+[a-z0-9.]*$")
 
@@ -119,11 +124,29 @@ def gh(*a):
     return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None
 
 
+def nac_pr(d):
+    """HT-13: nấc 2–5 của một PR từ JSON `gh pr view` (state, statusCheckRollup, headRefOid, reviews); None khi PR đóng không merge."""
+    if d["state"] == "MERGED": return 5
+    if d["state"] != "OPEN": return None
+    ci = [c for c in d.get("statusCheckRollup") or [] if "cong-nhanh" in (c.get("workflowName"), c.get("name"))]
+    if not ci or any(c.get("status") != "COMPLETED" or c.get("conclusion") != "SUCCESS" for c in ci): return 2
+    phieu = [m[1] for r in d.get("reviews") or [] if r.get("authorAssociation") in GHI
+             and (r.get("commit") or {}).get("oid") == d.get("headRefOid") and (m := PHIEU.search(r.get("body") or ""))]
+    return 4 if phieu and "bac" not in phieu else 3
+
+
 def lay_pr(repo, n):
-    d = gh("pr", "view", str(n), "--repo", repo, "--json", "state,statusCheckRollup")
+    d = gh("pr", "view", str(n), "--repo", repo, "--json", "state,statusCheckRollup,headRefOid,reviews")
     if not d: return None
     ci = [c for c in d["statusCheckRollup"] or [] if "cong-nhanh" in (c.get("workflowName"), c.get("name"))]
-    return {"state": d["state"], "cho_ci": any(c.get("status") != "COMPLETED" for c in ci)}
+    return {"state": d["state"], "cho_ci": any(c.get("status") != "COMPLETED" for c in ci), "nac": nac_pr(d)}
+
+
+def nac_nhanh(repo, nhanh):
+    """Nấc 1: nhánh của làn có commit chưa vào nhánh gốc (đọc git cục bộ, sau fetch)."""
+    if not repo or not re.fullmatch(r"[\w][\w./-]*", nhanh or "") or ".." in nhanh: return 0
+    r = subprocess.run(["git", "-C", str(repo), "rev-list", "--count", f"origin/main..origin/{nhanh}"], capture_output=True, text=True)
+    return 1 if r.returncode == 0 and r.stdout.strip() not in ("", "0") else 0
 
 
 def lay_comment(repo, n):
@@ -163,9 +186,10 @@ def tinh_phase(ten, text, ls, now, pr_of, comments_of):
 def pct(d, mau): return round(100 * d[XONG] / mau) if mau else None
 
 
-def vong(tt, p=0):
+def vong(tt, p=0, nhan=None):
     ky = {XONG: "✓", HUY: "✕", CHUA: ""}.get(tt, "")
-    return f'<span class="v" role="img" aria-label="{tt}" title="{tt}" style="--p:{p}">{ky}</span>'
+    nhan = nhan or tt
+    return f'<span class="v" role="img" aria-label="{nhan}" title="{nhan}" style="--p:{p}">{ky}</span>'
 
 
 def chip(t, k=""): return f'<span class="chip {k}">{html.escape(t)}</span>'
@@ -183,9 +207,11 @@ def so_nguyen(x):
     except (TypeError, ValueError, OverflowError): return None
 
 
-def hang_lan(l, may_cha=None):
+def hang_lan(l, may_cha=None, nac=None):
+    """nac: nấc PR 0–5 (HT-13) đã tính từ GitHub; None thì vòng rỗng như trước."""
     e = lambda k: html.escape(str(l.get(k) or ""))  # mọi trường từ JSON ngoài đều qua escape
-    cho = "".join(chip(str(c)) for c in l.get("cho") or []) + "".join(chip(str(c), "do") for c in l.get("co") or [])
+    cho_ds = [str(c) for c in l.get("cho") or []] + (["Chờ phiếu"] if nac == 3 and "Chờ phiếu" not in (l.get("cho") or []) else [])
+    cho = "".join(chip(c) for c in cho_ds) + "".join(chip(str(c), "do") for c in l.get("co") or [])
     may = f" · {e('may')}" if l.get("may") and l["may"] != may_cha else ""  # HT-04
     tc, dc, nc, pr = (so_nguyen(l.get(k)) for k in ("cau_tuoi_phut", "da_chay_phut", "ngu_canh_nghin", "pr"))
     cau = (f'{e("cau")} <span class="muted">({tuoi(tc)})</span>' if l.get("cau") and tc is not None
@@ -194,12 +220,13 @@ def hang_lan(l, may_cha=None):
     cuoi = " · ".join(x for x in [f"chạy {tuoi(dc)}" if dc is not None else "",
                                    f"ngữ cảnh {nc} nghìn" if nc is not None else "",
                                    f"PR #{pr}" if pr else ""] if x)
-    return (f'<div class="h lan"><div class="l1">{vong(DANG)}<b>{e("ten")}</b>{may}{cho}'
+    vg = vong(XONG, 100) if nac == 5 else vong(DANG, 20 * (nac or 0), f"nấc PR {nac}/5" if nac is not None else None)
+    return (f'<div class="h lan"><div class="l1">{vg}<b>{e("ten")}</b>{may}{cho}'
             f'<span class="sk">{e("nhip")}</span></div>'
             f'<div class="l2">{cau}{buoc}</div><div class="l2 muted">{cuoi}</div></div>')
 
 
-def hang_phase(p, lan):
+def hang_phase(p, lan, nac_of=None):
     cn, d = p["cn"], p["d"]
     sk = (f'<span class="sk s-{cn["sk"]}{" cu" if p["mo"] else ""}" title="{html.escape(cn["ly_do"])}">{cn["sk"]} · '
           f'{"đã xác nhận" if cn["xn"] else "chưa xác nhận"}</span>' if cn and cn["sk"] else '<span class="sk">Chưa đánh giá</span>')
@@ -214,7 +241,7 @@ def hang_phase(p, lan):
     lech = "".join(f'<div class="l2 muted">⚠ {html.escape(x)}</div>' for x in p["lech"] + p["canh_bao"])
     return (f'<div class="h"><div class="l1">{vong(p["tt"], pct(d, p["mau"]) or 0)}<b>{html.escape(p["ten"])}</b> {html.escape(p["tieu_de"])}{chips}{sk}</div>'
             f'<div class="l2">{cau}</div><div class="l2">{thanh(d, p["mau"])}{pv}{han} · <span class="muted">chưa có dự báo</span></div>{lech}'
-            f'<div class="con">{"".join(hang_lan(l) for l in lan)}{viec}{gap}</div></div>')
+            f'<div class="con">{"".join(hang_lan(l, nac=nac_of(l) if nac_of else None) for l in lan)}{viec}{gap}</div></div>')
 
 
 def hang_viec(k, r):
@@ -247,7 +274,7 @@ details summary{margin-left:26px;cursor:pointer;color:#666;font-size:13px}.tong{
 @media(prefers-color-scheme:dark){body{background:#17181c;color:#e8e8ea}.h{border-color:#333}.muted{color:#aaa}.tb{background:#333}.v{border-color:#6ea0f5}}"""
 
 
-def xuat(ten, phases, lan, now, canh_bao=()):
+def xuat(ten, phases, lan, now, canh_bao=(), nac_of=None):
     canh = "".join(f'<div class="l2 muted">⚠ {html.escape(x)}</div>' for x in canh_bao)
     nhom = {}
     for p in phases: nhom.setdefault(p["ten"].rsplit("-", 1)[0], []).append(p)
@@ -261,12 +288,20 @@ def xuat(ten, phases, lan, now, canh_bao=()):
     for m, ps in nhom.items():
         dm = {k: sum(p["d"][k] for p in ps) for k in (XONG, DANG, CHUA, HUY)}
         mm = dm[XONG] + dm[DANG] + dm[CHUA]
-        con = "".join(hang_phase(p, [l for l in lan if l.get("phase") == p["ten"]]) for p in ps)
+        con = "".join(hang_phase(p, [l for l in lan if l.get("phase") == p["ten"]], nac_of) for p in ps)
         body.append(f'<div class="h"><div class="l1">{vong(DANG, pct(dm, mm) or 0)}<b>Module {html.escape(m)}</b></div>'
                     f'<div class="l2">{thanh(dm, mm)}</div><div class="con">{con}</div></div>')
     return (f'<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             f'<title>Tiến độ — {html.escape(ten)}</title><style>{CSS}</style><body>{"".join(body)}'
             f'<p class="muted">Cập nhật {now:%d/%m/%Y %H:%M}</p></body></html>')
+
+
+def lam_nac(l, pr_of, repo):
+    """Nấc PR của một làn: có PR thì theo GitHub, chưa có thì xem nhánh."""
+    pr = so_nguyen(l.get("pr"))
+    p = pr_of(pr) if pr and pr_of else None
+    if p and p.get("nac") is not None: return p["nac"]
+    return nac_nhanh(repo, str(l.get("nhanh") or ""))
 
 
 def main(argv=None):
@@ -286,7 +321,8 @@ def main(argv=None):
     for f in sorted(thu.iterdir() if thu.is_dir() else []):
         if FILE_PHASE.match(f.name):
             phases.append(tinh_phase(f.stem, f.read_text(), lich_su(repo, f"docs/phase/{f.name}", tz), now, pr_of, cm_of))
-    Path(o.ra).write_text(xuat(o.ten or repo.resolve().name, phases, lan, now, cb))
+    nac_of = (lambda l: lam_nac(l, pr_of, repo)) if o.github else None
+    Path(o.ra).write_text(xuat(o.ten or repo.resolve().name, phases, lan, now, cb, nac_of))
     return 0
 
 
