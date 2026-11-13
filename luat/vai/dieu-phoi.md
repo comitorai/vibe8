@@ -45,7 +45,7 @@ Chủ dự án chốt 06/11: **một vai Điều phối cho mỗi module** (1a);
 
 ## 5. Cây làn: bảy thao tác của làn
 
-Chủ dự án chốt 07/11: làn của một module nằm dưới Điều phối của module đó, và khi Điều phối bàn giao thì làn đi theo Điều phối mới.
+Chủ dự án chốt 07/11: làn của một module nằm dưới Điều phối của module đó, và khi Điều phối bàn giao thì làn đi theo Điều phối mới (chỗ lệch đang chờ duyệt: «Làn sau chuyển» cuối mục).
 Mục này nói **cái gì phải đúng**; cách làm cụ thể trên từng công cụ nằm ở bảng cuối mục.
 
 **Hai lớp, vì lớp lồng không bền.** Lớp lồng: phiên làn là con của phiên Điều phối đã mở nó, trừ làn đã gỡ khỏi cây cha ở bước 3
@@ -61,7 +61,7 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
 
 | Thao tác | Khi nào | Làm gì | Sổ ghi |
 |---|---|---|---|
-| **Mở** | task chờ, tệp giữ không giao, máy nổi (§2.4) | mở làn từ chính phiên Điều phối ở đầu sổ, trong bản làm việc riêng (worktree), ở nơi chủ dự án nhìn thấy được (thanh bên app), không chạy ngầm (ngoại lệ: làn launchd, §3); tên phiên mang mã việc ở cột Mã của sổ, task chưa có mã thì mang mã luồng — mẫu tên đầy đủ là luật của repo chủ dự án (`luat/`, `mau/` không có mẫu tên phiên — [ĐÃ KIỂM: grep · 07/11/2026]); đưa vào vỏ | task · phiên · nhánh · máy · `đang làm` |
+| **Mở** | task chờ, tệp giữ không giao, máy nổi (§2.4) | mở làn từ chính phiên Điều phối ở đầu sổ, trong bản làm việc riêng (worktree), không chung với Điều phối hay làn khác, ở nơi chủ dự án nhìn thấy được (thanh bên app), không chạy ngầm (ngoại lệ: làn launchd, §3); tên phiên mang mã việc ở cột Mã của sổ, task chưa có mã thì mang mã luồng — mẫu tên đầy đủ là luật của repo chủ dự án (`luat/`, `mau/` không có mẫu tên phiên — [ĐÃ KIỂM: grep · 07/11/2026]); đưa vào vỏ | task · phiên · nhánh · máy · `đang làm` |
 | **Tách** | task phình quá một ngày, hoặc tệp giữ rộng hơn dự kiến | làn dừng, đẩy nhánh, báo Điều phối; Điều phối cắt task con trong sổ; phần còn lại mở làn mới từ `main` — phần nào cần phần kia thì chờ phần kia merge, không PR chồng PR | task gốc `tách → Tx.a, Tx.b` |
 | **Gộp** | hai task giao tệp giữ, hoặc một task quá nhỏ đứng riêng | giữ làn tiến xa hơn; làn kia đẩy nhánh, làn giữ nhặt commit sang (cherry-pick) hoặc làm lại; đóng PR và lưu trữ làn bị gộp | task bị gộp `gộp vào Ty` |
 | **Gom** | luôn luôn (trừ làn launchd, §3) | mọi làn của một module nằm trong đúng một vỏ; làn của module khác không vào vỏ này | — |
@@ -79,7 +79,7 @@ giữ chỗ, kiểm tải và mở làn, merge, nhận báo của làn. Phiên k
 5. Điều phối cũ đổi `Điều phối:` đầu sổ sang id phiên mới. Quyền chuyển lúc thay đổi này lên `main`; từ đó Điều phối cũ chỉ đọc.
    Rồi mới nhắn từng làn: «Điều phối mới là <id>; báo về đó từ giờ».
 6. Điều phối mới đối chiếu sổ với danh sách phiên đang sống, xác nhận với từng làn.
-7. Điều phối cũ kiểm lại không còn phiên con nào cần sống, rồi đóng phiên.
+7. Điều phối cũ kiểm lại không còn phiên con nào cần sống, rồi đóng phiên. Không để Điều phối cũ sống sau khi đầu sổ đã đổi: Điều phối mới thấy nó còn sống thì nhắc nó đóng (hàng rào đề xuất `dp-cu` dưới).
 
 **Hai kiểu đóng Điều phối** (chủ dự án 1a 11/11): *đóng cuối phase*: mọi làn xong (merge, lưu trữ), Điều phối đóng sau cùng;
 *bàn giao*: bảy bước trên. Không bắt Điều phối cũ chờ mọi làn xong khi bàn giao, vì nó bàn giao chính vì đã gần đầy ngữ cảnh.
@@ -110,8 +110,34 @@ từ máy khác, và bỏ qua điều kiện «chưa nhắn» khi không đọc 
   ba ngoại lệ của `kien-truc.md` mục 7 (PR mức Cao, việc khó đảo ngược mới phát sinh, lệch đặc tả).
 - **Điều phối tự chạy tới hết phase** trong ba ngoại lệ đó; không dừng giữa chừng để hỏi «làm tiếp thế nào».
 
-Làn cũ sau chuyển nằm ở cấp cao nhất, không lồng dưới Điều phối mới: vỏ thay chỗ cho lớp lồng. Làn chưa bắt đầu viết mã thì Điều
-phối mới lưu trữ nó và mở lại từ phiên mình (lồng đúng, mất ít); làn đang dở thì giữ, vì mất ngữ cảnh đắt hơn mất lớp lồng.
+**Làn sau chuyển — lệch chốt 07/11, chờ chủ dự án duyệt** (CN-64, 13/11). Chốt 07/11 là «làn đi theo Điều phối mới». App không
+gắn được phiên vào cha khác (bảng công cụ dưới), nên mục này hạ chốt đó thành «vỏ thay chỗ lớp lồng» cho làn **đang dở**. Đây là
+lệch luật, không phải cách hiểu; tới khi chủ dự án duyệt, áp đúng như sau và không suy rộng thêm:
+
+- **Làn chưa có commit** (nhánh không có commit nào ngoài `main`, cả bản cục bộ lẫn `origin`; hoặc chưa có nhánh): Điều phối mới
+  **bắt buộc** lưu trữ nó và mở lại từ phiên mình, trước khi mở bất kỳ làn mới nào. Không thừa kế làn này
+  `[ĐÃ KIỂM: COM-24-6 13/11 — làn chưa commit được thừa kế, nằm ngoài lớp lồng]`.
+- **Làn đang dở** (có commit): giữ, ở cấp cao nhất trong vỏ, vì mất ngữ cảnh đắt hơn mất lớp lồng. Hết việc thì không mở tiếp từ
+  làn đó; phần kế mở từ Điều phối mới.
+- **Mỗi làn một bản làm việc riêng.** Làn không bao giờ chạy trong bản làm việc của Điều phối (bản giữ sổ, vd `.wt/so-…`) hay của
+  làn khác: hai phiên một bản làm việc thì đóng phiên này lưu trữ luôn phiên kia, và cùng sửa đè tệp
+  `[ĐÃ KIỂM: COM-24-6 13/11 — hai làn chạy chung bản làm việc giữ sổ của Điều phối]`.
+
+**Hàng rào đề xuất cho cây làn** (CN-64; chưa có mã — sửa `~/ai/os/bin`, nhánh và PR riêng ở repo đó). Vì ở COM-24-6 cả bốn điều trên
+và bước 7 chỉ là lời dặn, không máy nào bắt. Cùng kiểu gờ giảm tốc như bảng trên (tối đa 2 lần mỗi lý do trong 6 giờ):
+
+| Mã | Lúc | Máy làm gì |
+|---|---|---|
+| `wt` | Điều phối gọi `start_session` | từ chối khi `use_worktree` không phải `true` và không có `cwd`/`host` riêng (G3) |
+| `dp-cu` | Điều phối gọi `start_session` hay `wrap_up` | từ chối khi còn Điều phối cũ cùng MÃ và Sản phẩm chưa lưu trữ mà đầu sổ (cả bản làm việc lẫn `origin/main`) đã không ghi id nó: nhắn nó đóng (bước 7) hay `archive_session` nó (G2) |
+| `lan-trang` | Điều phối mới gọi `start_session` | từ chối khi còn làn tạo trước nó, cùng MÃ, chưa lưu trữ, nhánh không có commit ngoài `main`: lưu trữ rồi mở lại (G1) |
+| `luu-tru` | Điều phối gọi `wrap_up` | từ chối khi sổ ghi `xong`/merged mà phiên ở cột Phiên chưa lưu trữ (G4) |
+| `ten` | Điều phối gọi `wrap_up` | chạy `doi-ten-lan.py`; còn dòng đề xuất thì từ chối, kèm danh sách `set_session_title` (G4) |
+
+`doi-ten-lan.py` hiện bỏ qua im lặng mọi phiên không có id ở cột Phiên của sổ, nên làn mở ngoài sổ (vd làn chủ dự án mở tay thay
+làn cũ) không bao giờ được đổi tên `[SUY LUẬN từ đọc mã de_xuat() và sổ COM-24-6 · 13/11: dòng Mermaid ghi id làn đã cất, làn
+«⬛️ Phiếu delta Mermaid COM-24» không có dòng]`. Đề xuất: in thêm mục `lac_so` cho phiên trong vỏ cùng MÃ mà không có dòng sổ,
+và mục `sai_mau` cho tên không qua `ten_phien.dung_mau` hay còn mang mã luồng khi sổ có mã task — không bỏ qua im lặng.
 
 **Trên app Claude Code desktop** `[ĐÃ KIỂM: danh sách công cụ của app · 07/11]`:
 
