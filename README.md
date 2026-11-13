@@ -70,9 +70,10 @@ vì chúng chạy lệnh trên máy người mở repo.
 - Merge kiểu rebase phải tắt: cổng xét theo diff, còn rebase phát lại từng commit. Chưa tái hiện được kết quả lệch, đây là biện pháp phòng. `bat_cong.py` tắt và đọc lại.
 - Quá 400 dòng (không tính lockfile; mức Thường còn trừ tệp test, mức Cao tính đủ): mức Cao bị chặn, mức Thường chỉ cảnh báo. Mức Cao được qua khi người duyệt hợp lệ ghi dòng `ngoai-le-co: <lý do>` trong lượt duyệt.
   Dòng đó phải đứng đầu dòng, đúng chữ thường, không gạch đầu dòng hay in đậm; sai định dạng thì cổng coi như chưa ghi.
-- Duyệt hợp lệ: người có quyền admin trên repo (cổng hỏi GitHub lúc xét), không phải tác giả hay người có commit
+- Duyệt hợp lệ: repo của Organization là người có quyền admin; repo của tài khoản cá nhân (`owner.type` User, nơi chỉ chủ có admin)
+  là chủ repo hoặc người có quyền ghi (cổng hỏi GitHub lúc xét, Alex 1b 14/11). Cả hai: không phải tác giả hay người có commit
   trong PR (không tính commit merge, ví dụ bấm Update branch), không phải bot, đúng SHA.
 - PR quá 250 commit bị chặn, vì API chỉ trả tới đó nên không đọc đủ được người có commit.
-- Yêu cầu sửa của người có quyền admin chặn bất kể SHA và mức rủi ro trên **PR đó**. Lượt của họ bị gỡ thì vẫn chặn đến khi họ duyệt lại.
+- Yêu cầu sửa của người duyệt hợp lệ (theo dòng trên) chặn bất kể SHA và mức rủi ro trên **PR đó**. Lượt của họ bị gỡ thì vẫn chặn đến khi họ duyệt lại.
   Yêu cầu sửa không theo sang PR mới cùng nội dung; người duyệt phải đóng cả nhánh nếu không muốn nội dung đó vào.
 - Mỗi lần cổng được đánh thức mà SHA không còn là head của PR mở vào `main`, ví dụ PR vừa đóng: cổng ghi `failure` thay `success` cũ. Đổi base từ `main` đi nơi khác không đánh thức cổng; đổi về thì cổng xét lại và chặn, vì PR đã từng đổi base.

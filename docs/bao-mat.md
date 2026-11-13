@@ -107,7 +107,10 @@ Cũng trên repo thử, bằng token giả:
 18. **Cộng tác viên quyền ghi làm kẹt được cổng.** Họ ghi đè được `XUONG_APP_KEY`, `XUONG_APP_CLIENT_ID` dù không đọc được khoá.
     Check do App khác phát không được tính vì ghim `app_id`, nên SHA chưa có `success` không qua được. SHA đã có `success` thì giữ được nó dù
     người duyệt yêu cầu sửa sau đó, vì cổng không phát được `failure` để thu hồi. Không đưa được thay đổi chưa từng xét vào `main`. Chủ repo đặt lại khoá.
-19. **Chỉ quyền admin mới duyệt được.** Trên repo tổ chức, vai `maintain` không tính. Quyền đọc lúc xét: mất quyền admin thì lượt duyệt cũ hết tính.
+19. **Repo tổ chức: chỉ quyền admin mới duyệt được.** Vai `maintain` không tính. Quyền đọc lúc xét: mất quyền admin thì lượt duyệt cũ hết tính.
+    **Repo cá nhân** (`owner.type` User, Alex 1b 14/11): GitHub không cho ai ngoài chủ quyền admin, nên chỉ tin admin thì PR do chủ làm tác giả
+    không ai duyệt được. Ở đó người duyệt = chủ repo + người có quyền ghi; vẫn phải khác tác giả, khác người có commit, đúng SHA. Đánh đổi:
+    cộng tác viên quyền ghi duyệt được PR Cao của người khác, nên repo cá nhân chỉ nên mời người mình tin làm cộng tác viên. Thiếu `owner.type` → xét như tổ chức.
 20. **Lỗi đọc quyền làm cổng đóng.** API quyền hỏng thì lượt đó ra `failure`, tự lành ở sự kiện sau.
 21. **Merge kiểu rebase phải tắt.** Cổng đọc diff so với điểm rẽ nhánh; rebase phát lại từng commit nên có thể đảo thay đổi đã vào `main` mà diff không
     cho thấy. Chưa tái hiện được trên GitHub: đây là biện pháp phòng, vì điều kiện GitHub từ chối chỉ thấy ghi ở tài liệu Enterprise Server. `bat_cong.py` tắt và đọc lại.

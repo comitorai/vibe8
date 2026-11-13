@@ -44,6 +44,12 @@ def can_duyet(d, login="khac", **khac):
     return d
 
 
+def chu_repo(d, loai, login="chu"):
+    """Đặt base.repo.owner của PR 4. loai None = GitHub không trả owner.type."""
+    d["/pulls/4"]["base"]["repo"]["owner"] = {"login": login} if loai is None else {"login": login, "type": loai}
+    return d
+
+
 class TestChay(unittest.TestCase):
     def test_phat_dung_mot_check_dung_sha_dung_ten(self):
         gh = gate_app.GiaLap(du_lieu())
@@ -95,6 +101,41 @@ class TestChay(unittest.TestCase):
             with self.subTest(quyen):
                 d = can_duyet(du_lieu())
                 d["/collaborators/khac/permission"] = {"permission": quyen}
+                gh = gate_app.GiaLap(d)
+                chay(gh, nguoi_tin=())
+                self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+                self.assertIn("không có quyền admin", gh.da_phat[0][2]["output"]["summary"])
+
+    def test_repo_ca_nhan_quyen_ghi_khac_tac_gia_duyet_duoc(self):
+        # Alex 1b 14/11: repo của tài khoản cá nhân chỉ chủ có admin, nên người có quyền ghi được tin.
+        for quyen in ("write", "maintain"):
+            with self.subTest(quyen):
+                d = chu_repo(can_duyet(du_lieu()), "User")
+                d["/collaborators/khac/permission"] = {"permission": quyen}
+                gh = gate_app.GiaLap(d)
+                chay(gh, nguoi_tin=())
+                self.assertEqual(gh.da_phat[0][2]["conclusion"], "success")
+
+    def test_repo_ca_nhan_tac_gia_tu_duyet_bi_chan(self):
+        d = chu_repo(can_duyet(du_lieu(), login="tac-gia"), "User")
+        d["/collaborators/tac-gia/permission"] = {"permission": "write"}
+        gh = gate_app.GiaLap(d)
+        chay(gh, nguoi_tin=())
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+        self.assertIn("tự duyệt", gh.da_phat[0][2]["output"]["summary"])
+
+    def test_repo_ca_nhan_quyen_doc_khong_duyet_duoc(self):
+        d = chu_repo(can_duyet(du_lieu()), "User")
+        d["/collaborators/khac/permission"] = {"permission": "read"}
+        gh = gate_app.GiaLap(d)
+        chay(gh, nguoi_tin=())
+        self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")
+
+    def test_repo_to_chuc_quyen_ghi_van_bi_bo(self):
+        for loai in ("Organization", None):
+            with self.subTest(loai):
+                d = chu_repo(can_duyet(du_lieu()), loai)
+                d["/collaborators/khac/permission"] = {"permission": "write"}
                 gh = gate_app.GiaLap(d)
                 chay(gh, nguoi_tin=())
                 self.assertEqual(gh.da_phat[0][2]["conclusion"], "failure")

@@ -43,7 +43,7 @@ Giới hạn đã biết: cổng chỉ thấy đường dẫn, nên mã tiền �
 | Trước khi code | 3–5 dòng tiêu chí nghiệm thu trong thân PR | như Thường + mục «KHÔNG được phá» |
 | Test | test có sẵn xanh; thêm test cho hành vi mới | như Thường; sửa lỗi thì có test đỏ trước khi sửa |
 | Phản bác của agent | 1 lượt (L3) | 1 lượt + 1 lượt hẹp sau khi sửa logic |
-| Người duyệt | không | admin, khác tác giả, đúng SHA |
+| Người duyệt | không | admin (repo cá nhân: chủ hoặc quyền ghi), khác tác giả, đúng SHA |
 | Merge | tự, khi cổng xanh và phiếu không bác | sau duyệt và phiếu không bác |
 
 **Làn sửa gấp** (lỗi đang hại người dùng): mức nào vẫn giữ mức đó. Cổng không biết PR nào là sửa gấp và chặn mọi PR chưa có phiếu `khong-bac` trên đúng SHA (Alex 1a, 06/11), nên trước merge chỉ cần một lượt phản bác hẹp trên chỗ sửa; lượt đầy đủ chạy sau merge, trong 24 giờ. Người duyệt của mức Cao vẫn bắt buộc trước merge.

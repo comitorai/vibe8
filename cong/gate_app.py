@@ -145,13 +145,21 @@ def _doc_theo_sha(gh, so_pr, pr):
              for x in sorted({r["user"]["login"] for r in duyet if (r.get("user") or {}).get("type") == "User"})}
     lan_chay = _luot_cua_pr(gh, so_pr, pr, _trang(
         gh, "/actions/workflows/%s.yml/runs?head_sha=%s&event=pull_request" % (ten.CHECK_NHANH, sha), "workflow_runs"))
+    # Repo của tài khoản cá nhân (owner.type User) chỉ có chủ là admin, cộng tác viên tối đa quyền ghi: chỉ tin admin thì PR
+    # do chủ làm tác giả không ai duyệt được (Alex 1b 14/11). Thiếu owner.type thì coi như Organization: chặt hơn, không mở.
+    chu = ((pr.get("base") or {}).get("repo") or {}).get("owner") or {}
+    ca_nhan = chu.get("type") == "User"
+    ten_chu = str(chu.get("login") or "").casefold()
     return {
         "sha_dau": sha, "trang_thai_pr": pr.get("state"), "nhanh_dich": (pr.get("base") or {}).get("ref"),
         "so_pr_vao_goc": len(_pr_vao_goc(gh, sha)), "so_tep_khai": pr.get("changed_files"),
         "so_commit_khai": pr.get("commits"), "so_commit_doc": len(commit),
         "tac_gia": (pr.get("user") or {}).get("login"), "so_pr": pr.get("number"),
-        # Người duyệt là người có quyền admin. Không lấy từ biến environment: cộng tác viên quyền ghi sửa được biến đó.
-        "nguoi_tin": sorted(x for x, q in quyen.items() if q == "admin"),
+        # Người duyệt: Organization = người có quyền admin; repo cá nhân = chủ repo + người có quyền ghi. Luật «khác tác giả,
+        # duyệt đúng SHA» giữ nguyên ở kiem_pr. Không lấy từ biến environment: cộng tác viên quyền ghi sửa được biến đó.
+        "repo_ca_nhan": ca_nhan,
+        "nguoi_tin": sorted(x for x, q in quyen.items()
+                            if q == "admin" or (ca_nhan and (q in _QUYEN_GHI or x.casefold() == ten_chu))),
         # Người ghi được phiếu phản bác: có quyền ghi. Repo công khai thì người lạ cũng gửi được review.
         "nguoi_ghi": sorted(x for x, q in quyen.items() if q in _QUYEN_GHI),
         "nguoi_commit": sorted(x for x in nguoi_commit if x),
