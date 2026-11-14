@@ -133,6 +133,24 @@ class TestDuyet(unittest.TestCase):
         ds = [duyet(user="agent-khac", body="ngoai-le-co: máy sinh, tôi đã đọc rồi")]
         self.assertEqual(quyet_dinh(pr(lon(900), ds_duyet=ds))["ket_luan"], CHAN)
 
+    def test_repo_ca_nhan_noi_dung_nguoi_duyet(self):
+        # Alex 1b 14/11: repo cá nhân, câu chặn và câu bỏ duyệt nói «chủ repo hoặc quyền ghi», không đòi admin không ai có.
+        q = quyet_dinh(pr(CAO, ds_duyet=[duyet(user="agent-khac")], repo_ca_nhan=True))
+        self.assertEqual(q["ket_luan"], CHAN)
+        noi = " ".join(q["ly_do"] + q["chi_tiet"])
+        self.assertIn("không phải chủ repo, không có quyền ghi", noi)
+        self.assertIn("chủ repo hoặc người có quyền ghi", noi)
+        self.assertNotIn("quyền admin", noi)
+
+    def test_repo_ca_nhan_van_chan_tu_duyet(self):
+        q = quyet_dinh(pr(CAO, ds_duyet=[duyet(user="tac-gia")], repo_ca_nhan=True))
+        self.assertEqual(q["ket_luan"], CHAN)
+        self.assertIn("tự duyệt", " ".join(q["chi_tiet"]))
+
+    def test_repo_ca_nhan_van_doi_dung_sha(self):
+        q = quyet_dinh(pr(CAO, ds_duyet=[duyet(commit=SHA_CU)], repo_ca_nhan=True))
+        self.assertEqual(q["ket_luan"], CHAN)
+
     def test_khong_ai_co_quyen_thi_rui_ro_cao_chan_rui_ro_thap_qua(self):
         for rong in ([], None):
             self.assertEqual(quyet_dinh(pr(nguoi_tin=rong))["ket_luan"], CHO_QUA)

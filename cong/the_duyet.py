@@ -1,4 +1,4 @@
-"""Thẻ duyệt: thứ người admin đọc trước khi duyệt PR cần họ (mức Cao, quá cỡ, hoặc chạm trần L4). Hàm thuần.
+"""Thẻ duyệt: thứ người duyệt (Organization: admin; repo cá nhân: chủ + quyền ghi) đọc trước khi duyệt PR cần họ (mức Cao, quá cỡ, hoặc chạm trần L4). Hàm thuần.
 
 Đề xuất điểm duyệt §2 (Alex, 06/11): mỗi lượt duyệt Cao dưới 5 phút. Thẻ gồm vì sao cần duyệt, các phiếu phản bác,
 trạng thái test, rồi CHỈ diff của tệp làm PR thành Cao. Tệp Thường chỉ có tên và số dòng, kèm câu nói rõ ai đã soát
