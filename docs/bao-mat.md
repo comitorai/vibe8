@@ -17,7 +17,7 @@ Vai cộng tác viên quyền ghi, trên repo thật đã bật cổng:
 - Workflow lạ đòi environment `gate` không lấy được secret, qua mọi đường đã thử: nhánh `main-2`, `Main`, `thu/main`, tag tên `main`,
   PR thường, `workflow_dispatch`, `deployment` tạo bằng API với ref lạ.
 - `pull_request_target` và `workflow_run` của cổng trên `main` qua được `gate`, đến bước tạo token. Có khoá giả nên dừng ở đó.
-- **Cộng tác viên ghi được biến và secret trong `gate`.** Vì vậy cổng không đọc danh sách người duyệt từ biến nữa: hỏi GitHub ai có quyền admin.
+- **Cộng tác viên ghi được biến và secret trong `gate`.** Vì vậy cổng không đọc danh sách người duyệt từ biến nữa: hỏi GitHub quyền của từng người lúc xét (admin; repo cá nhân thêm quyền ghi).
 - Bật log chi tiết (`ACTIONS_STEP_DEBUG`, `ACTIONS_RUNNER_DEBUG`) không làm khoá nhiều dòng lộ qua `create-github-app-token`: không dòng nào của khoá giả xuất hiện trong log.
 
 Trên repo thử do agent làm chủ: ghim `app_id` chặn check và status giả cùng tên, kể cả `gh pr merge --admin` và API merge.
@@ -108,7 +108,7 @@ Cũng trên repo thử, bằng token giả:
     Check do App khác phát không được tính vì ghim `app_id`, nên SHA chưa có `success` không qua được. SHA đã có `success` thì giữ được nó dù
     người duyệt yêu cầu sửa sau đó, vì cổng không phát được `failure` để thu hồi. Không đưa được thay đổi chưa từng xét vào `main`. Chủ repo đặt lại khoá.
 19. **Repo tổ chức: chỉ quyền admin mới duyệt được.** Vai `maintain` không tính. Quyền đọc lúc xét: mất quyền admin thì lượt duyệt cũ hết tính.
-    **Repo cá nhân** (`owner.type` User, Alex 1b 14/11): GitHub không cho ai ngoài chủ quyền admin, nên chỉ tin admin thì PR do chủ làm tác giả
+    **Repo cá nhân** (`owner.type` User, Alex 1b 14/11): GitHub không cho ai ngoài chủ quyền admin `[SUY LUẬN từ tài liệu GitHub «Permission levels for a personal account repository»: chỉ có chủ và cộng tác viên]`, nên chỉ tin admin thì PR do chủ làm tác giả
     không ai duyệt được. Ở đó người duyệt = chủ repo + người có quyền ghi; vẫn phải khác tác giả, khác người có commit, đúng SHA. Đánh đổi:
     cộng tác viên quyền ghi duyệt được PR Cao của người khác, nên repo cá nhân chỉ nên mời người mình tin làm cộng tác viên. Thiếu `owner.type` → xét như tổ chức.
 20. **Lỗi đọc quyền làm cổng đóng.** API quyền hỏng thì lượt đó ra `failure`, tự lành ở sự kiện sau.
