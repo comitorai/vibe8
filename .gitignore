@@ -1,5 +1,2 @@
 __pycache__/
 *.pyc
-
-# Trạng thái review của skill comitor-review (marker, sidecar): theo từng worktree, không commit.
-/.claude-tmp/
