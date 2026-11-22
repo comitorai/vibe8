@@ -36,7 +36,7 @@ Alex chốt 06/11 (1a): chỉ có **đạt** hoặc **không đạt**; không đ
 
 `[ĐÃ KIỂM: test cổng · 06/11]` Cổng xếp hai mức như trên và đọc vùng từ nhánh gốc, nên PR không tự gỡ vùng được. Mọi PR, cả mức Cao, cần phiếu phản bác của L3 trên đúng SHA, không còn rút thăm; trần L4 là bác trên 2 SHA khác nhau, khi đó người admin quyết bằng lượt duyệt ghi sau phiếu bác cuối, có dòng `quyet-l4:`, và thẻ đưa diff mọi tệp; phiếu bác trên một SHA thì phiếu không bác ghi sau không gỡ được, phải có commit mới; cách ghi phiếu ở README. Máy không phân biệt được hai agent chung tài khoản, nên «agent khác» vẫn là lời dặn, chưa là hàng rào. Chưa làm tài khoản thứ hai cho người phản bác (Alex 1a, 06/11): khi token của nó nằm cùng máy với agent viết code thì hai tài khoản chỉ khác tên. Làm khi một trong hai điều sau xảy ra: lỗi lọt từ PR Thường tăng trong bản đo tuần của `do_vong.py`, hoặc người phản bác chạy ngoài máy với token mà agent viết code không đọc được. Mức Cao cần cả phiếu lẫn người duyệt (Alex 1a, 06/11): thẻ duyệt chỉ đưa diff của tệp Cao, phần Thường của PR đó do phiếu soát.
 `[ĐÃ KIỂM: PR 28 · 05/11]` PR thật chỉ sửa một tệp tài liệu trong vùng đã khai ra `chan (cao)`.
-Giới hạn đã biết: cổng chỉ thấy đường dẫn, nên mã tiền đặt ngoài vùng đã khai thì là Thường; vùng khai thiếu là lỗ của repo, người duyệt PR khai vùng phải soát. Tách một thay đổi lớn thành nhiều PR nhỏ vẫn lọt qua trần cỡ của L2.
+Giới hạn đã biết: cổng chỉ thấy đường dẫn, nên mã tiền đặt ngoài vùng đã khai thì là Thường; vùng khai thiếu là lỗ của repo, người duyệt PR khai vùng phải soát. Trần cỡ của L2 chỉ để chặn PR quá lớn không ai đọc nổi; tách một thay đổi lớn thành nhiều PR nhỏ vẫn lọt qua trần, nên luật không khuyến khích tách: **một việc = một PR** (Alex 1a, 22/11/2026). Tài liệu của việc đó (docs, `changes/`, bảng trạng thái) đi chung PR code; PR tài liệu riêng chỉ khi tài liệu thuần, không gắn việc code nào. Không tách lõi và giao diện khi tổng dưới khoảng 1.000 dòng.
 
 | | Thường | Cao |
 |---|---|---|
@@ -55,7 +55,7 @@ Căn cứ L2: con số 400 đến từ nghiên cứu SmartBear/Cisco về ngư�
 | # | Luật | Chặn lỗi gì | Đo bằng | Giữ nếu · Bỏ nếu | Xét |
 |---|---|---|---|---|---|
 | L1 | Mọi thay đổi vào `main` qua PR và qua cổng `cong-cuoi` | đẩy thẳng, CI giả xanh, tự duyệt | sổ chặn của cổng | luật nền | 30 ngày |
-| L2 | PR ≤ 400 dòng, không tính lockfile; mức Thường còn trừ dòng test, mức Cao tính đủ. Quá cỡ: mức Cao bị chặn trừ khi người duyệt ghi `ngoai-le-co:`; mức Thường chỉ cảnh báo (Alex 1a, 09/11) | PR lớn không ai đọc nổi | số vòng sửa và lỗi bắt trước merge theo cỡ PR | PR nhỏ ít vòng sửa hơn · không khác; cần ≥ 60 PR | 60 ngày |
+| L2 | Một việc = một PR; không tính lockfile, mức Thường còn trừ dòng test, mức Cao tính đủ. 400 dòng là mức nên (401–1.500 chỉ cảnh báo, không chặn); quá 1.500 dòng chặn trừ khi thân PR có `ly-do-co:` hay người duyệt ghi `ngoai-le-co:`. Tài liệu đi chung PR code; không tách lõi/giao diện dưới ~1.000 dòng (Alex 1a, 22/11; trước đó 09/11) | PR lớn không ai đọc nổi | số PR gộp/ngày, phút CI/ngày, số vòng sửa trung bình/PR; lỗi bắt trước merge theo cỡ PR | PR nhỏ ít vòng sửa hơn · không khác; cần ≥ 60 PR | 60 ngày |
 | L3 | Một lượt **phản bác** cho mọi PR: agent khác tìm cách làm hỏng, phải kèm cách tái hiện. Bỏ rút thăm đối chứng (Alex 1a, 06/11) | lỗi hành vi, lỗi quyền mà test xanh | lỗi thật bắt được / lượt; sửa gấp trong 7 ngày sau merge | ≥ 1 lỗi thật / 10 lượt, cần ≥ 30 lượt · dưới mức đó | 60 ngày |
 | L4 | Trần 2 vòng phản bác mỗi PR; lượt sau khi sửa chỉ xét phần vừa sửa | vòng sửa không dứt, token đọc lại | token mới / PR và số vòng, máy ghi | trung vị token không tăng, L3 không giảm · ngược lại | 30 ngày |
 | L5 | Test có sẵn là điều kiện nghiệm thu; sửa, đổi tên, xoá cần người duyệt | agent sửa test cho xanh | cổng đã chặn | luật nền | 30 ngày |
@@ -153,3 +153,11 @@ Hai trường đầu là **nhãn** trên issue, đúng một nhãn mỗi trườ
 - **Sửa máy trước, thêm chữ sau:** khâu hở mà cổng hoặc test chặn được thì sửa cổng hoặc test, không thêm luật.
 - Đề xuất đi qua PR sửa file này, mức Cao, người duyệt chốt.
 - **Kỳ không có lỗi lọt nào:** trước khi kết luận tốt, đối chiếu các PR sửa gấp trong kỳ với sổ; có PR sửa gấp mà không có issue thì sổ đang bị bỏ sót.
+
+## 9. Quyết định đã chốt (lịch sử)
+
+**22/11/2026 · luật cỡ PR «một việc = một PR» (anh Bình chốt phương án a, qua Sen).**
+- *Thay đổi:* tài liệu đi chung PR code; không tách lõi/giao diện khi tổng dưới ~1.000 dòng; 400 dòng thành mức nên (chỉ cảnh báo); chặn khi quá 1.500 dòng (không tính lockfile) trừ khi thân PR có `ly-do-co:` (≥ 10 ký tự) hay người duyệt hợp lệ ghi `ngoai-le-co:`. Cổng: `cong/rui_ro.py` (`NGUONG_NEN`, `NGUONG_CHAN`, cờ `qua_nen`), `cong/kiem_pr.py`, `cong/the_duyet.py`, `cong/gate_app.py` (đọc `than_pr`, chỉ để tìm dòng `ly-do-co:`).
+- *Lý do:* comitor-tasks gộp 300 PR trong 13 ngày (10–22/11): cỡ giữa 246 dòng, 33% dưới 100 dòng, 31% chỉ có tài liệu; việc tách lõi/giao diện (#593/#594, #596/#597) làm tốn CI và PR khoá nhau; Mr Thành góp ý.
+- *Soát lại:* hằng tháng, lần đầu 22/12/2026. *Chỉ số theo dõi:* số PR gộp/ngày, phút CI/ngày, số vòng sửa trung bình/PR.
+- *Đo ở đâu:* `nghiem-thu/do_vong.py` chưa đo ba số này (nó đo lỗi lọt, thời gian ra, token, độ đúng của luật; số vòng sửa theo cỡ PR chưa có). Đến buổi soát đầu tiên, lấy bằng `gh` từ danh sách PR gộp của repo và ghi vào sổ riêng của repo đó; nếu cần máy đo thì mở việc riêng.

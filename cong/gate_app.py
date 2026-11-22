@@ -149,7 +149,7 @@ def _doc_theo_sha(gh, so_pr, pr):
         "sha_dau": sha, "trang_thai_pr": pr.get("state"), "nhanh_dich": (pr.get("base") or {}).get("ref"),
         "so_pr_vao_goc": len(_pr_vao_goc(gh, sha)), "so_tep_khai": pr.get("changed_files"),
         "so_commit_khai": pr.get("commits"), "so_commit_doc": len(commit),
-        "tac_gia": (pr.get("user") or {}).get("login"), "so_pr": pr.get("number"),
+        "than_pr": pr.get("body"), "tac_gia": (pr.get("user") or {}).get("login"), "so_pr": pr.get("number"),
         # Người duyệt là người có quyền admin. Không lấy từ biến environment: cộng tác viên quyền ghi sửa được biến đó.
         "nguoi_tin": sorted(x for x, q in quyen.items() if q == "admin"),
         # Người ghi được phiếu phản bác: có quyền ghi. Repo công khai thì người lạ cũng gửi được review.

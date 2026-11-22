@@ -176,7 +176,7 @@ def lap_the(du_lieu, q, phieu, nhanh):
                       "cho **mọi tệp**, nên diff mọi tệp ở mục 4. "
                       "Lượt duyệt phải ghi sau phiếu bác cuối và có dòng `quyet-l4: <lý do>`")
     if q.get("qua_co") and q.get("rui_ro") == rui_ro.CAO:
-        vi_sao.append("quá %d dòng: lượt duyệt phải có dòng `ngoai-le-co: <lý do>`" % rui_ro.NGUONG_CO_DONG)
+        vi_sao.append("quá %d dòng: thân PR có dòng `ly-do-co: <lý do>` hay lượt duyệt có dòng `ngoai-le-co: <lý do>`" % rui_ro.NGUONG_CHAN)
     phan += ["- " + x for x in vi_sao]
     if cao:
         # Danh sách nào do người mở PR làm dài cũng có trần byte, để phiếu, test và diff còn chỗ.
