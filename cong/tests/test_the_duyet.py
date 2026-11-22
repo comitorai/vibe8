@@ -233,8 +233,8 @@ class TestTheDuyet(unittest.TestCase):
         self.assertIn("Tệp test mới: [2] `cong/tests/test_moi.py`", the)
 
     def test_qua_co_cao_ghi_ngoai_le(self):
-        the = self.the(ds_tep=[tep("cong/x.py", 401, 0)])
-        self.assertIn("quá 400 dòng", the)
+        the = self.the(ds_tep=[tep("cong/x.py", 1501, 0)])
+        self.assertIn("quá 1500 dòng", the)
 
     def test_tep_test_moi_bi_cat_o_20_ghi_con_lai(self):
         the = self.the(ds_tep=[tep("cong/x.py")] + [tep("cong/tests/t%d.py" % i, status="added") for i in range(25)])

@@ -15,7 +15,8 @@ from . import ten
 
 # Hai mức (Alex 1a, 06/11): Cao là chạm bảo mật hay tiền, cần người duyệt; còn lại là Thường, cần phiếu phản bác.
 THUONG, CAO = "thuong", "cao"
-NGUONG_CO_DONG = 400
+# Anh Bình chốt «a» 22/11/2026: một việc = một PR; 400 dòng là mức nên, chỉ chặn từ 1.500 dòng.
+NGUONG_CO_DONG = 1500
 
 _THU_TU = {THUONG: 0, CAO: 1}
 _GOC_BAO_VE = ("cong/", "luat/", "docs/bao-mat.md", "nghiem-thu/kiem_cuc_bo.py", "nghiem-thu/bat_cong.py", "nghiem-thu/loi/")
