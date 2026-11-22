@@ -13,7 +13,7 @@ Chủ dự án chốt 06/11: **một vai Điều phối cho mỗi module** (1a);
 ## 2. Việc của Điều phối
 
 1. **Gói Cổng 2 (5a):** ước số task, token, PR Cao; soạn gói một trang từ tài liệu gốc (mẫu `mau/goi-cong-2.md`).
-2. **Cắt task (5b):** ghi bảng task vào `docs/phase/<MÃ>-<số>.md` (mẫu `mau/phase.md`). Task to quá một ngày thì tách task con, mỗi task con vẫn một nhánh, một PR. Không tách riêng lõi và giao diện, hay tài liệu và mã, của cùng một việc khi tổng dưới khoảng 1.000 dòng (anh Bình chốt «a», 22/11/2026).
+2. **Cắt task (5b):** ghi bảng task vào `docs/phase/<MÃ>-<số>.md` (mẫu `mau/phase.md`). Task to quá một ngày thì tách task con, mỗi task con vẫn một nhánh, một PR. Một việc = một PR (L2, `luat/phuong-phap.md`): tài liệu đi kèm việc nằm chung PR với mã; PR tài liệu riêng chỉ khi tài liệu thuần, không gắn việc mã nào. Mốc «khoảng 1.000 dòng» chỉ dùng để quyết có tách lõi và giao diện hay không: dưới mốc thì không tách (anh Bình chốt «a», 22/11/2026).
 3. **Chọn model cho từng task** theo bảng L12, ghi vào cột `model`. Đọc, tra cứu: model nhẹ. Code, tài liệu mức Thường: model vừa. Mức Cao, phản bác: model mạnh. Kiến trúc, quyết định khó đảo ngược: model mạnh nhất. Chọn lệch bảng thì ghi lý do vào cột ghi chú.
 4. **Kiểm tải trước mỗi làn**, trên đúng máy sẽ chạy làn đó: máy chính kiểm tại chỗ, máy phụ kiểm qua ssh. Máy báo không nổi thì không mở, task chờ; không vượt tải trừ khi chủ dự án nói rõ.
 5. **Chọn máy cho task:**
@@ -106,7 +106,7 @@ từ máy khác. Đây là gờ giảm tốc, không phải khoá.
 
 **Ngưỡng ngữ cảnh và đường báo** (chủ dự án chốt 07/11):
 
-- **Điều phối > 80 % cửa sổ ngữ cảnh thì bàn giao** theo bảy bước trên, không chờ hết phase. Lý do: phiên điều phối bị nén
+- **Điều phối > 80 % cửa sổ ngữ cảnh thì bàn giao** theo bảy bước trên, không chờ hết phase (trước khi bàn giao, làn đã có PR thì xem đoạn «Gần đầy thì chờ làn sắp xong» bên dưới). `[CHƯA CÓ MÁY KIỂM: ngưỡng 80 % là lời dặn, chưa có hook hay kiểm tra nào đo]` Lý do: phiên điều phối bị nén
   nhiều lần sẽ quên quyết định cũ, và sai thêm còn đắt hơn mở phiên mới `[ĐÃ KIỂM: Điều phối COM-24-1 nén hơn 20 lần, quên
   quyết định đã chốt · 07/11]`.
 - **Làn > 150 nghìn token thì Thay làn** (hàng trên), không tự mở phiên kế.
@@ -126,6 +126,7 @@ và app không có công cụ đổi cha. Bàn giao Điều phối vì thế c�
 làn chờ một câu trả lời không tới `[ĐÃ KIỂM: cả 7 làn COM-24 còn sống có cha là Điều phối đã lưu trữ; làn T10b chặn hơn 20 phút không ai thấy;
 tin nhắn từ làn chạy qua ssh trên máy phụ về Điều phối báo «không tìm thấy phiên» · 11/11]`.
 
+- `[CHƯA CÓ MÁY KIỂM: quy tắc hộp báo là lời dặn, chưa có hook hay kiểm tra nào bắt làn quên báo]`
 - **Hộp báo** là một issue GitHub trên repo sản phẩm, mỗi luồng việc một cái, tên `Hộp báo <MÃ>`; dòng `Hộp báo:` ở đầu sổ ghi số issue.
   Chọn issue chứ không chọn tệp: làn trên máy phụ không ghi được tệp của máy chính, còn tệp trên nhánh làn sẽ theo PR vào `main`.
 - **Làn viết vào hộp báo**: `gh issue comment <số> --body "[<id phiên 8 ký tự> · <task>] <loại>: <nội dung>"`, loại là một trong
@@ -137,7 +138,7 @@ tin nhắn từ làn chạy qua ssh trên máy phụ về Điều phối báo «
   đầu sổ: không cần là cha của làn nào.
 - Bước 5 của bảy bước: đổi `Điều phối:` đầu sổ, rồi viết một bình luận vào hộp báo «Điều phối mới là <id>»; không nhắn từng làn (1a 13/11).
 
-**Gần đầy thì chờ làn sắp xong** (chủ dự án 1c 11/11): Điều phối quá 80 % cửa sổ ngữ cảnh thì **ngừng mở làn mới**; làn đã mở PR
+**Gần đầy thì chờ làn sắp xong** `[CHƯA CÓ MÁY KIỂM: quy tắc «ngừng mở làn mới khi quá 80 %» là lời dặn]` (chủ dự án 1c 11/11): Điều phối quá 80 % cửa sổ ngữ cảnh thì **ngừng mở làn mới**; làn đã mở PR
 (chờ phiếu, chờ CI) thì Điều phối cũ merge xong rồi mới bàn giao; làn còn đang viết mã thì chuyển cho Điều phối mới qua hộp báo,
 không chờ.
 

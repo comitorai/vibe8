@@ -3,6 +3,7 @@
 **Xong khi:** <một câu> · **Hạn:** <ngày> · **Cổng 2:** <ngày, lựa chọn của chủ dự án>
 **Điều phối:** <id phiên hiện hành> · **Vỏ:** <nhóm thanh bên của luồng> · **Ngân sách:** <token>, đã dùng <token>
 **Trạng thái:** <Chưa bắt đầu | Đang làm | Hoàn thành | Đã huỷ> (Cổng 3 đạt → Hoàn thành, bỏ → Đã huỷ) · **Cập nhật:** issue #<số>, nhãn `phase`
+**Hộp báo:** #<số issue> (kênh làn báo về Điều phối, `luat/vai/dieu-phoi.md` §5; khác issue «Cập nhật» ở dòng trên, là chỗ máy ghi tiến độ phase, không phải chỗ làn nhắn)
 
 Sức khoẻ, tuổi, %, phạm vi, dự báo không ghi tay vào sổ: máy tính từ sổ này, lịch sử git của nó, GitHub và comment ba mốc giờ trên issue cập nhật (`luat/hien-thi-tien-do.md` mục 3, 4).
 
