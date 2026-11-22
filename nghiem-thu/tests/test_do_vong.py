@@ -109,7 +109,7 @@ class TestDoDung(unittest.TestCase):
 
 class TestDocCheck(unittest.TestCase):
     TOM = ("**Kết luận:** chan\n\n**Lý do:**\n- rủi ro cao: cần người có quyền admin, khác tác giả, duyệt đúng SHA\n"
-           "- có lượt `cong-nhanh` không xanh\n- quá 400 dòng (523)\n\n**Chi tiết:**\n- đổi tệp của cổng `cong/a.py`\n"
+           "- có lượt `cong-nhanh` không xanh\n- quá 1500 dòng (1623): thân PR cần dòng `ly-do-co: <lý do>` hay người duyệt ghi `ngoai-le-co: <lý do>`\n\n**Chi tiết:**\n- đổi tệp của cổng `cong/a.py`\n"
            "- đổi test có sẵn (`modified`) `cong/tests/t.py`\n- chạm vùng nhạy cảm `x/`: `x/a.py`\n")
 
     def test_nhom_ly_do_va_muc(self):
@@ -118,7 +118,7 @@ class TestDocCheck(unittest.TestCase):
         muc, ly_do = do_vong.doc_check(ds)
         self.assertEqual(muc, "cao")
         # Chỉ mục «Lý do»; «Chi tiết» là phân loại rủi ro, không phải luật đã chặn. Số thay bằng N để gom nhóm.
-        self.assertEqual(ly_do, ["có lượt · không xanh", "quá N dòng (N)"])
+        self.assertEqual(ly_do, ["có lượt · không xanh", "quá N dòng (N): thân PR cần dòng · hay người duyệt ghi"])
 
     def test_muc_lay_tu_luot_moi_nhat_co_muc(self):
         ds = [{"completed_at": "2026-02-01T00:01:00Z", "output": {"title": "chan (trung_binh)", "summary": ""}},

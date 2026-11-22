@@ -15,7 +15,8 @@ from . import ten
 
 # Hai mức (Alex 1a, 06/11): Cao là chạm bảo mật hay tiền, cần người duyệt; còn lại là Thường, cần phiếu phản bác.
 THUONG, CAO = "thuong", "cao"
-NGUONG_CO_DONG = 400
+# Luật cỡ PR «một việc = một PR» (Alex 1a, 22/11): quá NGUONG_NEN chỉ cảnh báo; quá NGUONG_CHAN thì chặn trừ khi có lý do.
+NGUONG_NEN, NGUONG_CHAN = 400, 1500
 
 _THU_TU = {THUONG: 0, CAO: 1}
 _GOC_BAO_VE = ("cong/", "luat/", "docs/bao-mat.md", "nghiem-thu/kiem_cuc_bo.py", "nghiem-thu/bat_cong.py", "nghiem-thu/loi/")
@@ -219,10 +220,10 @@ def _xet_muc_moi(tep, vung):
 
 
 def phan_loai(ds_tep, vung=()):
-    """Trả {muc, ly_do, so_dong, so_dong_test, qua_co, theo_tep}. so_dong không tính lockfile; mức Thường còn trừ tệp test, mức Cao tính đủ (Alex 1a, 09/11);
+    """Trả {muc, ly_do, so_dong, so_dong_test, qua_co (> NGUONG_CHAN), qua_nen (NGUONG_NEN < cỡ ≤ NGUONG_CHAN), theo_tep}. so_dong không tính lockfile; mức Thường còn trừ tệp test, mức Cao tính đủ (Alex 1a, 09/11);
     so_dong_test là số dòng test, để thẻ duyệt hiện. theo_tep[i]: lý do Cao của ds_tep[i]. vung: mẫu đường dẫn nhạy cảm đọc từ nhánh gốc (doc_vung)."""
     if not isinstance(ds_tep, list):
-        return {"muc": CAO, "ly_do": ["không có danh sách tệp"], "so_dong": 0, "so_dong_test": 0, "qua_co": False, "theo_tep": []}
+        return {"muc": CAO, "ly_do": ["không có danh sách tệp"], "so_dong": 0, "so_dong_test": 0, "qua_co": False, "qua_nen": False, "theo_tep": []}
     muc, ly_do, tong, tong_test, ma_chay, theo_tep = THUONG, [], 0, 0, [], []
     for tep in ds_tep:
         la_ma, cao = _xet_muc_moi(tep, vung)
@@ -248,4 +249,5 @@ def phan_loai(ds_tep, vung=()):
     # hay nằm trong vùng nhạy cảm, mà cổng chỉ thấy đường dẫn.
     if muc == CAO:
         tong += tong_test
-    return {"muc": muc, "ly_do": ly_do, "so_dong": tong, "so_dong_test": tong_test, "qua_co": tong > NGUONG_CO_DONG, "theo_tep": theo_tep}
+    return {"muc": muc, "ly_do": ly_do, "so_dong": tong, "so_dong_test": tong_test, "qua_co": tong > NGUONG_CHAN,
+            "qua_nen": NGUONG_NEN < tong <= NGUONG_CHAN, "theo_tep": theo_tep}

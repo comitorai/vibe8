@@ -194,7 +194,7 @@ class TestPhuThuoc(unittest.TestCase):
         self.assertFalse(r["qua_co"])
 
     def test_tep_thuong_trung_ten_gan_giong_lockfile_van_tinh_co(self):
-        self.assertTrue(phan_loai([tep("yarn.lock.txt", them=500)])["qua_co"])
+        self.assertTrue(phan_loai([tep("yarn.lock.txt", them=1501)])["qua_co"])
 
     def test_ten_khong_phai_chuoi_khong_lam_hong_cach_dem(self):
         self.assertEqual(phan_loai([tep(7, them=5)])["so_dong"], 5)
@@ -312,9 +312,18 @@ class TestCo(unittest.TestCase):
         self.assertFalse(phan_loai([tep("a.py", them=200, xoa=200)])["qua_co"])
 
     def test_qua_nguong_cong_nhieu_tep(self):
-        r = phan_loai([tep("a.py", them=300), tep("b.py", them=100, xoa=1)])
-        self.assertEqual(r["so_dong"], 401)
+        r = phan_loai([tep("a.py", them=1000), tep("b.py", them=500, xoa=1)])
+        self.assertEqual(r["so_dong"], 1501)
         self.assertTrue(r["qua_co"])
+        self.assertFalse(r["qua_nen"])
+
+    def test_giua_nen_va_tran_la_qua_nen_khong_qua_co(self):
+        r = phan_loai([tep("a.py", them=401)])
+        self.assertEqual((r["qua_nen"], r["qua_co"]), (True, False))
+        r = phan_loai([tep("a.py", them=1500)])
+        self.assertEqual((r["qua_nen"], r["qua_co"]), (True, False))
+        r = phan_loai([tep("a.py", them=400)])
+        self.assertEqual((r["qua_nen"], r["qua_co"]), (False, False))
 
     def test_so_dong_khong_hop_le_la_cao(self):
         for sai in (-1, None, "9", True, 1.5):

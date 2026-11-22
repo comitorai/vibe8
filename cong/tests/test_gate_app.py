@@ -61,6 +61,17 @@ class TestChay(unittest.TestCase):
         chay(gh)
         self.assertNotIn("BỎ QUA", json.dumps(gh.da_phat[0][2], ensure_ascii=False))
 
+    def test_than_pr_ly_do_co_mo_tran_co_dau_cuoi(self):
+        for than, ket in ((None, "failure"), ("không có dòng lý do", "failure"),
+                          ("mô tả\nly-do-co: chuyển mã máy sinh, không tách được", "success")):
+            with self.subTest(than):
+                d = du_lieu()
+                d["/pulls/4/files"][0].update(additions=1501, deletions=0)
+                d["/pulls/4"]["body"] = than
+                gh = gate_app.GiaLap(d)
+                chay(gh)
+                self.assertEqual(gh.da_phat[0][2]["conclusion"], ket)
+
     def test_rui_ro_cao_phat_failure(self):
         d = du_lieu()
         d["/pulls/4/files"][0]["filename"] = ".github/workflows/x.yml"
