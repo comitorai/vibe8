@@ -39,7 +39,7 @@ def pr(ds_tep=None, checks=None, ds_duyet=None, co_phieu=True, **khac):
 
 
 CAO = [tep(".github/workflows/x.yml")]
-# Mức Cao: PR Thường quá cỡ chỉ cảnh báo (Alex 1a, 09/11), nên các test chặn theo cỡ phải ở mức Cao.
+# Từ 22/11 cỡ chặn ở mọi mức khi quá 1.500 dòng; lon() là PR mức Cao để test thêm phần người duyệt.
 
 
 def lon(them):
@@ -278,9 +278,14 @@ class TestCo(unittest.TestCase):
         self.assertTrue(any("chuyển mã máy sinh" in x for x in q["chi_tiet"]))
 
     def test_ly_do_co_ngan_hay_giua_dong_khong_tinh(self):
-        for than in ("ly-do-co: ngắn", "ly-do-co:", "", None, "có ly-do-co: viết giữa dòng thì không tính", "ly-do-co: x" + " " * 12):
+        for than in ("ly-do-co: ngắn", "ly-do-co:", "", None, "có ly-do-co: viết giữa dòng thì không tính", "ly-do-co: x" + " " * 12, "ly-do-co: a" + " " * 8 + "b", "ly-do-co: " + "a " * 4 + "b"):
             with self.subTest(than):
                 self.assertEqual(quyet_dinh(pr([tep(them=1501)], than_pr=than))["ket_luan"], CHAN)
+
+    def test_ly_do_co_gop_khoang_trang_du_muoi_ky_tu_thi_tinh(self):
+        q = quyet_dinh(pr([tep(them=1501)], than_pr="ly-do-co: " + "abcde   fghij"))
+        self.assertEqual(q["ket_luan"], CHO_QUA)
+        self.assertTrue(any("abcde fghij" in x for x in q["chi_tiet"]))
 
     def test_ly_do_co_chi_mo_tran_co_khong_mo_gi_khac(self):
         than = "ly-do-co: đã có phiếu rồi nhé, rủi ro thấp, ngoai-le-co: tự cho qua"

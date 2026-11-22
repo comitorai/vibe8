@@ -48,7 +48,7 @@ Giới hạn đã biết: cổng chỉ thấy đường dẫn, nên mã tiền �
 
 **Làn sửa gấp** (lỗi đang hại người dùng): mức nào vẫn giữ mức đó. Cổng không biết PR nào là sửa gấp và chặn mọi PR chưa có phiếu `khong-bac` trên đúng SHA (Alex 1a, 06/11), nên trước merge chỉ cần một lượt phản bác hẹp trên chỗ sửa; lượt đầy đủ chạy sau merge, trong 24 giờ. Người duyệt của mức Cao vẫn bắt buộc trước merge.
 
-Căn cứ L2: con số 400 đến từ nghiên cứu SmartBear/Cisco về người đọc mã, nên áp cho mã người phải đọc. Ở đây phần lớn diff do AI phản bác đọc, nên dòng test (kỳ vọng nghiệm thu, đổi test có sẵn đã bị chặn riêng theo L5) tách ra không tính; thẻ duyệt vẫn hiện số dòng test. Chỉ mức Thường được trừ dòng test, và quá cỡ chỉ cảnh báo vì đã có phiếu phản bác soát. Mức Cao tính đủ cả dòng test (cổng chỉ thấy đường dẫn, nên tệp tên test có thể chứa mã thật hay nằm trong vùng nhạy cảm) và vẫn chặn khi chưa có `ngoai-le-co`.
+Căn cứ L2: con số 400 đến từ nghiên cứu SmartBear/Cisco về người đọc mã, nên áp cho mã người phải đọc. Ở đây phần lớn diff do AI phản bác đọc, nên dòng test (kỳ vọng nghiệm thu, đổi test có sẵn đã bị chặn riêng theo L5) tách ra không tính; thẻ duyệt vẫn hiện số dòng test. Chỉ mức Thường được trừ dòng test. Mức Cao tính đủ cả dòng test (cổng chỉ thấy đường dẫn, nên tệp tên test có thể chứa mã thật hay nằm trong vùng nhạy cảm). Từ 22/11/2026, ở mọi mức, 400 dòng chỉ là mức nên (401–1.500 chỉ cảnh báo); quá 1.500 dòng thì chặn, trừ khi thân PR có `ly-do-co:` hay người duyệt hợp lệ ghi `ngoai-le-co:`. Lý do cỡ chỉ mở trần cỡ: mức Cao vẫn cần người duyệt, mọi mức vẫn cần phiếu phản bác.
 
 ## 3. Các luật
 
@@ -161,3 +161,4 @@ Hai trường đầu là **nhãn** trên issue, đúng một nhãn mỗi trườ
 - *Lý do:* comitor-tasks gộp 300 PR trong 13 ngày (10–22/11): cỡ giữa 246 dòng, 33% dưới 100 dòng, 31% chỉ có tài liệu; việc tách lõi/giao diện (#593/#594, #596/#597) làm tốn CI và PR khoá nhau; Mr Thành góp ý.
 - *Soát lại:* hằng tháng, lần đầu 22/12/2026. *Chỉ số theo dõi:* số PR gộp/ngày, phút CI/ngày, số vòng sửa trung bình/PR.
 - *Đo ở đâu:* `nghiem-thu/do_vong.py` chưa đo ba số này (nó đo lỗi lọt, thời gian ra, token, độ đúng của luật; số vòng sửa theo cỡ PR chưa có). Đến buổi soát đầu tiên, lấy bằng `gh` từ danh sách PR gộp của repo và ghi vào sổ riêng của repo đó; nếu cần máy đo thì mở việc riêng.
+- *Lưu ý số liệu:* `do_vong.py` gom lý do chặn theo chữ (số thay bằng N). Câu chặn cỡ đổi từ «quá N dòng (N)» (trần 400) sang «quá N dòng (N): thân PR cần dòng · hay người duyệt ghi» (trần 1.500), nên độ đúng của luật L2 trước và sau 22/11/2026 nằm ở hai nhóm riêng; khi soát phải cộng hai nhóm khi so sánh, và số chặn cỡ trước ngày đó không so thẳng được với sau.

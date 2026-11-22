@@ -56,7 +56,7 @@ Xem riêng một luồng việc (vỏ `📂 <MÃ>`) thì nhóm của luồng đ�
 | Cờ | English | Khi nào | Ai tính | Màu chip |
 |---|---|---|---|---|
 | Chờ bạn | Needs you | người đang xem là người phải làm: duyệt PR đang Chờ duyệt, trả lời Cổng | màn hình, theo người xem; không ghi vào sổ | màu nhấn |
-| Chờ duyệt | Awaiting review | PR có phiếu không bác trên head SHA, hay đã chạm trần L4; `cong-nhanh` xanh trên head SHA; `cong-cuoi` còn báo `chan` và mọi lý do chặn còn lại đều cần admin: thiếu lượt duyệt (PR Cao), thiếu dòng `ngoai-le-co` (PR quá cỡ), trần L4 | máy, từ PR | trung tính |
+| Chờ duyệt | Awaiting review | PR có phiếu không bác trên head SHA, hay đã chạm trần L4; `cong-nhanh` xanh trên head SHA; `cong-cuoi` còn báo `chan` và mọi lý do chặn còn lại đều cần admin: thiếu lượt duyệt (PR Cao), trần L4. PR quá 1.500 dòng chưa có `ly-do-co:` hay `ngoai-le-co:` **không** vào cột này: đó là việc của tác giả (thêm dòng `ly-do-co: <lý do>` vào thân PR), không cần admin gỡ | máy, từ PR | trung tính |
 | Chờ CI | Waiting on CI | lượt `cong-nhanh` trên head SHA chưa xong | máy, từ PR | trung tính |
 | Chờ phiếu | Awaiting counter-review | `cong-nhanh` xanh trên head SHA mà chưa có phiếu trên SHA đó, và PR chưa chạm trần L4 | máy, từ PR | trung tính |
 | Chờ task khác | Waiting on task | cần task khác merge trước | Điều phối ghi mã task ở cột «Chờ task» của sổ | trung tính |

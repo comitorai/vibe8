@@ -12,7 +12,7 @@ CHO_QUA, CHAN, CHO = "cho_qua", "chan", "cho"
 
 SHA_HOP_LE = re.compile(r"[0-9a-f]{40}")
 _TRANG_THAI_XET = {"APPROVED", "CHANGES_REQUESTED", "DISMISSED"}
-_LY_DO_CO = re.compile(r"^ly-do-co:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)  # thân PR (tác giả viết): chỉ mở trần cỡ, không mở gì khác
+_LY_DO_CO = re.compile(r"^ly-do-co:[ \t]*(\S.*?)[ \t\r]*$", re.M)  # thân PR (tác giả viết): chỉ mở trần cỡ, không mở gì khác
 _NGOAI_LE = re.compile(r"^ngoai-le-co:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
 # Phiếu phản bác (luật L3): một lượt review, thân có hai dòng này. Tái hiện bắt buộc cả khi không bác: ghi đã thử gì.
 _PHIEU = re.compile(r"^phieu-phan-bac:[ \t]*(bac|khong-bac)[ \t\r]*$", re.M)
@@ -21,6 +21,15 @@ _TAI_HIEN = re.compile(r"^tai-hien:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
 _QUYET_L4 = re.compile(r"^quyet-l4:[ \t]*(\S.{8,}\S)[ \t\r]*$", re.M)
 _TRANG_THAI_PHIEU = {"COMMENTED", "APPROVED", "CHANGES_REQUESTED"}
 TRAN_PHIEU_BAC = 2  # L4: quá hai vòng bác thì người quyết
+
+
+def _ly_do_co(than_pr):
+    """Lý do cỡ của tác giả: dòng đầu dòng `ly-do-co:`, sau khi gộp khoảng trắng liên tiếp phải có ≥ 10 ký tự không phải khoảng trắng."""
+    for m in _LY_DO_CO.finditer(str(than_pr or "")):
+        ly_do = re.sub(r"\s+", " ", m.group(1))
+        if len(ly_do.replace(" ", "")) >= 10:
+            return ly_do
+    return None
 
 
 def _doc_phieu(du_lieu):
@@ -129,7 +138,7 @@ def _xet_duyet(du_lieu, sha):
 
 
 def quyet_dinh(du_lieu):
-    """Trả {ket_luan, ly_do, chi_tiet, sha, rui_ro, so_dong, so_mau_vung, nguoi_duyet, qua_co, theo_tep, the_duyet, tran_l4}."""
+    """Trả {ket_luan, ly_do, chi_tiet, sha, rui_ro, so_dong, so_mau_vung, nguoi_duyet, qua_co (> 1.500 dòng), qua_nen (401–1.500), theo_tep, the_duyet, tran_l4}."""
     sha = du_lieu.get("sha_dau")
     ds_tep = du_lieu.get("tep")
     vung = du_lieu.get("vung_nhay_cam")
@@ -176,13 +185,13 @@ def quyet_dinh(du_lieu):
         bo.append("quá %d dòng (%d): mức nên, không chặn" % (rui_ro.NGUONG_NEN, rr["so_dong"]))
     elif rr["qua_co"]:
         # Quá trần: cần lý do. Lý do của tác giả (thân PR) hay ngoại lệ của người duyệt hợp lệ đều mở được; chỉ mở trần cỡ.
-        ly_do_tg = _LY_DO_CO.search(str(du_lieu.get("than_pr") or ""))
+        ly_do_tg = _ly_do_co(du_lieu.get("than_pr"))
         ly_do_le = [m.group(1) for m in (_NGOAI_LE.search(str(r.get("body") or "")) for r in hop_le) if m]
         if not ly_do_tg and not ly_do_le:
             chan.append("quá %d dòng (%d): thân PR cần dòng `ly-do-co: <lý do>` hay người duyệt ghi `ngoai-le-co: <lý do>`"
                         % (rui_ro.NGUONG_CHAN, rr["so_dong"]))
         if ly_do_tg:
-            bo.append("lý do cỡ (tác giả): " + rui_ro.hien_thi(ly_do_tg.group(1)))
+            bo.append("lý do cỡ (tác giả): " + rui_ro.hien_thi(ly_do_tg))
         bo += ["ngoại lệ cỡ: " + rui_ro.hien_thi(x) for x in ly_do_le]
     nhanh, ly_do_nhanh = _xet_nhanh(du_lieu.get("lan_chay_nhanh"), sha)
     if nhanh == "do":
@@ -200,7 +209,7 @@ def quyet_dinh(du_lieu):
         "qua_co": rr["qua_co"], "qua_nen": rr["qua_nen"], "theo_tep": rr["theo_tep"], "the_duyet": None,
         "tran_l4": bool(ly_do_phieu) and _so_bac(du_lieu) >= TRAN_PHIEU_BAC,
     }
-    # Thẻ chỉ dựng khi PR cần người admin: mức Cao, quá cỡ, hoặc chạm trần L4 (admin quyết thay phiếu, kể cả PR Thường).
+    # Thẻ chỉ dựng khi PR cần người admin: mức Cao hoặc chạm trần L4 (admin quyết thay phiếu, kể cả PR Thường).
     if rr["muc"] == rui_ro.CAO or q["tran_l4"]:
         q["the_duyet"] = the_duyet.lap_the(du_lieu, q, _doc_phieu(du_lieu), (nhanh, ly_do_nhanh))
     return q
